@@ -36,25 +36,33 @@ jobs:
       - name: Build release APK
         run: flutter build apk --release
 
+      # Đọc số version từ pubspec.yaml (vd: 1.0.0+1) để đặt tên bản build rõ ràng
+      - name: Read app version
+        id: version
+        run: |
+          VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //' | tr -d '\r')
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
       # Đổi tên file cho dễ nhận biết theo từng lần build
-      - name: Rename APK with build number
+      - name: Rename APK with version + build number
         run: |
           mkdir -p release
-          cp build/app/outputs/flutter-apk/app-release.apk release/eye_care_ai-${{ github.run_number }}.apk
+          cp build/app/outputs/flutter-apk/app-release.apk release/eye_care_ai-${{ steps.version.outputs.version }}-build${{ github.run_number }}.apk
 
       # Lưu APK làm "artifact" của lần chạy này (tải trong tab Actions, giữ 90 ngày)
       - name: Upload APK as build artifact
         uses: actions/upload-artifact@v4
         with:
           name: eye_care_ai-apk-${{ github.run_number }}
-          path: release/eye_care_ai-${{ github.run_number }}.apk
+          path: release/eye_care_ai-${{ steps.version.outputs.version }}-build${{ github.run_number }}.apk
 
-      # Đồng thời tạo/ cập nhật một GitHub Release tên "latest" để có link tải cố định
+      # Mỗi lần chạy tạo MỘT Release riêng (tag khác nhau) -> giữ lại toàn bộ
+      # lịch sử các bản build cũ thay vì ghi đè lên nhau.
       - name: Publish as GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: latest
-          name: "Latest build (#${{ github.run_number }})"
+          tag_name: build-${{ github.run_number }}
+          name: "v${{ steps.version.outputs.version }} (build ${{ github.run_number }})"
           body: "APK build tự động từ commit ${{ github.sha }}"
           prerelease: true
-          files: release/eye_care_ai-${{ github.run_number }}.apk
+          files: release/eye_care_ai-${{ steps.version.outputs.version }}-build${{ github.run_number }}.apk

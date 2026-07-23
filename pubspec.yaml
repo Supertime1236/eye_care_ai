@@ -35,6 +35,14 @@ dependencies:
   fl_chart: ^0.70.2
   provider: ^6.1.2
 
+  # --- Real device data sources for the Habits screen ---
+  sensors_plus: ^6.0.1     # accelerometer (reading posture, sleep motion heuristic)
+  geolocator: ^13.0.1      # GPS (outdoor time)
+  app_usage: ^3.0.1        # OS screen-on time (Android only, needs Usage Access permission)
+  health: ^11.1.1          # HealthKit / Health Connect (sleep)
+  permission_handler: ^11.3.1
+  shared_preferences: ^2.3.3 # persists today's accumulated minutes across app restarts
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

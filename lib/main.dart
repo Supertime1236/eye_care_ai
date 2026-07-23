@@ -12,7 +12,6 @@ void main() {
       child: const EyeCareApp(),
     ),
   );
-  print('App started');
 }
 
 class EyeCareApp extends StatelessWidget {

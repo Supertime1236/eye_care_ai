@@ -372,7 +372,7 @@ class _SelectableOption extends StatelessWidget {
               child: Text(
                 label,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: selected ? AppColors.primaryBlue : AppColors.textPrimary,
+                      color: selected ? AppColors.primaryBlue : null,
                     ),
               ),
             ),

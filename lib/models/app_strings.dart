@@ -130,7 +130,7 @@ class AppStrings {
   String habitTitle(String id) {
     switch (id) {
       case 'reading':
-        return vi ? 'Khoảng cách đọc' : 'Reading Distance';
+        return vi ? 'Thời gian đọc sách' : 'Reading Time';
       case 'phone':
         return vi ? 'Sử dụng điện thoại' : 'Phone Usage';
       case 'sleep':
@@ -139,10 +139,27 @@ class AppStrings {
         return vi ? 'Thời gian ngoài trời' : 'Outdoor Time';
       case 'breaks':
         return vi ? 'Nghỉ ngơi mắt' : 'Eye Breaks';
-      case 'water':
-        return vi ? 'Uống nước' : 'Water Intake';
       default:
         return id;
+    }
+  }
+
+  // habitSubtitle mô tả nguồn dữ liệu thật đứng sau mỗi thói quen
+  // (cảm biến / API hệ điều hành nào đang được dùng để đo).
+  String habitSubtitle(String id) {
+    switch (id) {
+      case 'reading':
+        return vi ? 'Ánh sáng môi trường & gia tốc kế' : 'Ambient light & accelerometer';
+      case 'phone':
+        return vi ? 'Thời gian màn hình (hệ điều hành)' : 'Screen-on time (OS)';
+      case 'sleep':
+        return vi ? 'Đêm qua — gia tốc kế' : 'Last night — accelerometer';
+      case 'outdoor':
+        return vi ? 'GPS & cảm biến UV' : 'GPS & UV sensor';
+      case 'breaks':
+        return vi ? 'Nhận diện ánh nhìn qua camera trước' : 'Front camera gaze detection';
+      default:
+        return '';
     }
   }
 
@@ -156,8 +173,12 @@ class AppStrings {
         return vi ? 'cm' : 'cm';
       case 'hrs':
         return vi ? 'giờ' : 'hrs';
+      case 'min':
+        return vi ? 'phút' : 'min';
       case 'times':
         return vi ? 'lần' : 'times';
+      case 'breaks':
+        return vi ? 'lần nghỉ' : 'breaks';
       case 'glasses':
         return vi ? 'ly' : 'glasses';
       default:

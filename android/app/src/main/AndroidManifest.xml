@@ -1,4 +1,17 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <!-- Phone Usage habit: reading OS screen-on time via UsageStatsManager.
+         User must manually grant this in Settings > Apps > Special access >
+         Usage access — there is no runtime permission dialog for it. -->
+    <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS"
+        tools:ignore="ProtectedPermissions" />
+    <!-- Outdoor Time habit: GPS presence sampling -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <!-- Reading Time / Sleep habits: accelerometer-based stillness heuristic -->
+    <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
+    <!-- Sleep habit: Health Connect (Android's successor to Google Fit) -->
+    <uses-permission android:name="android.permission.health.READ_SLEEP" />
     <application
         android:label="eye_care_ai"
         android:name="${applicationName}"
@@ -40,6 +53,11 @@
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
+        </intent>
+        <!-- Needed so the app can detect/launch Health Connect for sleep data -->
+        <package android:name="com.google.android.apps.healthdata" />
+        <intent>
+            <action android:name="androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE" />
         </intent>
     </queries>
 </manifest>
