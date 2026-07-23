@@ -5,7 +5,13 @@ import 'providers/app_state.dart';
 import 'screens/main_shell.dart';
 import 'theme/app_theme.dart';
 
-void main() {
+import 'services/notification_service.dart';
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await NotificationService.instance.initialize();
+
   runApp(
     ChangeNotifierProvider(
       create: (_) => AppState(),
@@ -13,6 +19,8 @@ void main() {
     ),
   );
 }
+
+
 
 class EyeCareApp extends StatelessWidget {
   const EyeCareApp({super.key});

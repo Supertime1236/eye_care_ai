@@ -34,6 +34,11 @@ dependencies:
   google_fonts: ^6.2.1
   fl_chart: ^0.70.2
   provider: ^6.1.2
+  
+  flutter_local_notifications: ^19.4.0
+  timezone: ^0.10.1
+  dio: ^5.9.0
+  package_info_plus: ^9.0.0
 
   # --- Real device data sources for the Habits screen ---
   sensors_plus: ^6.0.1     # accelerometer (reading posture, sleep motion heuristic)

@@ -46,17 +46,44 @@ class DeviceDataService {
   // Android: dùng UsageStatsManager thông qua package app_usage.
   // Người dùng phải cấp quyền "Usage access" thủ công (không có runtime dialog).
   // iOS: Apple không cho app bên thứ ba đọc tổng screen-time -> trả về null.
+  //
+  // LƯU Ý: UsageStatsManager của Android đôi khi trả về NHIỀU dòng cho cùng
+  // một package (do dữ liệu được gộp theo nhiều khung ngày/tuần/tháng chồng
+  // nhau ở tầng hệ điều hành). Nếu cộng dồn tất cả các dòng một cách ngây thơ,
+  // tổng thời gian sẽ bị đếm trùng và cao hơn thực tế (vd: 5h58p thực tế lại
+  // hiện thành 8.9h). Cách xử lý: gom theo packageName, chỉ lấy giá trị LỚN
+  // NHẤT cho mỗi package (không cộng dồn các dòng trùng), sau đó mới cộng
+  // tổng giữa các package khác nhau.
   Future<double?> getPhoneUsageHours() async {
     if (!Platform.isAndroid) return null;
     try {
       final now = DateTime.now();
       final startOfDay = DateTime(now.year, now.month, now.day);
       final infoList = await AppUsage().getAppUsage(startOfDay, now);
-      final totalSeconds = infoList.fold<int>(
+
+      final maxSecondsPerPackage = <String, int>{};
+      for (final info in infoList) {
+        final seconds = info.usage.inSeconds;
+        final existing = maxSecondsPerPackage[info.packageName] ?? 0;
+        if (seconds > existing) {
+          maxSecondsPerPackage[info.packageName] = seconds;
+        }
+      }
+
+      final totalSeconds = maxSecondsPerPackage.values.fold<int>(
         0,
-        (sum, info) => sum + info.usage.inSeconds,
+        (sum, seconds) => sum + seconds,
       );
-      return totalSeconds / 3600.0;
+
+      // Chặn trên an toàn: tổng thời gian dùng máy không thể vượt quá số giờ
+      // thực tế đã trôi qua từ đầu ngày đến giờ. Nếu vượt (do lỗi hệ điều
+      // hành hiếm gặp), cắt về mốc này để tránh hiện số vô lý.
+      final elapsedSecondsToday = now.difference(startOfDay).inSeconds;
+      final clampedSeconds = totalSeconds > elapsedSecondsToday
+          ? elapsedSecondsToday
+          : totalSeconds;
+
+      return clampedSeconds / 3600.0;
     } catch (_) {
       // Quyền chưa được cấp hoặc thiết bị không hỗ trợ.
       return null;
