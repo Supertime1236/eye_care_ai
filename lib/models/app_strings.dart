@@ -74,9 +74,6 @@ class AppStrings {
   String get signOut => vi ? 'Đăng xuất' : 'Sign Out';
   String get version => vi ? 'EyeCare AI v1.0.0' : 'EyeCare AI v1.0.0';
 
-  String get aiAssistant => vi ? 'Trợ lý AI' : 'AI Assistant';
-  String get online => vi ? 'Trực tuyến' : 'Online';
-  String get askAboutEyeHealth => vi ? 'Hỏi về sức khỏe mắt...' : 'Ask about eye health...';
   List<String> get quickPrompts => vi
       ? [
           'Làm sao giảm mỏi mắt?',

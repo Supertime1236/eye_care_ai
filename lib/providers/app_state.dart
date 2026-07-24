@@ -244,12 +244,6 @@ class AppState extends ChangeNotifier {
     isEyeBreakReminderActive = active;
     notifyListeners();
   }
-
-  void setReminderMinutes(int minutes) {
-    reminderMinutes = minutes;
-    notifyListeners();
-  }
-
   // Ghi nhận một lần nghỉ mắt thật (người dùng tự xác nhận sau khi nhìn xa
   // theo nhắc nhở). Cộng dồn vào DeviceDataService (lưu theo ngày) và đồng bộ
   // luôn vào habit "Eye Breaks" trên trang Habits.
