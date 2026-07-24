@@ -5,6 +5,7 @@ import '../models/app_strings.dart';
 import '../providers/app_state.dart';
 import '../theme/app_colors.dart';
 import '../widgets/shared_widgets.dart';
+import 'habits_survey_screen.dart';
 
 // HabitsScreen hiển thị tiến trình các thói quen tốt cho mắt trong ngày.
 // Đây là màn hình CHỈ XEM (read-only): giá trị `current` của mỗi thói quen
@@ -80,6 +81,43 @@ class _HabitsScreenState extends State<HabitsScreen> {
                     child: CircularProgressIndicator(strokeWidth: 2),
                   ),
               ],
+            ),
+            const SizedBox(height: 16),
+            SectionCard(
+              child: InkWell(
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const HabitsSurveyScreen()),
+                ),
+                borderRadius: BorderRadius.circular(16),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        gradient: AppColors.gradientPrimary,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      alignment: Alignment.center,
+                      child: const Text('📋', style: TextStyle(fontSize: 20)),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(strings.surveyEntryTitle, style: Theme.of(context).textTheme.titleSmall),
+                          Text(
+                            strings.surveyEntrySubtitle,
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textMuted),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted),
+                  ],
+                ),
+              ),
             ),
             const SizedBox(height: 16),
             SectionCard(

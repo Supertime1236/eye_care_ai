@@ -92,6 +92,57 @@ class AppStrings {
         ];
 
   String get eyeTest => vi ? 'Nhắc nghỉ mắt' : 'Break Reminder';
+
+  // ---------------- Eye Break reminder screen ----------------
+  String get eyeBreakTitle => vi ? 'Nhắc nghỉ mắt' : 'Eye Break Reminder';
+  String get eyeBreakSubtitle => vi
+      ? 'Quy tắc 20-20-20: cứ mỗi khoảng thời gian, hãy nhìn xa 6 mét trong 20 giây'
+      : 'The 20-20-20 rule: every interval, look 20 feet away for 20 seconds';
+  String get eyeBreakIntervalLabel => vi ? 'Nhắc mỗi' : 'Remind every';
+  String get eyeBreakStart => vi ? 'Bắt đầu nhắc nghỉ mắt' : 'Start reminding';
+  String get eyeBreakStop => vi ? 'Dừng nhắc' : 'Stop reminding';
+  String get eyeBreakNextIn => vi ? 'Lần nhắc tiếp theo sau' : 'Next reminder in';
+  String get eyeBreakTimeUp => vi ? 'Đến giờ nghỉ mắt rồi!' : 'Time for an eye break!';
+  String get eyeBreakLookAway =>
+      vi ? 'Nhìn vào một vật cách xa khoảng 6 mét' : 'Look at something about 20 feet away';
+  String get eyeBreakDone => vi ? 'Xong, đã nghỉ mắt' : 'Done, I rested my eyes';
+  String get eyeBreakTodayCount => vi ? 'Số lần đã nghỉ hôm nay' : 'Breaks taken today';
+  String get eyeBreakSkip => vi ? 'Bỏ qua lần này' : 'Skip this one';
+
+  // ---------------- Habits survey / roadmap ----------------
+  String get surveyEntryTitle => vi ? 'Đánh giá nhanh sức khỏe mắt' : 'Quick eye health check-in';
+  String get surveyEntrySubtitle => vi
+      ? 'Trả lời vài câu hỏi để nhận mục tiêu phù hợp với bạn'
+      : 'Answer a few questions to get targets tailored to you';
+  String get surveyEntryButton => vi ? 'Bắt đầu' : 'Start';
+  String get surveyTitle => vi ? 'Khảo sát sức khỏe mắt' : 'Eye Health Survey';
+  String get surveyAgeQuestion => vi ? 'Bạn thuộc nhóm tuổi nào?' : 'Which age group are you in?';
+  String get surveyScreenQuestion =>
+      vi ? 'Trung bình bạn dùng điện thoại/máy tính bao nhiêu giờ mỗi ngày?' : 'On average, how many hours a day do you use screens?';
+  String get surveyOutdoorQuestion =>
+      vi ? 'Bạn hoạt động ngoài trời bao nhiêu phút mỗi ngày?' : 'How many minutes a day do you spend outdoors?';
+  String get surveyDistanceQuestion =>
+      vi ? 'Khoảng cách mắt tới màn hình/sách khi đọc (cm)?' : 'Your typical eye-to-screen/book distance (cm)?';
+  String get surveySleepQuestion =>
+      vi ? 'Bạn ngủ trung bình mấy giờ mỗi đêm?' : 'How many hours do you usually sleep per night?';
+  String get surveyBreaksQuestion =>
+      vi ? 'Bạn nghỉ mắt (nhìn xa) bao nhiêu lần mỗi ngày?' : 'How many times a day do you rest your eyes (look away)?';
+  String get surveySubmit => vi ? 'Xem kết quả' : 'See results';
+  String get surveyResultsTitle => vi ? 'Lộ trình của bạn' : 'Your roadmap';
+  String get surveyResultsSubtitle => vi
+      ? 'So sánh với thông số khuyến nghị cho sức khỏe mắt'
+      : 'Compared against recommended eye-health benchmarks';
+  String get surveyCurrentLabel => vi ? 'Hiện tại' : 'Current';
+  String get surveyTargetLabel => vi ? 'Khuyến nghị' : 'Recommended';
+  String get surveyGoodStatus => vi ? 'Đạt chuẩn' : 'On track';
+  String get surveyNeedsWorkStatus => vi ? 'Cần cải thiện' : 'Needs work';
+  String get surveyApplyButton => vi ? 'Áp dụng làm mục tiêu của tôi' : 'Apply as my targets';
+  String get surveyAppliedMessage =>
+      vi ? 'Đã cập nhật mục tiêu trên trang Habits!' : 'Your Habits targets have been updated!';
+  String get surveyRetake => vi ? 'Làm lại khảo sát' : 'Retake survey';
+  String get surveyDisclaimer => vi
+      ? 'Đây là khuyến nghị chung, không thay thế tư vấn của bác sĩ nhãn khoa.'
+      : 'These are general guidelines, not a substitute for advice from an eye doctor.';
   String get snellenScreening => vi ? 'Cài nhắc nghỉ mắt sau khoảng thời gian' : 'Set a break reminder after a time interval';
   String get reminderSet => vi ? 'Đã bật nhắc nghỉ mắt' : 'Reminder set';
   String get reminderInterval => vi ? 'Nhắc nhở sau' : 'Reminder after';
@@ -188,6 +239,75 @@ class AppStrings {
 
   String stepCount(int step, int total) =>
       vi ? 'Bước $step trong $total' : 'Step $step of $total';
+
+  // ---------------- Chat AI ----------------
+  String get aiAssistant => vi ? 'Trợ lý AI' : 'AI Assistant';
+  String get online => vi ? 'Đang hoạt động' : 'Online';
+  String get askAboutEyeHealth => vi ? 'Hỏi về sức khỏe mắt...' : 'Ask about eye health...';
+
+  String get chatGreeting => vi
+      ? 'Chào bạn! Mình là trợ lý AI của EyeCare AI. Hỏi mình bất cứ điều gì về sức khỏe mắt, thời gian dùng màn hình, hoặc mẹo chăm sóc thị lực nhé.'
+      : 'Hi! I\'m your EyeCare AI assistant. Ask me anything about eye health, '
+          'screen time, or vision care tips.';
+
+  List<String> get chatQuickPrompts => vi
+      ? const [
+          'Cách giảm mỏi mắt?',
+          'Thực phẩm tốt cho mắt',
+          'Quy tắc 20-20-20 là gì?',
+          'Khi nào nên khám mắt?',
+        ]
+      : const [
+          'How to reduce eye strain?',
+          'Best foods for eye health',
+          '20-20-20 rule explained',
+          'When to see an eye doctor?',
+        ];
+
+  Map<String, String> get chatResponses => vi
+      ? const {
+          'Cách giảm mỏi mắt?':
+              'Để giảm mỏi mắt: áp dụng quy tắc 20-20-20 (cứ 20 phút nhìn xa 20 feet trong 20 giây), '
+                  'chỉnh độ sáng màn hình, dùng ánh sáng phù hợp, chớp mắt thường xuyên và nghỉ ngơi đều đặn. '
+                  'Giữ màn hình cách mắt khoảng 50-65cm.',
+          'Thực phẩm tốt cho mắt':
+              'Thực phẩm giàu lutein, zeaxanthin, omega-3 và vitamin A, C, E rất tốt cho mắt. '
+                  'Hãy ăn rau lá xanh (rau bina, cải xoăn), cá béo (cá hồi), trứng, cà rốt, trái cây họ cam quýt '
+                  'và các loại hạt. Đừng quên uống đủ nước!',
+          'Quy tắc 20-20-20 là gì?':
+              'Quy tắc 20-20-20: cứ mỗi 20 phút dùng màn hình, hãy nhìn vào một vật cách xa khoảng 6 mét '
+                  'trong ít nhất 20 giây. Điều này giúp thư giãn cơ mắt và giảm mỏi mắt do thiết bị điện tử. '
+                  'Hãy đặt hẹn giờ hoặc dùng tính năng nhắc nghỉ mắt của app!',
+          'Khi nào nên khám mắt?':
+              'Hãy đi khám mắt nếu bạn gặp: mờ mắt kéo dài, đau mắt, đau đầu thường xuyên, '
+                  'nhìn đôi, thấy chớp sáng, hoặc thay đổi thị lực đột ngột. Người lớn nên khám mắt toàn diện '
+                  'mỗi 1-2 năm, hoặc hằng năm nếu đang đeo kính/kính áp tròng.',
+        }
+      : const {
+          'How to reduce eye strain?':
+              'To reduce eye strain: follow the 20-20-20 rule (every 20 min, look 20 feet away for 20 sec), '
+                  'adjust screen brightness, use proper lighting, blink often, and take regular breaks. '
+                  'Keep your screen 20-26 inches from your eyes.',
+          'Best foods for eye health':
+              'Foods rich in lutein, zeaxanthin, omega-3, and vitamins A, C, E support eye health. '
+                  'Try leafy greens (spinach, kale), fatty fish (salmon), eggs, carrots, citrus fruits, '
+                  'and nuts. Stay hydrated too!',
+          '20-20-20 rule explained':
+              'The 20-20-20 rule: every 20 minutes of screen time, look at something 20 feet (6 meters) '
+                  'away for at least 20 seconds. This relaxes your eye muscles and reduces digital eye strain. '
+                  'Set a timer or use our break reminders!',
+          'When to see an eye doctor?':
+              'See an eye doctor if you experience: persistent blurred vision, eye pain, frequent headaches, '
+                  'double vision, flashes of light, or sudden vision changes. Adults should get a comprehensive '
+                  'eye exam every 1-2 years, or annually if you wear glasses/contacts.',
+        };
+
+  String get chatFallbackResponse => vi
+      ? 'Câu hỏi hay đấy! Theo các hướng dẫn chung, việc nghỉ ngơi đều đặn, ánh sáng tốt và khám mắt định kỳ '
+          'là những yếu tố quan trọng. Bạn có muốn mình gợi ý thêm về thời gian màn hình, dinh dưỡng, hay bài tập cho mắt không?'
+      : 'That\'s a great question about eye health! Based on general guidelines, '
+          'maintaining regular breaks, good lighting, and annual eye check-ups are key. '
+          'Would you like specific tips on screen time, nutrition, or vision exercises?';
 
   List<String> get weeklyLabels => vi
       ? ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN']

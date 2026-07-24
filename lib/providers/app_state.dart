@@ -64,10 +64,9 @@ class AppState extends ChangeNotifier {
   double outdoorHours = 1.5;
   int breakCount = 6;
 
-  int eyeTestStep = 0;
-  String? leftEyeResult;
-  String? rightEyeResult;
-  bool testingLeftEye = true;
+  // Trạng thái cho màn hình nhắc nghỉ mắt (thay thế Eye Test cũ).
+  bool isEyeBreakReminderActive = false;
+  int eyeBreaksTakenToday = 0;
 
   int habitsCompletionPercent = 0;
 
@@ -188,8 +187,9 @@ class AppState extends ChangeNotifier {
     _applyHabitValue('phone', results[1] as double?);
     _applyHabitValue('sleep', results[2] as double?);
     _applyHabitValue('outdoor', results[3] as double?);
-    final breaks = results[4] as int?;
-    _applyHabitValue('breaks', breaks?.toDouble());
+    final breaks = results[4] as int;
+    _applyHabitValue('breaks', breaks.toDouble());
+    eyeBreaksTakenToday = breaks;
 
     _updateHabitsCompletion();
     habitsLastUpdated = DateTime.now();
@@ -240,30 +240,51 @@ class AppState extends ChangeNotifier {
     habitsCompletionPercent = ((total / habits.length) * 100).round();
   }
 
-  void nextEyeTestStep() {
-    if (eyeTestStep < 3) {
-      eyeTestStep++;
-      notifyListeners();
-    }
-  }
-
-  void resetEyeTest() {
-    eyeTestStep = 0;
-    leftEyeResult = null;
-    rightEyeResult = null;
-    testingLeftEye = true;
+  void toggleEyeBreakReminder(bool active) {
+    isEyeBreakReminderActive = active;
     notifyListeners();
   }
 
-  void submitEyeResult(String result) {
-    if (testingLeftEye) {
-      leftEyeResult = result;
-      testingLeftEye = false;
-      eyeTestStep = 1;
-    } else {
-      rightEyeResult = result;
-      eyeTestStep = 3;
+  void setReminderMinutes(int minutes) {
+    reminderMinutes = minutes;
+    notifyListeners();
+  }
+
+  // Ghi nhận một lần nghỉ mắt thật (người dùng tự xác nhận sau khi nhìn xa
+  // theo nhắc nhở). Cộng dồn vào DeviceDataService (lưu theo ngày) và đồng bộ
+  // luôn vào habit "Eye Breaks" trên trang Habits.
+  Future<void> recordEyeBreak() async {
+    final total = await DeviceDataService.instance.recordEyeBreak();
+    eyeBreaksTakenToday = total;
+    final habit = habits.firstWhere((h) => h.id == 'breaks');
+    habit.current = total.toDouble();
+    habit.isLive = true;
+    _updateHabitsCompletion();
+    notifyListeners();
+  }
+
+  bool hasCustomHabitTargets = false;
+
+  // Áp dụng các target cá nhân hoá được tính từ bài khảo sát sức khỏe mắt
+  // (xem lib/models/eye_health_standards.dart) vào các habit tương ứng.
+  void applySurveyTargets(Map<String, double> targets) {
+    for (final entry in targets.entries) {
+      final index = habits.indexWhere((h) => h.id == entry.key);
+      if (index == -1) continue;
+      habits[index] = HabitData(
+        id: habits[index].id,
+        title: habits[index].title,
+        subtitle: habits[index].subtitle,
+        icon: habits[index].icon,
+        unit: habits[index].unit,
+        target: entry.value,
+        current: habits[index].current,
+        color: habits[index].color,
+        isLive: habits[index].isLive,
+      );
     }
+    hasCustomHabitTargets = true;
+    _updateHabitsCompletion();
     notifyListeners();
   }
 

@@ -5,7 +5,7 @@ import '../models/app_strings.dart';
 import '../providers/app_state.dart';
 import '../theme/app_colors.dart';
 import 'chat_screen.dart';
-import 'eye_test_screen.dart';
+import 'eye_break_screen.dart';
 import 'habits_screen.dart';
 import 'home_screen.dart';
 import 'settings_screen.dart';
@@ -23,7 +23,7 @@ class _MainShellState extends State<MainShell> {
 
   static const _screens = [
     HomeScreen(),
-    EyeTestScreen(),
+    EyeBreakScreen(),
     HabitsScreen(),
     StatisticsScreen(),
     ChatScreen(),

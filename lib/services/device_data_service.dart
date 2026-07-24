@@ -222,13 +222,40 @@ class DeviceDataService {
     });
   }
 
-  // ---------------- Eye Breaks: front camera gaze detection ----------------
-  // CHƯA TRIỂN KHAI. Cần một pipeline face/gaze detection riêng (vd:
-  // google_mlkit_face_detection) chạy định kỳ qua camera trước, cân nhắc kỹ
-  // pin + quyền riêng tư trước khi bật mặc định. Trả về null để UI biết là
-  // "chưa có nguồn dữ liệu" thay vì hiện số giả.
-  Future<int?> getEyeBreaksToday() async {
-    return null;
+  // ---------------- Eye Breaks: confirmed via the in-app break reminder ----------------
+  // Trước đây dự tính dùng front-camera gaze detection, nhưng đó là một
+  // pipeline ML riêng (hiệu năng pin + quyền riêng tư cần thiết kế kỹ) nên
+  // thay vào đó: mỗi lần người dùng nhấn "Đã nghỉ mắt" ở màn hình nhắc nghỉ
+  // mắt, số lần được cộng dồn và lưu theo ngày — đây vẫn là dữ liệu THẬT do
+  // người dùng xác nhận, không phải số giả định sẵn.
+  static const _kBreaksCountKey = 'eye_breaks_today';
+  static const _kBreaksDateKey = 'eye_breaks_date';
+
+  Future<int> getEyeBreaksToday() async {
+    final prefs = await SharedPreferences.getInstance();
+    await _resetIfNewDayInt(prefs, _kBreaksCountKey, _kBreaksDateKey);
+    return prefs.getInt(_kBreaksCountKey) ?? 0;
+  }
+
+  Future<int> recordEyeBreak() async {
+    final prefs = await SharedPreferences.getInstance();
+    await _resetIfNewDayInt(prefs, _kBreaksCountKey, _kBreaksDateKey);
+    final current = (prefs.getInt(_kBreaksCountKey) ?? 0) + 1;
+    await prefs.setInt(_kBreaksCountKey, current);
+    return current;
+  }
+
+  Future<void> _resetIfNewDayInt(
+    SharedPreferences prefs,
+    String valueKey,
+    String dateKey,
+  ) async {
+    final today = DateTime.now().toIso8601String().substring(0, 10);
+    final storedDate = prefs.getString(dateKey);
+    if (storedDate != today) {
+      await prefs.setString(dateKey, today);
+      await prefs.setInt(valueKey, 0);
+    }
   }
 
   Future<void> _resetIfNewDay(

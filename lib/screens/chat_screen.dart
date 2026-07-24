@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import '../providers/app_state.dart';
 import '../theme/app_colors.dart';
 import '../widgets/shared_widgets.dart';
 
@@ -21,42 +23,10 @@ class ChatScreen extends StatefulWidget {
 class _ChatScreenState extends State<ChatScreen> {
   final _controller = TextEditingController();
   final _scrollController = ScrollController();
-  final _messages = <ChatMessage>[
-    ChatMessage(
-      text:
-          'Hi! I\'m your EyeCare AI assistant. Ask me anything about eye health, '
-          'screen time, or vision care tips.',
-      isUser: false,
-    ),
-  ];
+  final List<ChatMessage> _messages = [];
 
   bool _isTyping = false;
-
-  static const _quickPrompts = [
-    'How to reduce eye strain?',
-    'Best foods for eye health',
-    '20-20-20 rule explained',
-    'When to see an eye doctor?',
-  ];
-
-  static const _aiResponses = {
-    'How to reduce eye strain?':
-        'To reduce eye strain: follow the 20-20-20 rule (every 20 min, look 20 feet away for 20 sec), '
-        'adjust screen brightness, use proper lighting, blink often, and take regular breaks. '
-        'Keep your screen 20-26 inches from your eyes.',
-    'Best foods for eye health':
-        'Foods rich in lutein, zeaxanthin, omega-3, and vitamins A, C, E support eye health. '
-        'Try leafy greens (spinach, kale), fatty fish (salmon), eggs, carrots, citrus fruits, '
-        'and nuts. Stay hydrated too!',
-    '20-20-20 rule explained':
-        'The 20-20-20 rule: every 20 minutes of screen time, look at something 20 feet (6 meters) '
-        'away for at least 20 seconds. This relaxes your eye muscles and reduces digital eye strain. '
-        'Set a timer or use our break reminders!',
-    'When to see an eye doctor?':
-        'See an eye doctor if you experience: persistent blurred vision, eye pain, frequent headaches, '
-        'double vision, flashes of light, or sudden vision changes. Adults should get a comprehensive '
-        'eye exam every 1-2 years, or annually if you wear glasses/contacts.',
-  };
+  bool _greeted = false;
 
   @override
   void dispose() {
@@ -77,7 +47,7 @@ class _ChatScreenState extends State<ChatScreen> {
     });
   }
 
-  Future<void> _sendMessage(String text) async {
+  Future<void> _sendMessage(String text, Map<String, String> responses, String fallback) async {
     if (text.trim().isEmpty || _isTyping) return;
 
     setState(() {
@@ -90,15 +60,10 @@ class _ChatScreenState extends State<ChatScreen> {
 
     await Future<void>.delayed(const Duration(milliseconds: 1500));
 
-    final response = _aiResponses.entries
+    final response = responses.entries
         .firstWhere(
           (e) => text.toLowerCase().contains(e.key.toLowerCase().split(' ').first),
-          orElse: () => MapEntry(
-            '',
-            'That\'s a great question about eye health! Based on general guidelines, '
-            'maintaining regular breaks, good lighting, and annual eye check-ups are key. '
-            'Would you like specific tips on screen time, nutrition, or vision exercises?',
-          ),
+          orElse: () => MapEntry('', fallback),
         )
         .value;
 
@@ -114,6 +79,18 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final state = context.watch<AppState>();
+    final strings = state.strings;
+
+    if (!_greeted) {
+      _messages.add(ChatMessage(text: strings.chatGreeting, isUser: false));
+      _greeted = true;
+    }
+
+    final quickPrompts = strings.chatQuickPrompts;
+    final responses = strings.chatResponses;
+    final fallback = strings.chatFallbackResponse;
+
     return Material(
       color: Theme.of(context).scaffoldBackgroundColor,
       child: Column(
@@ -137,7 +114,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('AI Assistant', style: Theme.of(context).textTheme.titleMedium),
+                    Text(strings.aiAssistant, style: Theme.of(context).textTheme.titleMedium),
                     Row(
                       children: [
                         Container(
@@ -150,7 +127,7 @@ class _ChatScreenState extends State<ChatScreen> {
                         ),
                         const SizedBox(width: 6),
                         Text(
-                          'Online',
+                          strings.online,
                           style: Theme.of(context).textTheme.bodySmall?.copyWith(
                                 color: AppColors.success,
                               ),
@@ -168,11 +145,11 @@ class _ChatScreenState extends State<ChatScreen> {
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 20),
-              itemCount: _quickPrompts.length,
+              itemCount: quickPrompts.length,
               separatorBuilder: (_, _) => const SizedBox(width: 8),
               itemBuilder: (context, index) {
                 return ActionChip(
-                  label: Text(_quickPrompts[index]),
+                  label: Text(quickPrompts[index]),
                   backgroundColor: AppColors.chatAccent.withValues(alpha: 0.08),
                   labelStyle: TextStyle(
                     color: AppColors.chatAccent,
@@ -182,7 +159,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   side: BorderSide(
                     color: AppColors.chatAccent.withValues(alpha: 0.2),
                   ),
-                  onPressed: () => _sendMessage(_quickPrompts[index]),
+                  onPressed: () => _sendMessage(quickPrompts[index], responses, fallback),
                 );
               },
             ),
@@ -217,7 +194,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   child: TextField(
                     controller: _controller,
                     decoration: InputDecoration(
-                      hintText: 'Ask about eye health...',
+                      hintText: strings.askAboutEyeHealth,
                       filled: true,
                       fillColor: Theme.of(context).brightness == Brightness.dark
                           ? AppColors.darkSurface
@@ -231,7 +208,7 @@ class _ChatScreenState extends State<ChatScreen> {
                         vertical: 10,
                       ),
                     ),
-                    onSubmitted: _sendMessage,
+                    onSubmitted: (text) => _sendMessage(text, responses, fallback),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -239,7 +216,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   color: AppColors.chatAccent,
                   borderRadius: BorderRadius.circular(14),
                   child: InkWell(
-                    onTap: () => _sendMessage(_controller.text),
+                    onTap: () => _sendMessage(_controller.text, responses, fallback),
                     borderRadius: BorderRadius.circular(14),
                     child: const SizedBox(
                       width: 44,
