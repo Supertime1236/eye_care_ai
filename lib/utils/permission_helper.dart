@@ -1,28 +1,13 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:usage_stats/usage_stats.dart';
-
-import 'package:android_intent_plus/android_intent.dart';
-
+import '../services/usage_service.dart';
 
 
 class PermissionHelper {
   // Kiểm tra quyền PACKAGE_USAGE_STATS
   static Future<bool> checkUsagePermission() async {
-    try {
-      final end = DateTime.now();
-      final start = end.subtract(const Duration(minutes: 1));
-
-      final stats = await UsageStats.queryUsageStats(
-        start,
-        end,
-      );
-
-      return stats.isNotEmpty;
-    } catch (_) {
-      return false;
-    }
+    return await UsageService.hasPermission();
   }
 
 
@@ -30,27 +15,19 @@ class PermissionHelper {
   static Future<bool> requestUsagePermission() async {
     if (!Platform.isAndroid) return true;
 
-    const intent = AndroidIntent(
-      action: 'android.settings.USAGE_ACCESS_SETTINGS',
-    );
+    await UsageService.openPermissionSettings();
 
-    await intent.launch();
+    // Đợi người dùng quay lại app
+    await Future.delayed(const Duration(seconds: 1));
 
-    // Người dùng quay lại app
-    await Future.delayed(const Duration(seconds: 2));
-
-    return await checkUsagePermission();
+    return await UsageService.hasPermission();
   }
 
   // Mở Settings để cấp quyền thủ công
   static Future<void> openUsageAccessSettings() async {
-    if (!Platform.isAndroid) return;
+  if (!Platform.isAndroid) return;
 
-    const intent = AndroidIntent(
-      action: 'android.settings.USAGE_ACCESS_SETTINGS',
-    );
-
-    await intent.launch();
+    await UsageService.openPermissionSettings();
   }
 
   // Kiểm tra quyền Location
