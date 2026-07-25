@@ -5,15 +5,16 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../models/app_strings.dart';
-import '../providers/app_state.dart';
+import '../providers/habit_provider.dart';
+import '../providers/language_provider.dart';
 import '../theme/app_colors.dart';
 import '../widgets/shared_widgets.dart';
 
 // StatisticsScreen hiển thị biểu đồ và số liệu thống kê sức khỏe mắt.
 //
 // Đây là nơi người dùng xem các xu hướng theo tuần hoặc theo tháng.
-// Màn hình chỉ đọc dữ liệu từ AppState, vì vậy khi cần thay đổi dữ liệu
-// mẫu hoặc cách tính toán, bạn chỉnh sửa AppState hoặc các mảng dữ liệu bên dưới.
+// Màn hình đọc dữ liệu thói quen từ HabitProvider. Dữ liệu mẫu biểu đồ
+// được giữ cục bộ trong màn hình bên dưới.
 class StatisticsScreen extends StatefulWidget {
   const StatisticsScreen({super.key});
 
@@ -38,9 +39,9 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
   static const _monthlySleep = [6.0, 6.2, 6.5, 6.8, 7.0, 7.2, 7.0];
 
   // Chọn dữ liệu biểu đồ dựa vào tab đang chọn và loại số liệu.
-  // AppState.statsTabIndex xác định Weekly / Monthly.
-  // AppState.statsMetricIndex xác định Score / Screen Time / Sleep.
-  List<double> _getData(AppState state) {
+  // HabitProvider.statsTabIndex xác định Weekly / Monthly.
+  // HabitProvider.statsMetricIndex xác định Score / Screen Time / Sleep.
+  List<double> _getData(HabitProvider state) {
     final isWeekly = state.statsTabIndex == 0;
     switch (state.statsMetricIndex) {
       case 1:
@@ -54,7 +55,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
 
   // Trả về đơn vị hiển thị phụ thuộc vào loại số liệu.
   // Score dùng đơn vị điểm, Screen Time và Sleep dùng giờ.
-  String _getUnit(AppState state, AppStrings strings) {
+  String _getUnit(HabitProvider state, AppStrings strings) {
     switch (state.statsMetricIndex) {
       case 1:
         return strings.hourUnit;
@@ -66,7 +67,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
   }
 
   // Chọn nhãn trục dưới tùy theo Weekly hay Monthly.
-  List<String> _getLabels(AppState state, AppStrings strings) {
+  List<String> _getLabels(HabitProvider state, AppStrings strings) {
     return state.statsTabIndex == 0 ? strings.weeklyLabels : strings.monthlyLabels;
   }
 
@@ -84,10 +85,10 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Lấy trạng thái hiện tại từ AppState.
-    // Khi AppState thay đổi, widget này sẽ tự động rebuild.
-    final state = context.watch<AppState>();
-    final strings = state.strings;
+    // Lấy trạng thái hiện tại từ HabitProvider.
+    // Khi HabitProvider thay đổi, widget này sẽ tự động rebuild.
+    final state = context.watch<HabitProvider>();
+    final strings = context.watch<LanguageProvider>().strings;
     final data = _getData(state);
     final labels = _getLabels(state, strings);
     final unit = _getUnit(state, strings);

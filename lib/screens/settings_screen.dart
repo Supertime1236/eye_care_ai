@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../models/app_strings.dart';
-import '../providers/app_state.dart';
+import '../providers/language_provider.dart';
+import '../providers/settings_provider.dart';
+import '../providers/theme_provider.dart';
 import '../theme/app_colors.dart';
 import '../widgets/shared_widgets.dart';
 
@@ -14,19 +16,20 @@ import '../widgets/shared_widgets.dart';
 // - ngôn ngữ (Tiếng Việt / English)
 //
 // Cách hoạt động:
-// - Lấy AppState từ Provider
-// - Dùng state.strings để lấy text phù hợp với ngôn ngữ hiện tại
-// - Gọi các hàm state.toggle... để thay đổi cài đặt và update UI
+// - Lấy các provider theo trách nhiệm riêng biệt.
+// - Dùng LanguageProvider để lấy text phù hợp với ngôn ngữ hiện tại.
+// - Gọi các provider tương ứng để thay đổi cài đặt và update UI.
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // Lấy AppState hiện tại từ Provider.
-    // state chứa dữ liệu và phương thức thay đổi cài đặt.
-    final state = context.watch<AppState>();
-    final strings = state.strings;
-    final isDark = state.isDarkMode;
+    // Mỗi provider chỉ cung cấp dữ liệu và thao tác thuộc trách nhiệm riêng.
+    final theme = context.watch<ThemeProvider>();
+    final language = context.watch<LanguageProvider>();
+    final settings = context.watch<SettingsProvider>();
+    final strings = language.strings;
+    final isDark = theme.isDarkMode;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
@@ -72,29 +75,29 @@ class SettingsScreen extends StatelessWidget {
             icon: '☕',
             title: strings.breakReminders,
             subtitle: strings.breakRemindersSubtitle,
-            value: state.notifyBreaks,
-            onChanged: (v) => state.setNotification('breaks', v),
+            value: settings.notifyBreaks,
+            onChanged: (v) => settings.setNotification('breaks', v),
           ),
           _ToggleTile(
             icon: '👁️',
             title: strings.eyeTestReminders,
             subtitle: strings.eyeTestRemindersSubtitle,
-            value: state.notifyTests,
-            onChanged: (v) => state.setNotification('tests', v),
+            value: settings.notifyTests,
+            onChanged: (v) => settings.setNotification('tests', v),
           ),
           _ToggleTile(
             icon: '✅',
             title: strings.habitTracking,
             subtitle: strings.habitTrackingSubtitle,
-            value: state.notifyHabits,
-            onChanged: (v) => state.setNotification('habits', v),
+            value: settings.notifyHabits,
+            onChanged: (v) => settings.setNotification('habits', v),
           ),
           _ToggleTile(
             icon: '💡',
             title: strings.aiTips,
             subtitle: strings.aiTipsSubtitle,
-            value: state.notifyTips,
-            onChanged: (v) => state.setNotification('tips', v),
+            value: settings.notifyTips,
+            onChanged: (v) => settings.setNotification('tips', v),
           ),
           const SizedBox(height: 20),
           // Phần tùy chọn chính: chế độ tối, đơn vị đo lường, định dạng giờ, ngôn ngữ.
@@ -108,8 +111,8 @@ class SettingsScreen extends StatelessWidget {
                 _SwitchRow(
                   icon: isDark ? '🌙' : '☀️',
                   title: strings.darkMode,
-                  value: state.isDarkMode,
-                  onChanged: state.toggleDarkMode,
+                  value: theme.isDarkMode,
+                  onChanged: theme.toggleDarkMode,
                 ),
                 const Divider(height: 1, indent: 56),
                 Padding(
@@ -127,14 +130,14 @@ class SettingsScreen extends StatelessWidget {
                             const SizedBox(height: 8),
                             _SelectableOption(
                               label: strings.metricMeters,
-                              selected: state.useMetric,
-                              onTap: () => state.toggleMetric(true),
+                              selected: settings.useMetric,
+                              onTap: () => settings.toggleMetric(true),
                             ),
                             const SizedBox(height: 8),
                             _SelectableOption(
                               label: strings.imperialFeet,
-                              selected: !state.useMetric,
-                              onTap: () => state.toggleMetric(false),
+                              selected: !settings.useMetric,
+                              onTap: () => settings.toggleMetric(false),
                             ),
                           ],
                         ),
@@ -150,14 +153,14 @@ class SettingsScreen extends StatelessWidget {
                             const SizedBox(height: 8),
                             _SelectableOption(
                               label: strings.hour12,
-                              selected: !state.is24Hour,
-                              onTap: () => state.toggleTimeFormat(false),
+                              selected: !settings.is24Hour,
+                              onTap: () => settings.toggleTimeFormat(false),
                             ),
                             const SizedBox(height: 8),
                             _SelectableOption(
                               label: strings.hour24,
-                              selected: state.is24Hour,
-                              onTap: () => state.toggleTimeFormat(true),
+                              selected: settings.is24Hour,
+                              onTap: () => settings.toggleTimeFormat(true),
                             ),
                           ],
                         ),
@@ -170,8 +173,8 @@ class SettingsScreen extends StatelessWidget {
                   icon: '🌐',
                   title: strings.language,
                   subtitle: strings.languageSubtitle,
-                  valueLabel: state.isVietnamese ? strings.vietnamese : strings.english,
-                  onTap: () => _showLanguageDialog(context, state, strings),
+                  valueLabel: language.isVietnamese ? strings.vietnamese : strings.english,
+                  onTap: () => _showLanguageDialog(context, language, strings),
                 ),
               ],
             ),
@@ -441,7 +444,7 @@ class _ListTileOption extends StatelessWidget {
   }
 }
 
-Future<void> _showLanguageDialog(BuildContext context, AppState state, AppStrings strings) async {
+Future<void> _showLanguageDialog(BuildContext context, LanguageProvider language, AppStrings strings) async {
   final selected = await showDialog<bool>(
     context: context,
     builder: (context) {
@@ -462,6 +465,6 @@ Future<void> _showLanguageDialog(BuildContext context, AppState state, AppString
   );
 
   if (selected != null) {
-    state.toggleVietnamese(selected);
+    language.toggleVietnamese(selected);
   }
 }

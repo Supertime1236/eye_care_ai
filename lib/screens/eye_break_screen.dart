@@ -3,7 +3,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../providers/app_state.dart';
+import '../providers/habit_provider.dart';
+import '../providers/language_provider.dart';
+import '../providers/reminder_provider.dart';
 import '../services/device_data_service.dart';
 import '../services/notification_service.dart';
 import '../theme/app_colors.dart';
@@ -13,7 +15,7 @@ import '../widgets/shared_widgets.dart';
 // Đây là một bộ đếm giờ nhắc người dùng nghỉ mắt theo chu kỳ (mặc định theo
 // quy tắc 20-20-20). Khi hết giờ, một màn hình toàn màn hình hiện ra yêu cầu
 // người dùng nhìn xa trong 20 giây, sau đó tự xác nhận đã nghỉ — số lần nghỉ
-// này được ghi nhận THẬT (qua AppState.recordEyeBreak) và đồng bộ với habit
+// này được ghi nhận THẬT (qua HabitProvider.recordEyeBreak) và đồng bộ với habit
 // "Eye Breaks" ở trang Habits.
 class EyeBreakScreen extends StatefulWidget {
   const EyeBreakScreen({super.key});
@@ -42,16 +44,16 @@ class _EyeBreakScreenState extends State<EyeBreakScreen> {
   }
 
   Future<void> _loadSavedReminder() async {
-    final state = context.read<AppState>();
+    final reminder = context.read<ReminderProvider>();
     final endAt = await DeviceDataService.instance.loadBreakReminderEnd();
     final interval = await DeviceDataService.instance.loadBreakReminderIntervalMinutes();
     if (endAt != null && interval != null) {
       final now = DateTime.now();
       final secondsLeft = endAt.difference(now).inSeconds;
       if (secondsLeft > 0) {
-        state.toggleEyeBreakReminder(true);
+        reminder.toggleEyeBreakReminder(true);
         _secondsRemaining = secondsLeft;
-        _startCountdown(state);
+        _startCountdown(reminder);
       } else {
         _secondsRemaining = 0;
         _breakPromptShowing = true;
@@ -60,16 +62,16 @@ class _EyeBreakScreenState extends State<EyeBreakScreen> {
     }
   }
 
-  void _startReminder(AppState state) {
+  void _startReminder(ReminderProvider reminder) {
     _countdownTimer?.cancel();
-    _secondsRemaining = state.reminderMinutes * 60;
-    state.toggleEyeBreakReminder(true);
-    _saveReminderEnd(state.reminderMinutes);
-    _startCountdown(state);
+    _secondsRemaining = reminder.reminderMinutes * 60;
+    reminder.toggleEyeBreakReminder(true);
+    _saveReminderEnd(reminder.reminderMinutes);
+    _startCountdown(reminder);
     setState(() {});
   }
 
-  void _startCountdown(AppState state) {
+  void _startCountdown(ReminderProvider reminder) {
     _countdownTimer?.cancel();
     _countdownTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       setState(() {
@@ -78,17 +80,17 @@ class _EyeBreakScreenState extends State<EyeBreakScreen> {
           _breakPromptShowing = true;
           _countdownTimer?.cancel();
           NotificationService.instance.showInstantNotification(
-            title: state.strings.eyeBreakTimeUp,
-            body: state.strings.eyeBreakLookAway,
+            title: context.read<LanguageProvider>().strings.eyeBreakTimeUp,
+            body: context.read<LanguageProvider>().strings.eyeBreakLookAway,
           );
         }
       });
     });
   }
 
-  void _stopReminder(AppState state) {
+  void _stopReminder(ReminderProvider reminder) {
     _countdownTimer?.cancel();
-    state.toggleEyeBreakReminder(false);
+    reminder.toggleEyeBreakReminder(false);
     DeviceDataService.instance.clearBreakReminderEnd();
     setState(() {
       _secondsRemaining = 0;
@@ -96,12 +98,12 @@ class _EyeBreakScreenState extends State<EyeBreakScreen> {
     });
   }
 
-  Future<void> _confirmBreakTaken(AppState state) async {
-    await state.recordEyeBreak();
+  Future<void> _confirmBreakTaken(ReminderProvider reminder) async {
+    await context.read<HabitProvider>().recordEyeBreak();
     if (!mounted) return;
     setState(() => _breakPromptShowing = false);
     // Tự động bắt đầu chu kỳ đếm ngược tiếp theo.
-    _startReminder(state);
+    _startReminder(reminder);
   }
 
   Future<void> _saveReminderEnd(int intervalMinutes) async {
@@ -109,9 +111,9 @@ class _EyeBreakScreenState extends State<EyeBreakScreen> {
     await DeviceDataService.instance.saveBreakReminderEnd(endAt, intervalMinutes);
   }
 
-  void _dismissPrompt(AppState state) {
+  void _dismissPrompt(ReminderProvider reminder) {
     setState(() => _breakPromptShowing = false);
-    _startReminder(state);
+    _startReminder(reminder);
   }
 
   String _formatCountdown(int seconds) {
@@ -122,13 +124,14 @@ class _EyeBreakScreenState extends State<EyeBreakScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final state = context.watch<AppState>();
-    final strings = state.strings;
+    final reminder = context.watch<ReminderProvider>();
+    final language = context.watch<LanguageProvider>();
+    final strings = language.strings;
 
     if (_breakPromptShowing) {
       return _BreakPromptView(
-        onDone: () => _confirmBreakTaken(state),
-        onSkip: () => _dismissPrompt(state),
+        onDone: () => _confirmBreakTaken(reminder),
+        onSkip: () => _dismissPrompt(reminder),
       );
     }
 
@@ -154,8 +157,8 @@ class _EyeBreakScreenState extends State<EyeBreakScreen> {
                         width: 160,
                         height: 160,
                         child: CircularProgressIndicator(
-                          value: state.isEyeBreakReminderActive && state.reminderMinutes > 0
-                              ? _secondsRemaining / (state.reminderMinutes * 60)
+                          value: reminder.isEyeBreakReminderActive && reminder.reminderMinutes > 0
+                              ? _secondsRemaining / (reminder.reminderMinutes * 60)
                               : 1,
                           strokeWidth: 10,
                           backgroundColor: AppColors.border,
@@ -166,13 +169,13 @@ class _EyeBreakScreenState extends State<EyeBreakScreen> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
-                            state.isEyeBreakReminderActive
+                            reminder.isEyeBreakReminderActive
                                 ? _formatCountdown(_secondsRemaining)
                                 : '--:--',
                             style: Theme.of(context).textTheme.headlineMedium,
                           ),
                           Text(
-                            state.isEyeBreakReminderActive
+                            reminder.isEyeBreakReminderActive
                                 ? strings.eyeBreakNextIn
                                 : strings.eyeBreakStart,
                             style: Theme.of(context).textTheme.bodySmall,
@@ -183,17 +186,17 @@ class _EyeBreakScreenState extends State<EyeBreakScreen> {
                   ),
                 ),
                 const SizedBox(height: 20),
-                if (!state.isEyeBreakReminderActive) ...[
+                if (!reminder.isEyeBreakReminderActive) ...[
                   Text(strings.eyeBreakIntervalLabel, style: Theme.of(context).textTheme.titleSmall),
                   const SizedBox(height: 10),
                   Wrap(
                     spacing: 8,
                     children: _intervalOptions.map((minutes) {
-                      final selected = state.reminderMinutes == minutes;
+                      final selected = reminder.reminderMinutes == minutes;
                       return ChoiceChip(
                         label: Text('$minutes ${strings.vi ? "phút" : "min"}'),
                         selected: selected,
-                        onSelected: (_) => state.setReminderMinutes(minutes),
+                        onSelected: (_) => reminder.setReminderMinutes(minutes),
                         selectedColor: AppColors.testAccent.withValues(alpha: 0.15),
                         labelStyle: TextStyle(
                           color: selected ? AppColors.testAccent : null,
@@ -208,17 +211,17 @@ class _EyeBreakScreenState extends State<EyeBreakScreen> {
                   width: double.infinity,
                   child: FilledButton(
                     style: FilledButton.styleFrom(
-                      backgroundColor: state.isEyeBreakReminderActive
+                      backgroundColor: reminder.isEyeBreakReminderActive
                           ? AppColors.error
                           : AppColors.testAccent,
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
-                    onPressed: () => state.isEyeBreakReminderActive
-                        ? _stopReminder(state)
-                        : _startReminder(state),
+                    onPressed: () => reminder.isEyeBreakReminderActive
+                        ? _stopReminder(reminder)
+                        : _startReminder(reminder),
                     child: Text(
-                      state.isEyeBreakReminderActive ? strings.eyeBreakStop : strings.eyeBreakStart,
+                      reminder.isEyeBreakReminderActive ? strings.eyeBreakStop : strings.eyeBreakStart,
                     ),
                   ),
                 ),
@@ -246,7 +249,7 @@ class _EyeBreakScreenState extends State<EyeBreakScreen> {
                     children: [
                       Text(strings.eyeBreakTodayCount, style: Theme.of(context).textTheme.bodySmall),
                       Text(
-                        '${state.eyeBreaksTakenToday}',
+                        '${context.watch<HabitProvider>().eyeBreaksTakenToday}',
                         style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                               color: AppColors.testAccent,
                               fontWeight: FontWeight.w800,
@@ -299,7 +302,7 @@ class _BreakPromptViewState extends State<_BreakPromptView> {
 
   @override
   Widget build(BuildContext context) {
-    final strings = context.watch<AppState>().strings;
+    final strings = context.watch<LanguageProvider>().strings;
     return Container(
       color: AppColors.testAccent.withValues(alpha: 0.06),
       padding: const EdgeInsets.fromLTRB(24, 40, 24, 24),

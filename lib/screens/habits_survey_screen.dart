@@ -3,7 +3,9 @@ import 'package:provider/provider.dart';
 
 import '../models/app_strings.dart';
 import '../models/eye_health_standards.dart';
-import '../providers/app_state.dart';
+import '../providers/habit_provider.dart';
+import '../providers/language_provider.dart';
+import '../providers/settings_provider.dart';
 import '../theme/app_colors.dart';
 import '../widgets/shared_widgets.dart';
 import 'main_shell.dart';
@@ -84,7 +86,7 @@ class _HabitsSurveyScreenState extends State<HabitsSurveyScreen> {
   static const _surveyTargetHabitIds = ['phone', 'outdoor', 'sleep', 'breaks'];
 
   void _submit() {
-    final vi = context.read<AppState>().strings.vi;
+    final vi = context.read<LanguageProvider>().strings.vi;
     final answers = SurveyAnswers(
       ageGroup: _ageGroup,
       screenHoursPerDay: _screenHours,
@@ -129,7 +131,7 @@ class _HabitsSurveyScreenState extends State<HabitsSurveyScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final strings = context.watch<AppState>().strings;
+    final strings = context.watch<LanguageProvider>().strings;
 
     return PopScope(
       canPop: !widget.mandatory || _result != null,
@@ -290,7 +292,7 @@ class _HabitsSurveyScreenState extends State<HabitsSurveyScreen> {
 
   Widget _buildResults(BuildContext context, AppStrings strings) {
     final result = _result!;
-    final state = context.read<AppState>();
+    final settings = context.watch<SettingsProvider>();
     final currentHabitId = _surveyTargetHabitIds[_targetStepIndex];
     final currentRow = result.rows.firstWhere((row) => row.id == currentHabitId);
     final selectedLevel = _selectedTargetLevels[currentHabitId] ?? TargetLevel.recommended;
@@ -316,12 +318,12 @@ class _HabitsSurveyScreenState extends State<HabitsSurveyScreen> {
                 Text(_habitTitle(currentHabitId, strings), style: Theme.of(context).textTheme.titleMedium),
                 const SizedBox(height: 8),
                 Text(
-                  '${strings.targetCurrentLabel}: ${_formatTargetValue(currentRow.currentValue, currentRow.unit, state.useMetric)} ${_unitLabel(currentRow.unit, state.useMetric, strings)}',
+                  '${strings.targetCurrentLabel}: ${_formatTargetValue(currentRow.currentValue, currentRow.unit, settings.useMetric)} ${_unitLabel(currentRow.unit, settings.useMetric, strings)}',
                   style: Theme.of(context).textTheme.bodyLarge,
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '${strings.targetRecommendedLabel}: ${_formatTargetValue(currentRow.recommendedValue, currentRow.unit, state.useMetric)} ${_unitLabel(currentRow.unit, state.useMetric, strings)}',
+                  '${strings.targetRecommendedLabel}: ${_formatTargetValue(currentRow.recommendedValue, currentRow.unit, settings.useMetric)} ${_unitLabel(currentRow.unit, settings.useMetric, strings)}',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textMuted),
                 ),
                 const SizedBox(height: 20),
@@ -349,9 +351,9 @@ class _HabitsSurveyScreenState extends State<HabitsSurveyScreen> {
                       TargetLevel.easy,
                     ),
                     currentRow.unit,
-                    state.useMetric,
+                    settings.useMetric,
                   ),
-                  unit: _unitLabel(currentRow.unit, state.useMetric, strings),
+                  unit: _unitLabel(currentRow.unit, settings.useMetric, strings),
                 ),
                 const SizedBox(height: 12),
                 _TargetChoiceCard(
@@ -378,9 +380,9 @@ class _HabitsSurveyScreenState extends State<HabitsSurveyScreen> {
                       TargetLevel.recommended,
                     ),
                     currentRow.unit,
-                    state.useMetric,
+                    settings.useMetric,
                   ),
-                  unit: _unitLabel(currentRow.unit, state.useMetric, strings),
+                  unit: _unitLabel(currentRow.unit, settings.useMetric, strings),
                 ),
                 const SizedBox(height: 12),
                 _TargetChoiceCard(
@@ -407,9 +409,9 @@ class _HabitsSurveyScreenState extends State<HabitsSurveyScreen> {
                       TargetLevel.challenge,
                     ),
                     currentRow.unit,
-                    state.useMetric,
+                    settings.useMetric,
                   ),
-                  unit: _unitLabel(currentRow.unit, state.useMetric, strings),
+                  unit: _unitLabel(currentRow.unit, settings.useMetric, strings),
                 ),
                 const SizedBox(height: 12),
                 _TargetChoiceCard(
@@ -424,8 +426,8 @@ class _HabitsSurveyScreenState extends State<HabitsSurveyScreen> {
                       _showCustomTargetError = false;
                     });
                   },
-                  value: _formatTargetValue(currentTargetValue, currentRow.unit, state.useMetric),
-                  unit: _unitLabel(currentRow.unit, state.useMetric, strings),
+                  value: _formatTargetValue(currentTargetValue, currentRow.unit, settings.useMetric),
+                  unit: _unitLabel(currentRow.unit, settings.useMetric, strings),
                 ),
                 if (selectedLevel == TargetLevel.custom) ...[
                   const SizedBox(height: 12),
@@ -506,12 +508,12 @@ class _HabitsSurveyScreenState extends State<HabitsSurveyScreen> {
                           Text(_habitTitle(id, strings), style: Theme.of(context).textTheme.titleSmall),
                           const SizedBox(height: 8),
                           Text(
-                            '${strings.targetYourPlan}: ${_formatTargetValue(value, row.unit, state.useMetric)} ${_unitLabel(row.unit, state.useMetric, strings)}',
+                            '${strings.targetYourPlan}: ${_formatTargetValue(value, row.unit, settings.useMetric)} ${_unitLabel(row.unit, settings.useMetric, strings)}',
                             style: Theme.of(context).textTheme.bodyLarge,
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            '${strings.targetOptionRecommended}: ${_formatTargetValue(row.recommendedValue, row.unit, state.useMetric)} ${_unitLabel(row.unit, state.useMetric, strings)}',
+                            '${strings.targetOptionRecommended}: ${_formatTargetValue(row.recommendedValue, row.unit, settings.useMetric)} ${_unitLabel(row.unit, settings.useMetric, strings)}',
                             style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textMuted),
                           ),
                         ],
@@ -530,8 +532,8 @@ class _HabitsSurveyScreenState extends State<HabitsSurveyScreen> {
                     final selectedTargets = Map<String, double>.fromEntries(
                       _surveyTargetHabitIds.map((id) => MapEntry(id, _selectedTargetValues[id] ?? result.rows.firstWhere((row) => row.id == id).recommendedValue)),
                     );
-                    state.applySurveyTargets(selectedTargets);
-                    await state.markSurveyCompleted();
+                    context.read<HabitProvider>().applySurveyTargets(selectedTargets);
+                    await context.read<HabitProvider>().markSurveyCompleted();
                     if (!context.mounted) return;
                     if (widget.mandatory) {
                       Navigator.of(context).pushReplacement(

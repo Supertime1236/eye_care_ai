@@ -2,13 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../models/app_strings.dart';
-import '../providers/app_state.dart';
+import '../providers/habit_provider.dart';
+import '../providers/language_provider.dart';
 import '../theme/app_colors.dart';
 import '../widgets/shared_widgets.dart';
 
 // HabitsScreen hiển thị tiến trình các thói quen tốt cho mắt trong ngày.
 // Đây là màn hình CHỈ XEM (read-only): giá trị `current` của mỗi thói quen
-// được AppState nạp từ DeviceDataService (cảm biến / hệ điều hành của máy),
+// được HabitProvider nạp từ DeviceDataService (cảm biến / hệ điều hành của máy),
 // người dùng không còn tự nhập tay như trước.
 class HabitsScreen extends StatefulWidget {
   const HabitsScreen({super.key});
@@ -21,21 +22,22 @@ class _HabitsScreenState extends State<HabitsScreen> {
   @override
   void initState() {
     super.initState();
-    final state = context.read<AppState>();
-    state.startHabitTracking();
+    final habit = context.read<HabitProvider>();
+    habit.startHabitTracking();
     // Chạy sau frame đầu để tránh gọi notifyListeners() trong lúc build.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      state.refreshHabitsFromDevice();
+      habit.refreshHabitsFromDevice();
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    final state = context.watch<AppState>();
-    final strings = state.strings;
+    final habit = context.watch<HabitProvider>();
+    final language = context.watch<LanguageProvider>();
+    final strings = language.strings;
 
     return RefreshIndicator(
-      onRefresh: state.refreshHabitsFromDevice,
+      onRefresh: habit.refreshHabitsFromDevice,
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
@@ -58,7 +60,7 @@ class _HabitsScreenState extends State<HabitsScreen> {
                     ],
                   ),
                 ),
-                _CompletionBadge(percent: state.habitsCompletionPercent),
+                _CompletionBadge(percent: habit.habitsCompletionPercent),
               ],
             ),
             const SizedBox(height: 4),
@@ -68,12 +70,12 @@ class _HabitsScreenState extends State<HabitsScreen> {
                 const SizedBox(width: 6),
                 Text(
                   strings.vi
-                      ? 'Cập nhật lần cuối: ${_formatTime(state.habitsLastUpdated)}'
-                      : 'Last updated: ${_formatTime(state.habitsLastUpdated)}',
+                      ? 'Cập nhật lần cuối: ${_formatTime(habit.habitsLastUpdated)}'
+                      : 'Last updated: ${_formatTime(habit.habitsLastUpdated)}',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textMuted),
                 ),
                 const Spacer(),
-                if (state.isRefreshingHabits)
+                if (habit.isRefreshingHabits)
                   const SizedBox(
                     width: 12,
                     height: 12,
@@ -95,7 +97,7 @@ class _HabitsScreenState extends State<HabitsScreen> {
                           width: 64,
                           height: 64,
                           child: CircularProgressIndicator(
-                            value: state.habitsCompletionPercent / 100,
+                            value: habit.habitsCompletionPercent / 100,
                             strokeWidth: 6,
                             backgroundColor: AppColors.border,
                             valueColor: const AlwaysStoppedAnimation(
@@ -104,7 +106,7 @@ class _HabitsScreenState extends State<HabitsScreen> {
                           ),
                         ),
                         Text(
-                          '${state.habitsCompletionPercent}%',
+                          '${habit.habitsCompletionPercent}%',
                           style: Theme.of(context).textTheme.titleSmall?.copyWith(
                                 color: AppColors.habitsAccent,
                                 fontWeight: FontWeight.w800,
@@ -124,7 +126,7 @@ class _HabitsScreenState extends State<HabitsScreen> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          strings.completedHabits(state.habits.where((h) => h.progress >= 1).length, state.habits.length),
+                          strings.completedHabits(habit.habits.where((h) => h.progress >= 1).length, habit.habits.length),
                           style: Theme.of(context).textTheme.bodySmall,
                         ),
                       ],
@@ -134,10 +136,10 @@ class _HabitsScreenState extends State<HabitsScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            ...state.habits.map((habit) {
+            ...habit.habits.map((habitItem) {
               return Padding(
                 padding: const EdgeInsets.only(bottom: 12),
-                child: _HabitCard(habit: habit),
+                child: _HabitCard(habit: habitItem),
               );
             }),
           ],
@@ -185,7 +187,7 @@ class _HabitCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final strings = context.watch<AppState>().strings;
+    final strings = context.watch<LanguageProvider>().strings;
     final color = Color(habit.color);
     final valueText = habit.unit == 'hrs'
         ? habit.current.toStringAsFixed(1)

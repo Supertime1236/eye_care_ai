@@ -1,17 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../providers/app_state.dart';
+import '../providers/chat_provider.dart';
+import '../providers/language_provider.dart';
 import '../theme/app_colors.dart';
 import '../widgets/shared_widgets.dart';
-
-class ChatMessage {
-  ChatMessage({required this.text, required this.isUser, this.isTyping = false});
-
-  final String text;
-  final bool isUser;
-  final bool isTyping;
-}
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -23,10 +16,6 @@ class ChatScreen extends StatefulWidget {
 class _ChatScreenState extends State<ChatScreen> {
   final _controller = TextEditingController();
   final _scrollController = ScrollController();
-  final List<ChatMessage> _messages = [];
-
-  bool _isTyping = false;
-  bool _greeted = false;
 
   @override
   void dispose() {
@@ -48,13 +37,12 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _sendMessage(String text, Map<String, String> responses, String fallback) async {
-    if (text.trim().isEmpty || _isTyping) return;
+    final provider = context.read<ChatProvider>();
+    if (text.trim().isEmpty || provider.isTyping) return;
 
-    setState(() {
-      _messages.add(ChatMessage(text: text.trim(), isUser: true));
-      _isTyping = true;
-      _messages.add(ChatMessage(text: '', isUser: false, isTyping: true));
-    });
+    provider.addUserMessage(text);
+    provider.setTyping(true);
+    provider.addMessage(ChatMessage(text: '', isUser: false, isTyping: true));
     _controller.clear();
     _scrollToBottom();
 
@@ -69,22 +57,21 @@ class _ChatScreenState extends State<ChatScreen> {
 
     if (!mounted) return;
 
-    setState(() {
-      _messages.removeLast();
-      _messages.add(ChatMessage(text: response, isUser: false));
-      _isTyping = false;
-    });
+    provider.messages.removeLast();
+    provider.addBotMessage(response);
+    provider.setTyping(false);
     _scrollToBottom();
   }
 
   @override
   Widget build(BuildContext context) {
-    final state = context.watch<AppState>();
-    final strings = state.strings;
+    final provider = context.watch<ChatProvider>();
+    final language = context.watch<LanguageProvider>();
+    final strings = language.strings;
 
-    if (!_greeted) {
-      _messages.add(ChatMessage(text: strings.chatGreeting, isUser: false));
-      _greeted = true;
+    if (!provider.greeted) {
+      provider.addMessage(ChatMessage(text: strings.chatGreeting, isUser: false));
+      provider.markGreeted();
     }
 
     final quickPrompts = strings.chatQuickPrompts;
@@ -169,9 +156,9 @@ class _ChatScreenState extends State<ChatScreen> {
             child: ListView.builder(
               controller: _scrollController,
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-              itemCount: _messages.length,
+              itemCount: provider.messages.length,
               itemBuilder: (context, index) {
-                final msg = _messages[index];
+                final msg = provider.messages[index];
                 return _ChatBubble(message: msg);
               },
             ),

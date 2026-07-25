@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../models/app_strings.dart';
-import '../providers/app_state.dart';
+import '../providers/habit_provider.dart';
+import '../providers/language_provider.dart';
 import '../theme/app_colors.dart';
 import 'chat_screen.dart';
 import 'eye_break_screen.dart';
@@ -24,10 +25,10 @@ class _MainShellState extends State<MainShell> {
   @override
   void initState() {
     super.initState();
-    final state = context.read<AppState>();
-    state.startHabitTracking();
+    final habit = context.read<HabitProvider>();
+    habit.startHabitTracking();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      state.refreshHabitsFromDevice();
+      habit.refreshHabitsFromDevice();
     });
   }
 
@@ -51,7 +52,7 @@ class _MainShellState extends State<MainShell> {
 
   @override
   Widget build(BuildContext context) {
-    final strings = context.watch<AppState>().strings;
+    final strings = context.watch<LanguageProvider>().strings;
     final navItems = _buildNavItems(strings);
 
     return Scaffold(

@@ -2,7 +2,8 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../providers/app_state.dart';
+import '../providers/habit_provider.dart';
+import '../providers/language_provider.dart';
 import '../theme/app_colors.dart';
 import '../widgets/shared_widgets.dart';
 import 'habits_survey_screen.dart';
@@ -12,8 +13,9 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final state = context.watch<AppState>();
-    final strings = state.strings;
+    final habit = context.watch<HabitProvider>();
+    final language = context.watch<LanguageProvider>();
+    final strings = language.strings;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
@@ -44,7 +46,7 @@ class HomeScreen extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 20),
-          _ScoreCard(score: state.eyeHealthScore),
+          _ScoreCard(score: habit.eyeHealthScore),
           const SizedBox(height: 16),
           SectionCard(
             child: InkWell(
@@ -89,7 +91,7 @@ class HomeScreen extends StatelessWidget {
                 child: _StatTile(
                   icon: '📱',
                   label: strings.screenTime,
-                  value: '${state.screenTimeHours.toStringAsFixed(1)}h',
+                  value: '${habit.screenTimeHours.toStringAsFixed(1)}h',
                   color: AppColors.homeAccent,
                 ),
               ),
@@ -98,7 +100,7 @@ class HomeScreen extends StatelessWidget {
                 child: _StatTile(
                   icon: '🌳',
                   label: strings.outdoor,
-                  value: '${state.outdoorHours.toStringAsFixed(1)}h',
+                  value: '${habit.outdoorHours.toStringAsFixed(1)}h',
                   color: AppColors.primaryTeal,
                 ),
               ),
@@ -107,7 +109,7 @@ class HomeScreen extends StatelessWidget {
                 child: _StatTile(
                   icon: '☕',
                   label: strings.breaks,
-                  value: '${state.breakCount}',
+                  value: '${habit.breakCount}',
                   color: AppColors.warning,
                 ),
               ),
@@ -224,7 +226,7 @@ class _ScoreCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final strings = context.watch<AppState>().strings;
+    final strings = context.watch<LanguageProvider>().strings;
 
     return Container(
       padding: const EdgeInsets.all(20),

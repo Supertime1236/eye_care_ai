@@ -2,8 +2,8 @@
 // File này giúp tách riêng phần nội dung hiển thị khỏi logic, nên bạn không cần sửa UI khi thay đổi text.
 //
 // Cách hoạt động:
-// - AppState tạo AppStrings dựa trên giá trị isVietnamese.
-// - Các màn hình lấy strings từ state.strings.
+// - LanguageProvider tạo AppStrings dựa trên giá trị isVietnamese.
+// - Các màn hình lấy strings từ LanguageProvider.
 // - Hàm getter trả về văn bản tiếng Việt hoặc tiếng Anh tương ứng.
 class AppStrings {
   final bool vi;

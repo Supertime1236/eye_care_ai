@@ -1,7 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import 'providers/app_state.dart';
+import 'providers/auth_provider.dart';
+import 'providers/chat_provider.dart';
+import 'providers/habit_provider.dart';
+import 'providers/language_provider.dart';
+import 'providers/reminder_provider.dart';
+import 'providers/settings_provider.dart';
+import 'providers/theme_provider.dart';
 import 'screens/habits_survey_screen.dart';
 import 'screens/main_shell.dart';
 import 'services/device_data_service.dart';
@@ -12,8 +18,16 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await NotificationService.instance.initialize();
   runApp(
-    ChangeNotifierProvider(
-      create: (_) => AppState(),
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => ThemeProvider()),
+        ChangeNotifierProvider(create: (_) => LanguageProvider()),
+        ChangeNotifierProvider(create: (_) => ReminderProvider()),
+        ChangeNotifierProvider(create: (_) => SettingsProvider()),
+        ChangeNotifierProvider(create: (_) => HabitProvider()),
+        ChangeNotifierProvider(create: (_) => ChatProvider()),
+        ChangeNotifierProvider(create: (_) => AuthProvider()),
+      ],
       child: const EyeCareApp(),
     ),
   );
@@ -24,14 +38,14 @@ class EyeCareApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final state = context.watch<AppState>();
+    final theme = context.watch<ThemeProvider>();
 
     return MaterialApp(
       title: 'EyeCare AI',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),
-      themeMode: state.isDarkMode ? ThemeMode.dark : ThemeMode.light,
+      themeMode: theme.themeMode,
       home: const _AppGate(),
     );
   }
@@ -66,7 +80,7 @@ class _AppGateState extends State<_AppGate> {
           return const Scaffold(body: Center(child: CircularProgressIndicator()));
         }
         if (snapshot.data == true) {
-          context.read<AppState>().surveyCompleted = true;
+          context.read<HabitProvider>().setSurveyCompleted(true);
           return const MainShell();
         }
         return const HabitsSurveyScreen(mandatory: true);
