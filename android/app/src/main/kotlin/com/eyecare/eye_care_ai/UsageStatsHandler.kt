@@ -8,7 +8,6 @@ import android.provider.Settings
 import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
-import android.app.usage.UsageStats
 import android.app.usage.UsageStatsManager
 import java.util.Calendar
 import android.content.pm.PackageManager
@@ -195,6 +194,81 @@ class UsageStatsHandler(
     }
 
     private fun getWeeklyUsage(): Map<String, List<Map<String, Any>>> {
+        if (!checkUsagePermission()) {
+            throw Exception("Usage permission not granted")
+        }
 
+        val usageManager =
+            context.getSystemService(Context.USAGE_STATS_SERVICE)
+                    as UsageStatsManager
+
+        val calendar = Calendar.getInstance()
+
+        // Bắt đầu tuần (thứ 2)
+        calendar.set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
+        calendar.set(Calendar.HOUR_OF_DAY, 0)
+        calendar.set(Calendar.MINUTE, 0)
+        calendar.set(Calendar.SECOND, 0)
+        calendar.set(Calendar.MILLISECOND, 0)
+
+        val startTime = calendar.timeInMillis
+        val endTime = System.currentTimeMillis()
+
+        val stats = usageManager.queryAndAggregateUsageStats(
+            startTime,
+            endTime
+        )
+
+        val result = mutableMapOf<String, MutableList<Map<String, Any>>>()
+        val ignoredPackages = setOf(
+            "android",
+            "com.android.systemui",
+            "com.google.android.gms"
+        )
+
+        for ((packageName, usage) in stats) {
+            if (packageName in ignoredPackages)
+                continue
+
+            val totalTime =
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
+                    usage.totalTimeVisible
+                else
+                    @Suppress("DEPRECATION")
+                    usage.totalTimeInForeground
+
+            if (totalTime <= 0)
+                continue
+
+            val item = hashMapOf<String, Any>()
+
+            item["packageName"] = packageName
+
+            item["appName"] = getAppName(packageName)
+
+            item["totalTime"] = totalTime
+
+            item["lastTimeUsed"] = usage.lastTimeUsed
+
+            // Lấy ngày sử dụng
+            val dayCalendar = Calendar.getInstance().apply {
+                timeInMillis = usage.lastTimeUsed
+                set(Calendar.HOUR_OF_DAY, 0)
+                set(Calendar.MINUTE, 0)
+                set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
+            }
+
+            val dayKey =
+                "${dayCalendar.get(Calendar.YEAR)}-${dayCalendar.get(Calendar.MONTH) + 1}-${dayCalendar.get(Calendar.DAY_OF_MONTH)}"
+
+            if (!result.containsKey(dayKey)) {
+                result[dayKey] = mutableListOf()
+            }
+
+            result[dayKey]?.add(item)
+        }
+
+        return result
     }
 }
