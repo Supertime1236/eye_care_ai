@@ -12,6 +12,7 @@
     <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
     <!-- Sleep habit: Health Connect (Android's successor to Google Fit) -->
     <uses-permission android:name="android.permission.health.READ_SLEEP" />
+    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"/>
     <application
         android:label="eye_care_ai"
         android:name="${applicationName}"

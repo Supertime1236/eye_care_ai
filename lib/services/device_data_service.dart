@@ -1,13 +1,12 @@
 import 'dart:async';
 import 'dart:io';
-
-import 'package:app_usage/app_usage.dart';
+import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:health/health.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
+import 'package:flutter/foundation.dart';
 // DeviceDataService chịu trách nhiệm lấy dữ liệu THẬT từ điện thoại
 // (cảm biến, hệ điều hành, GPS) thay vì để người dùng tự nhập tay.
 //
@@ -29,6 +28,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 class DeviceDataService {
   DeviceDataService._();
   static final DeviceDataService instance = DeviceDataService._();
+  static const MethodChannel _usageChannel =
+    MethodChannel('eye_care/usage');
 
   static const _kOutdoorMinutesKey = 'outdoor_minutes_today';
   static const _kOutdoorDateKey = 'outdoor_minutes_date';
@@ -56,36 +57,14 @@ class DeviceDataService {
   // tổng giữa các package khác nhau.
   Future<double?> getPhoneUsageHours() async {
     if (!Platform.isAndroid) return null;
+
     try {
-      final now = DateTime.now();
-      final startOfDay = DateTime(now.year, now.month, now.day);
-      final infoList = await AppUsage().getAppUsage(startOfDay, now);
+      final result =
+          await _usageChannel.invokeMethod<double>('getTodayUsageHours');
 
-      final maxSecondsPerPackage = <String, int>{};
-      for (final info in infoList) {
-        final seconds = info.usage.inSeconds;
-        final existing = maxSecondsPerPackage[info.packageName] ?? 0;
-        if (seconds > existing) {
-          maxSecondsPerPackage[info.packageName] = seconds;
-        }
-      }
-
-      final totalSeconds = maxSecondsPerPackage.values.fold<int>(
-        0,
-        (sum, seconds) => sum + seconds,
-      );
-
-      // Chặn trên an toàn: tổng thời gian dùng máy không thể vượt quá số giờ
-      // thực tế đã trôi qua từ đầu ngày đến giờ. Nếu vượt (do lỗi hệ điều
-      // hành hiếm gặp), cắt về mốc này để tránh hiện số vô lý.
-      final elapsedSecondsToday = now.difference(startOfDay).inSeconds;
-      final clampedSeconds = totalSeconds > elapsedSecondsToday
-          ? elapsedSecondsToday
-          : totalSeconds;
-
-      return clampedSeconds / 3600.0;
-    } catch (_) {
-      // Quyền chưa được cấp hoặc thiết bị không hỗ trợ.
+      return result;
+    } catch (e) {
+      debugPrint('UsageStats error: $e');
       return null;
     }
   }

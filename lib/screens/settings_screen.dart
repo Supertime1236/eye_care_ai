@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../utils/permission_helper.dart';
 
 import '../models/app_strings.dart';
 import '../providers/language_provider.dart';
@@ -193,6 +194,12 @@ class SettingsScreen extends StatelessWidget {
                 _MenuItem(icon: '❓', title: strings.helpSupport),
                 const Divider(height: 1, indent: 56),
                 _MenuItem(
+                  icon: '📊',
+                  title: 'Quyền sử dụng dữ liệu',
+                  onTap: () => _showPermissionSettings(context),
+                ),
+                const Divider(height: 1, indent: 56),
+                _MenuItem(
                   icon: '🚪',
                   title: strings.signOut,
                   color: AppColors.error,
@@ -308,12 +315,14 @@ class _MenuItem extends StatelessWidget {
     required this.icon,
     required this.title,
     this.color,
+    this.onTap,
   });
 
   final String icon;
   final String title;
   final Color? color;
-
+  final VoidCallback? onTap;
+  
   @override
   Widget build(BuildContext context) {
     return InkWell(
@@ -466,5 +475,218 @@ Future<void> _showLanguageDialog(BuildContext context, LanguageProvider language
 
   if (selected != null) {
     language.toggleVietnamese(selected);
+  }
+}
+
+// THÊM HÀM NÀY VÀO CUỐI FILE
+void _showPermissionSettings(BuildContext context) {
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(
+        top: Radius.circular(20),
+      ),
+    ),
+    builder: (context) {
+      return FutureBuilder<Map<String, bool>>(
+        future: PermissionHelper.checkAllPermissions(),
+        builder: (context, snapshot) {
+          if (!snapshot.hasData) {
+            return const SizedBox(
+              height: 300,
+              child: Center(
+                child: CircularProgressIndicator(),
+              ),
+            );
+          }
+
+          Map<String, bool> permissions = snapshot.data!;
+
+          return StatefulBuilder(
+            builder: (context, setState) {
+              return DraggableScrollableSheet(
+                initialChildSize: 0.6,
+                minChildSize: 0.4,
+                maxChildSize: 0.9,
+                expand: false,
+                builder: (context, scrollController) {
+                  return SingleChildScrollView(
+                    controller: scrollController,
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Center(
+                          child: Container(
+                            width: 40,
+                            height: 4,
+                            decoration: BoxDecoration(
+                              color: Colors.grey[300],
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 20),
+
+                        Text(
+                          'Quyền sử dụng dữ liệu',
+                          style: Theme.of(context).textTheme.headlineSmall,
+                        ),
+
+                        const SizedBox(height: 24),
+
+                        _PermissionTile(
+                          icon: '📱',
+                          title: 'Thời gian sử dụng ứng dụng',
+                          description:
+                              'Theo dõi thời gian bạn dùng từng ứng dụng',
+                          isGranted: permissions["usage"] ?? false,
+                          onTap: () async {
+                            await PermissionHelper.requestUsagePermission();
+
+                            permissions =
+                                await PermissionHelper.checkAllPermissions();
+
+                            setState(() {});
+                          },
+                        ),
+
+                        const Divider(),
+
+                        _PermissionTile(
+                          icon: '📍',
+                          title: 'Vị trí GPS',
+                          description: 'Theo dõi thời gian ngoài trời',
+                          isGranted: permissions["location"] ?? false,
+                          onTap: () async {
+                            await PermissionHelper.requestLocationPermission();
+
+                            permissions =
+                                await PermissionHelper.checkAllPermissions();
+
+                            setState(() {});
+                          },
+                        ),
+
+                        const Divider(),
+
+                        _PermissionTile(
+                          icon: '🏃',
+                          title: 'Phát hiện hoạt động',
+                          description: 'Theo dõi vận động',
+                          isGranted: permissions["activity"] ?? false,
+                          onTap: () async {
+                            await PermissionHelper.requestActivityPermission();
+
+                            permissions =
+                                await PermissionHelper.checkAllPermissions();
+
+                            setState(() {});
+                          },
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              );
+            },
+          );
+        },
+      );
+    },
+  );
+}
+
+// THÊM WIDGET _PermissionTile
+class _PermissionTile extends StatelessWidget {
+  const _PermissionTile({
+    required this.icon,
+    required this.title,
+    required this.description,
+    required this.isGranted,
+    required this.onTap,
+  });
+
+  final String icon;
+  final String title;
+  final String description;
+  final bool isGranted;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Row(
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: isGranted
+                  ? Colors.green.withValues(alpha: 0.12)
+                  : Colors.orange.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Center(
+              child: Text(
+                icon,
+                style: const TextStyle(fontSize: 22),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        title,
+                        style: Theme.of(context).textTheme.titleSmall,
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: isGranted
+                            ? Colors.green.withValues(alpha: 0.12)
+                            : Colors.red.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        isGranted ? 'Đã cấp' : 'Chưa cấp',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: isGranted ? Colors.green : Colors.red,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  description,
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
+            ),
+          ),
+          Icon(
+            isGranted ? Icons.check_circle : Icons.arrow_forward,
+            color: isGranted ? Colors.green : Colors.grey[400],
+            size: 20,
+          ),
+        ],
+      ),
+    );
   }
 }
