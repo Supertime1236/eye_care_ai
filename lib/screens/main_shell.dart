@@ -21,6 +21,16 @@ class MainShell extends StatefulWidget {
 class _MainShellState extends State<MainShell> {
   int _currentIndex = 0;
 
+  @override
+  void initState() {
+    super.initState();
+    final state = context.read<AppState>();
+    state.startHabitTracking();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      state.refreshHabitsFromDevice();
+    });
+  }
+
   static const _screens = [
     HomeScreen(),
     EyeBreakScreen(),

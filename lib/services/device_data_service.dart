@@ -271,6 +271,47 @@ class DeviceDataService {
     }
   }
 
+  // ---------------- App-level flags persisted across restarts ----------------
+  static const _kSurveyCompletedKey = 'survey_completed';
+
+  Future<bool> isSurveyCompleted() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_kSurveyCompletedKey) ?? false;
+  }
+
+  Future<void> setSurveyCompleted(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_kSurveyCompletedKey, value);
+  }
+
+  // ---------------- Break reminder: persist the countdown across restarts ----------------
+  static const _kBreakReminderEndKey = 'break_reminder_end_at';
+  static const _kBreakReminderIntervalKey = 'break_reminder_interval_minutes';
+
+  Future<void> saveBreakReminderEnd(DateTime endAt, int intervalMinutes) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_kBreakReminderEndKey, endAt.toIso8601String());
+    await prefs.setInt(_kBreakReminderIntervalKey, intervalMinutes);
+  }
+
+  Future<void> clearBreakReminderEnd() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_kBreakReminderEndKey);
+  }
+
+  // Trả về thời điểm kết thúc đã lưu (null nếu không có bộ đếm nào đang chạy).
+  Future<DateTime?> loadBreakReminderEnd() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_kBreakReminderEndKey);
+    if (raw == null) return null;
+    return DateTime.tryParse(raw);
+  }
+
+  Future<int?> loadBreakReminderIntervalMinutes() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getInt(_kBreakReminderIntervalKey);
+  }
+
   void dispose() {
     _accelSub?.cancel();
     _outdoorSampleTimer?.cancel();

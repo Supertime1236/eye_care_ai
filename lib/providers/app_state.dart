@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/app_strings.dart';
 import '../services/device_data_service.dart';
@@ -35,7 +36,7 @@ class HabitData {
   final String subtitle;
   final String icon;
   final String unit;
-  final double target;
+  double target;
   double current;
   final int color;
   bool isLive;
@@ -49,6 +50,18 @@ class AppState extends ChangeNotifier {
   // Khi giá trị thay đổi, notifyListeners() sẽ báo cho các widget đang lắng nghe tự cập nhật.
   // Các cài đặt người dùng có thể điều chỉnh.
   // Những giá trị này thay đổi giao diện và ngôn ngữ của ứng dụng.
+  static const _kDarkModeKey = 'pref_dark_mode';
+  static const _kMetricKey = 'pref_use_metric';
+  static const _k24HourKey = 'pref_24_hour';
+  static const _kVietnameseKey = 'pref_vietnamese';
+  static const _kNotifyBreaksKey = 'pref_notify_breaks';
+  static const _kNotifyTestsKey = 'pref_notify_tests';
+  static const _kNotifyHabitsKey = 'pref_notify_habits';
+  static const _kNotifyTipsKey = 'pref_notify_tips';
+  static const _kReminderMinutesKey = 'pref_reminder_minutes';
+  static const _kHasCustomTargetsKey = 'pref_has_custom_habit_targets';
+  static const _kHabitTargetPrefix = 'pref_habit_target_';
+
   bool isDarkMode = false;
   bool useMetric = true;
   bool is24Hour = false;
@@ -59,10 +72,62 @@ class AppState extends ChangeNotifier {
   bool notifyTips = true;
   int reminderMinutes = 20;
 
-  int eyeHealthScore = 84;
-  double screenTimeHours = 4.2;
-  double outdoorHours = 1.5;
-  int breakCount = 6;
+  AppState() {
+    _loadSavedPreferences();
+  }
+
+  Future<void> _loadSavedPreferences() async {
+    final prefs = await SharedPreferences.getInstance();
+    isDarkMode = prefs.getBool(_kDarkModeKey) ?? isDarkMode;
+    useMetric = prefs.getBool(_kMetricKey) ?? useMetric;
+    is24Hour = prefs.getBool(_k24HourKey) ?? is24Hour;
+    isVietnamese = prefs.getBool(_kVietnameseKey) ?? isVietnamese;
+    notifyBreaks = prefs.getBool(_kNotifyBreaksKey) ?? notifyBreaks;
+    notifyTests = prefs.getBool(_kNotifyTestsKey) ?? notifyTests;
+    notifyHabits = prefs.getBool(_kNotifyHabitsKey) ?? notifyHabits;
+    notifyTips = prefs.getBool(_kNotifyTipsKey) ?? notifyTips;
+    reminderMinutes = prefs.getInt(_kReminderMinutesKey) ?? reminderMinutes;
+    hasCustomHabitTargets = prefs.getBool(_kHasCustomTargetsKey) ?? hasCustomHabitTargets;
+
+    for (final habit in habits) {
+      final key = '$_kHabitTargetPrefix${habit.id}';
+      if (prefs.containsKey(key)) {
+        habit.target = prefs.getDouble(key) ?? habit.target;
+      }
+    }
+
+    notifyListeners();
+  }
+
+  Future<void> _saveBool(String key, bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(key, value);
+  }
+
+  Future<void> _saveInt(String key, int value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(key, value);
+  }
+
+  String _habitTargetKey(String habitId) => '$_kHabitTargetPrefix$habitId';
+
+  Future<void> _saveHabitTarget(String habitId, double value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble(_habitTargetKey(habitId), value);
+  }
+
+  Future<void> _saveHasCustomHabitTargets() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_kHasCustomTargetsKey, true);
+  }
+
+  // Các số liệu trên Trang chủ không còn là dữ liệu giả cố định — chúng lấy
+  // trực tiếp từ habit tương ứng (đã được nạp từ thiết bị thật ở trang
+  // Habits), nên trước khi có dữ liệu thật sẽ hiển thị 0 thay vì số mẫu.
+  int get eyeHealthScore => habitsCompletionPercent;
+  double get screenTimeHours => habits.firstWhere((h) => h.id == 'phone').current;
+  double get outdoorHours => habits.firstWhere((h) => h.id == 'outdoor').current / 60;
+  int get breakCount => habits.firstWhere((h) => h.id == 'breaks').current.round();
 
   // Trạng thái cho màn hình nhắc nghỉ mắt (thay thế Eye Test cũ).
   bool isEyeBreakReminderActive = false;
@@ -140,21 +205,25 @@ class AppState extends ChangeNotifier {
   // Các hàm này thực hiện cập nhật cài đặt và thông báo lại cho widget.
   void toggleDarkMode(bool value) {
     isDarkMode = value;
+    _saveBool(_kDarkModeKey, value);
     notifyListeners();
   }
 
   void toggleMetric(bool value) {
     useMetric = value;
+    _saveBool(_kMetricKey, value);
     notifyListeners();
   }
 
   void toggleTimeFormat(bool value) {
     is24Hour = value;
+    _saveBool(_k24HourKey, value);
     notifyListeners();
   }
 
   void toggleVietnamese(bool value) {
     isVietnamese = value;
+    _saveBool(_kVietnameseKey, value);
     notifyListeners();
   }
 
@@ -210,6 +279,7 @@ class AppState extends ChangeNotifier {
   // Cập nhật thời gian nhắc nhở và trạng thái thông báo.
   void setReminderMinutes(int minutes) {
     reminderMinutes = minutes;
+    _saveInt(_kReminderMinutesKey, minutes);
     notifyListeners();
   }
 
@@ -218,15 +288,19 @@ class AppState extends ChangeNotifier {
     switch (key) {
       case 'breaks':
         notifyBreaks = value;
+        _saveBool(_kNotifyBreaksKey, value);
         break;
       case 'tests':
         notifyTests = value;
+        _saveBool(_kNotifyTestsKey, value);
         break;
       case 'habits':
         notifyHabits = value;
+        _saveBool(_kNotifyHabitsKey, value);
         break;
       case 'tips':
         notifyTips = value;
+        _saveBool(_kNotifyTipsKey, value);
         break;
     }
     notifyListeners();
@@ -244,6 +318,8 @@ class AppState extends ChangeNotifier {
     isEyeBreakReminderActive = active;
     notifyListeners();
   }
+
+
   // Ghi nhận một lần nghỉ mắt thật (người dùng tự xác nhận sau khi nhìn xa
   // theo nhắc nhở). Cộng dồn vào DeviceDataService (lưu theo ngày) và đồng bộ
   // luôn vào habit "Eye Breaks" trên trang Habits.
@@ -258,6 +334,12 @@ class AppState extends ChangeNotifier {
   }
 
   bool hasCustomHabitTargets = false;
+  bool surveyCompleted = false;
+
+  Future<void> markSurveyCompleted() async {
+    surveyCompleted = true;
+    await DeviceDataService.instance.setSurveyCompleted(true);
+  }
 
   // Áp dụng các target cá nhân hoá được tính từ bài khảo sát sức khỏe mắt
   // (xem lib/models/eye_health_standards.dart) vào các habit tương ứng.
@@ -265,19 +347,11 @@ class AppState extends ChangeNotifier {
     for (final entry in targets.entries) {
       final index = habits.indexWhere((h) => h.id == entry.key);
       if (index == -1) continue;
-      habits[index] = HabitData(
-        id: habits[index].id,
-        title: habits[index].title,
-        subtitle: habits[index].subtitle,
-        icon: habits[index].icon,
-        unit: habits[index].unit,
-        target: entry.value,
-        current: habits[index].current,
-        color: habits[index].color,
-        isLive: habits[index].isLive,
-      );
+      habits[index].target = entry.value;
+      _saveHabitTarget(habits[index].id, entry.value);
     }
     hasCustomHabitTargets = true;
+    _saveHasCustomHabitTargets();
     _updateHabitsCompletion();
     notifyListeners();
   }

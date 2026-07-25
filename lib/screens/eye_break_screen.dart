@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/app_state.dart';
+import '../services/device_data_service.dart';
+import '../services/notification_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/shared_widgets.dart';
 
@@ -33,25 +35,61 @@ class _EyeBreakScreenState extends State<EyeBreakScreen> {
     super.dispose();
   }
 
+  @override
+  void initState() {
+    super.initState();
+    _loadSavedReminder();
+  }
+
+  Future<void> _loadSavedReminder() async {
+    final state = context.read<AppState>();
+    final endAt = await DeviceDataService.instance.loadBreakReminderEnd();
+    final interval = await DeviceDataService.instance.loadBreakReminderIntervalMinutes();
+    if (endAt != null && interval != null) {
+      final now = DateTime.now();
+      final secondsLeft = endAt.difference(now).inSeconds;
+      if (secondsLeft > 0) {
+        state.toggleEyeBreakReminder(true);
+        _secondsRemaining = secondsLeft;
+        _startCountdown(state);
+      } else {
+        _secondsRemaining = 0;
+        _breakPromptShowing = true;
+      }
+      setState(() {});
+    }
+  }
+
   void _startReminder(AppState state) {
     _countdownTimer?.cancel();
     _secondsRemaining = state.reminderMinutes * 60;
     state.toggleEyeBreakReminder(true);
+    _saveReminderEnd(state.reminderMinutes);
+    _startCountdown(state);
+    setState(() {});
+  }
+
+  void _startCountdown(AppState state) {
+    _countdownTimer?.cancel();
     _countdownTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       setState(() {
         _secondsRemaining--;
         if (_secondsRemaining <= 0) {
           _breakPromptShowing = true;
           _countdownTimer?.cancel();
+          NotificationService.instance.showInstantNotification(
+            title: state.strings.eyeBreakTimeUp,
+            body: state.strings.eyeBreakLookAway,
+          );
         }
       });
     });
-    setState(() {});
   }
 
   void _stopReminder(AppState state) {
     _countdownTimer?.cancel();
     state.toggleEyeBreakReminder(false);
+    DeviceDataService.instance.clearBreakReminderEnd();
     setState(() {
       _secondsRemaining = 0;
       _breakPromptShowing = false;
@@ -64,6 +102,11 @@ class _EyeBreakScreenState extends State<EyeBreakScreen> {
     setState(() => _breakPromptShowing = false);
     // Tự động bắt đầu chu kỳ đếm ngược tiếp theo.
     _startReminder(state);
+  }
+
+  Future<void> _saveReminderEnd(int intervalMinutes) async {
+    final endAt = DateTime.now().add(Duration(minutes: intervalMinutes));
+    await DeviceDataService.instance.saveBreakReminderEnd(endAt, intervalMinutes);
   }
 
   void _dismissPrompt(AppState state) {

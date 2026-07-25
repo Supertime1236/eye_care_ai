@@ -68,6 +68,33 @@ class EyeHealthStandards {
         return vi ? 'Trên 18 tuổi' : 'Over 18';
     }
   }
+
+  static double calculateTargetValue(
+    double current,
+    double recommended,
+    TargetLevel level,
+  ) {
+    final delta = recommended - current;
+    final factor = switch (level) {
+      TargetLevel.easy => 0.25,
+      TargetLevel.recommended => 0.5,
+      TargetLevel.challenge => 0.75,
+      TargetLevel.custom => 0,
+    };
+    return current + delta * factor;
+  }
+
+  static bool inCustomRange(
+    double value,
+    double current,
+    double recommended,
+    bool isDecrease,
+  ) {
+    if (isDecrease) {
+      return value >= recommended && value <= current;
+    }
+    return value >= current && value <= recommended;
+  }
 }
 
 // SurveyAnswers gói lại toàn bộ câu trả lời khảo sát của người dùng.
@@ -89,19 +116,27 @@ class SurveyAnswers {
   final double breaksPerDay;
 }
 
+enum TargetLevel { easy, recommended, challenge, custom }
+
 // Một dòng so sánh: chỉ số hiện tại của người dùng vs. chuẩn khuyến nghị.
 class ComparisonRow {
   ComparisonRow({
     required this.id,
     required this.currentValue,
+    required this.recommendedValue,
     required this.recommendedLabel,
+    required this.unit,
+    required this.isDecrease,
     required this.isGood,
     required this.tip,
   });
 
   final String id; // khớp với HabitData.id nếu có, hoặc 'reading_distance'
   final double currentValue;
+  final double recommendedValue;
   final String recommendedLabel;
+  final String unit;
+  final bool isDecrease;
   final bool isGood;
   final String tip;
 }
@@ -120,12 +155,16 @@ SurveyResult evaluateSurvey(SurveyAnswers a, bool vi) {
   final sleepRange = EyeHealthStandards.recommendedSleepHours(a.ageGroup);
   final screenTarget = EyeHealthStandards.recommendedRecreationalScreenHours(a.ageGroup);
   final breaksTarget = EyeHealthStandards.recommendedBreaksPerDay(a.screenHoursPerDay);
+  final sleepTarget = sleepRange.$2;
 
   final rows = <ComparisonRow>[
     ComparisonRow(
       id: 'phone',
       currentValue: a.screenHoursPerDay,
+      recommendedValue: screenTarget,
+      unit: 'hrs',
       recommendedLabel: vi ? '≤ $screenTarget giờ/ngày' : '≤ $screenTarget hrs/day',
+      isDecrease: true,
       isGood: a.screenHoursPerDay <= screenTarget,
       tip: vi
           ? 'Ưu tiên giảm dần thời gian giải trí trên màn hình, dùng chế độ tối và nghỉ mắt thường xuyên.'
@@ -134,7 +173,10 @@ SurveyResult evaluateSurvey(SurveyAnswers a, bool vi) {
     ComparisonRow(
       id: 'outdoor',
       currentValue: a.outdoorMinutesPerDay,
+      recommendedValue: outdoorTarget.toDouble(),
+      unit: 'min',
       recommendedLabel: vi ? '≥ $outdoorTarget phút/ngày' : '≥ $outdoorTarget min/day',
+      isDecrease: false,
       isGood: a.outdoorMinutesPerDay >= outdoorTarget,
       tip: vi
           ? 'Ánh sáng tự nhiên ngoài trời giúp giảm nguy cơ cận thị, đặc biệt quan trọng với trẻ em.'
@@ -143,9 +185,12 @@ SurveyResult evaluateSurvey(SurveyAnswers a, bool vi) {
     ComparisonRow(
       id: 'reading_distance',
       currentValue: a.readingDistanceCm,
+      recommendedValue: EyeHealthStandards.minReadingDistanceCm,
+      unit: 'cm',
       recommendedLabel: vi
           ? '≥ ${EyeHealthStandards.minReadingDistanceCm.round()} cm'
           : '≥ ${EyeHealthStandards.minReadingDistanceCm.round()} cm',
+      isDecrease: false,
       isGood: a.readingDistanceCm >= EyeHealthStandards.minReadingDistanceCm,
       tip: vi
           ? 'Giữ khoảng cách tối thiểu 30cm khi đọc sách hoặc dùng điện thoại, lý tưởng là 40cm.'
@@ -154,9 +199,12 @@ SurveyResult evaluateSurvey(SurveyAnswers a, bool vi) {
     ComparisonRow(
       id: 'sleep',
       currentValue: a.sleepHoursPerNight,
+      recommendedValue: sleepTarget,
+      unit: 'hrs',
       recommendedLabel: vi
           ? '${sleepRange.$1.round()} - ${sleepRange.$2.round()} giờ/đêm'
           : '${sleepRange.$1.round()} - ${sleepRange.$2.round()} hrs/night',
+      isDecrease: false,
       isGood: a.sleepHoursPerNight >= sleepRange.$1 && a.sleepHoursPerNight <= sleepRange.$2,
       tip: vi
           ? 'Ngủ đủ giấc giúp mắt phục hồi và giảm khô mắt, mỏi mắt vào ban ngày.'
@@ -165,7 +213,10 @@ SurveyResult evaluateSurvey(SurveyAnswers a, bool vi) {
     ComparisonRow(
       id: 'breaks',
       currentValue: a.breaksPerDay,
+      recommendedValue: breaksTarget.toDouble(),
+      unit: 'times',
       recommendedLabel: vi ? '≥ $breaksTarget lần/ngày' : '≥ $breaksTarget times/day',
+      isDecrease: false,
       isGood: a.breaksPerDay >= breaksTarget,
       tip: vi
           ? 'Áp dụng quy tắc 20-20-20: cứ 20 phút màn hình, nghỉ mắt 20 giây, nhìn xa 6 mét.'
@@ -176,7 +227,7 @@ SurveyResult evaluateSurvey(SurveyAnswers a, bool vi) {
   final targets = <String, double>{
     'phone': screenTarget,
     'outdoor': outdoorTarget.toDouble(),
-    'sleep': sleepRange.$2,
+    'sleep': sleepTarget,
     'breaks': breaksTarget.toDouble(),
   };
 

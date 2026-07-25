@@ -134,6 +134,22 @@ class AppStrings {
   String get surveyGoodStatus => vi ? 'Đạt chuẩn' : 'On track';
   String get surveyNeedsWorkStatus => vi ? 'Cần cải thiện' : 'Needs work';
   String get surveyApplyButton => vi ? 'Áp dụng làm mục tiêu của tôi' : 'Apply as my targets';
+  String get targetSelectionTitle => vi ? 'Chọn mục tiêu của bạn' : 'Choose your target';
+  String get targetSelectOption => vi ? 'Chọn một mức mục tiêu' : 'Pick a target level';
+  String get targetOptionRecommended => vi ? 'Khuyến nghị' : 'Recommended';
+  String get targetOptionEasy => vi ? 'Dễ dàng' : 'Easy';
+  String get targetOptionChallenge => vi ? 'Thử thách' : 'Challenge';
+  String get targetOptionCustom => vi ? 'Tùy chỉnh' : 'Custom';
+  String get targetCurrentLabel => vi ? 'Hiện tại' : 'Current';
+  String get targetRecommendedLabel => vi ? 'Khuyến nghị chuẩn' : 'Recommended';
+  String get targetYourPlan => vi ? 'Kế hoạch cá nhân của bạn' : 'Your Personalized Plan';
+  String get targetSummarySubtitle => vi ? 'Xem lại và xác nhận trước khi áp dụng mục tiêu.' : 'Review and confirm before applying targets.';
+  String get targetApplyButton => vi ? 'Áp dụng mục tiêu' : 'Apply Targets';
+  String get targetCustomHint => vi ? 'Nhập giá trị tùy chỉnh' : 'Enter a custom value';
+  String get targetCustomError => vi ? 'Giá trị phải nằm trong phạm vi hợp lệ.' : 'Value must be within the allowed range.';
+  String get targetNext => vi ? 'Tiếp theo' : 'Next';
+  String get targetBack => vi ? 'Quay lại' : 'Back';
+  String get inchUnit => vi ? 'inch' : 'in';
   String get surveyAppliedMessage =>
       vi ? 'Đã cập nhật mục tiêu trên trang Habits!' : 'Your Habits targets have been updated!';
   String get surveyRetake => vi ? 'Làm lại khảo sát' : 'Retake survey';
