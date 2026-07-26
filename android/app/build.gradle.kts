@@ -1,10 +1,13 @@
 import java.util.Properties
 import java.io.FileInputStream
 
+
+
 plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
+    id("org.jetbrains.kotlin.android")
 }
 
 // Đọc cấu hình ký release từ android/key.properties (không commit file này lên
@@ -65,11 +68,14 @@ android {
             } else {
                 signingConfigs.getByName("debug")
             }
+            isMinifyEnabled = false
         }
     }
-    dependencies {
+    
+}
+
+dependencies {
         coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
-    }
 }
 
 kotlin {
