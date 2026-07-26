@@ -43,17 +43,18 @@ jobs:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        shell: bash
         run: |
           if [ -n "$KEYSTORE_BASE64" ]; then
-            echo "$KEYSTORE_BASE64" | base64 -d > android/release-keystore.jks
+            echo "$KEYSTORE_BASE64" | base64 --decode > android/app/release-keystore.jks
 
-            cat > android/key.properties <<EOF
-            storeFile=release-keystore.jks
-            storePassword=$KEYSTORE_PASSWORD
-            keyAlias=$KEY_ALIAS
-            keyPassword=$KEY_PASSWORD
-            EOF
+            printf "storeFile=release-keystore.jks\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n" \
+            "$KEYSTORE_PASSWORD" \
+            "$KEY_ALIAS" \
+            "$KEY_PASSWORD" \
+            > android/key.properties
           fi
+      
 
       - name: Build release APK
         run: flutter build apk --release
