@@ -124,9 +124,16 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     final labels = _getLabels(state, strings);
     final unit = _getUnit(state, strings);
     final realValues = data.whereType<double>().toList();
+    
     // maxY được dùng để định nghĩa giới hạn trục dọc của biểu đồ — chỉ tính
     // từ các ngày ĐÃ CÓ dữ liệu thật, bỏ qua các ngày null (chưa tới/chưa mở app).
-    final maxY = realValues.isEmpty ? 100.0 : realValues.reduce(math.max) * 1.15;
+    // Đảm bảo maxY luôn tối thiểu là 1.0 để tránh tính toán interval = 0.
+    final calculatedMaxY = realValues.isEmpty ? 100.0 : realValues.reduce(math.max) * 1.15;
+    final maxY = calculatedMaxY <= 0 ? 1.0 : calculatedMaxY;
+    
+    // Đảm bảo horizontalInterval luôn > 0 để không bị nổ assertion error từ fl_chart
+    final horizontalInterval = (maxY / 4) > 0 ? (maxY / 4) : 1.0;
+    
     final latestValue = realValues.isEmpty ? null : realValues.last;
 
     return Material(
@@ -212,7 +219,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                         gridData: FlGridData(
                           show: true,
                           drawVerticalLine: false,
-                          horizontalInterval: maxY / 4,
+                          horizontalInterval: horizontalInterval,
                           getDrawingHorizontalLine: (value) => FlLine(
                             color: AppColors.border,
                             strokeWidth: 1,

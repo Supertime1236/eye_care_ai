@@ -548,21 +548,19 @@ class _HabitsSurveyScreenState extends State<HabitsSurveyScreen> {
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
-                  onPressed: () async {
-                    final selectedTargets = Map<String, double>.fromEntries(
-                      _surveyTargetHabitIds.map((id) => MapEntry(id, _selectedTargetValues[id] ?? result.rows.firstWhere((row) => row.id == id).recommendedValue)),
-                    );
-                    await context.read<HabitProvider>().applySurveyTargets(selectedTargets);
-                    await context.read<HabitProvider>().markSurveyCompleted();
-                    if (!context.mounted) return;
+                  onPressed: () {
+                    final habitProvider = context.read<HabitProvider>();
+                    for (final id in _surveyTargetHabitIds) {
+                      final value = _selectedTargetValues[id];
+                      if (value != null) {
+                        habitProvider.setHabitTarget(id, value);
+                      }
+                    }
                     if (widget.mandatory) {
                       Navigator.of(context).pushReplacement(
                         MaterialPageRoute(builder: (_) => const MainShell()),
                       );
                     } else {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text(strings.surveyAppliedMessage)),
-                      );
                       Navigator.of(context).pop();
                     }
                   },
