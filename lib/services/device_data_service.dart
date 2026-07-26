@@ -1,12 +1,33 @@
 import 'dart:async';
 import 'dart:io';
+
+import 'package:android_intent_plus/android_intent.dart';
+import 'package:app_usage/app_usage.dart';
 import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:health/health.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:flutter/foundation.dart';
+
+// Một dòng dữ liệu sử dụng của MỘT app trong ngày hôm nay, dùng cho biểu đồ
+// tròn "App Usage Breakdown" ở trang Thống kê.
+class AppUsageBreakdownEntry {
+  AppUsageBreakdownEntry({
+    required this.packageName,
+    required this.appName,
+    required this.usage,
+    this.launchCount,
+  });
+
+  final String packageName;
+  final String appName;
+  final Duration usage;
+  // Số lần mở app hôm nay. null nếu không lấy được (thiếu code native hoặc
+  // chưa build lại app sau khi thêm MainActivity.kt).
+  final int? launchCount;
+}
+
 // DeviceDataService chịu trách nhiệm lấy dữ liệu THẬT từ điện thoại
 // (cảm biến, hệ điều hành, GPS) thay vì để người dùng tự nhập tay.
 //
@@ -28,8 +49,6 @@ import 'package:flutter/foundation.dart';
 class DeviceDataService {
   DeviceDataService._();
   static final DeviceDataService instance = DeviceDataService._();
-  static const MethodChannel _usageChannel =
-    MethodChannel('eye_care/usage');
 
   static const _kOutdoorMinutesKey = 'outdoor_minutes_today';
   static const _kOutdoorDateKey = 'outdoor_minutes_date';
@@ -57,26 +76,117 @@ class DeviceDataService {
   // tổng giữa các package khác nhau.
   Future<double?> getPhoneUsageHours() async {
     if (!Platform.isAndroid) return null;
-
     try {
-      final result =
-          await _usageChannel.invokeMethod<double>('getTodayUsageHours');
+      final now = DateTime.now();
+      final startOfDay = DateTime(now.year, now.month, now.day);
+      final infoList = await AppUsage().getAppUsage(startOfDay, now);
 
-      return result;
-    } catch (e) {
-      debugPrint('UsageStats error: $e');
+      final maxSecondsPerPackage = <String, int>{};
+      for (final info in infoList) {
+        final seconds = info.usage.inSeconds;
+        final existing = maxSecondsPerPackage[info.packageName] ?? 0;
+        if (seconds > existing) {
+          maxSecondsPerPackage[info.packageName] = seconds;
+        }
+      }
+
+      final totalSeconds = maxSecondsPerPackage.values.fold<int>(
+        0,
+        (sum, seconds) => sum + seconds,
+      );
+
+      // Chặn trên an toàn: tổng thời gian dùng máy không thể vượt quá số giờ
+      // thực tế đã trôi qua từ đầu ngày đến giờ. Nếu vượt (do lỗi hệ điều
+      // hành hiếm gặp), cắt về mốc này để tránh hiện số vô lý.
+      final elapsedSecondsToday = now.difference(startOfDay).inSeconds;
+      final clampedSeconds = totalSeconds > elapsedSecondsToday
+          ? elapsedSecondsToday
+          : totalSeconds;
+
+      return clampedSeconds / 3600.0;
+    } catch (_) {
+      // Quyền chưa được cấp hoặc thiết bị không hỗ trợ.
       return null;
     }
   }
 
-  // Android không cho xin quyền "Usage access" qua runtime dialog — người
-  // dùng phải tự bật trong Settings > Apps > Special access > Usage access.
-  // Hàm này chỉ mở màn hình Settings chung của app để người dùng thao tác tiếp;
-  // nó KHÔNG tự động nhảy thẳng tới màn hình Usage access (Android không có
-  // API công khai cho việc đó qua permission_handler).
+  // ---------------- Per-app usage breakdown (for the Statistics pie chart) ----------------
+  static const _usageEventsChannel = MethodChannel('eye_care_ai/usage_events');
+
+  Future<Map<String, int>> _getLaunchCounts(DateTime start, DateTime end) async {
+    if (!Platform.isAndroid) return {};
+    try {
+      final raw = await _usageEventsChannel.invokeMapMethod<String, dynamic>(
+        'getLaunchCounts',
+        {
+          'startMillis': start.millisecondsSinceEpoch,
+          'endMillis': end.millisecondsSinceEpoch,
+        },
+      );
+      return raw?.map((key, value) => MapEntry(key, (value as num).toInt())) ?? {};
+    } catch (_) {
+      // Kênh native chưa sẵn sàng (vd: chưa rebuild app) -> UI hiện "Chưa có
+      // dữ liệu" cho số lần mở thay vì lỗi.
+      return {};
+    }
+  }
+
+  Future<List<AppUsageBreakdownEntry>> getAppUsageBreakdownToday() async {
+    if (!Platform.isAndroid) return [];
+    try {
+      final now = DateTime.now();
+      final startOfDay = DateTime(now.year, now.month, now.day);
+      final infoList = await AppUsage().getAppUsage(startOfDay, now);
+      final launchCounts = await _getLaunchCounts(startOfDay, now);
+
+      final byPackage = <String, AppUsageBreakdownEntry>{};
+      for (final info in infoList) {
+        final existing = byPackage[info.packageName];
+        if (existing == null || info.usage > existing.usage) {
+          byPackage[info.packageName] = AppUsageBreakdownEntry(
+            packageName: info.packageName,
+            appName: info.appName,
+            usage: info.usage,
+            launchCount: launchCounts[info.packageName],
+          );
+        }
+      }
+
+      final entries = byPackage.values.where((e) => e.usage.inSeconds >= 30).toList()
+        ..sort((a, b) => b.usage.compareTo(a.usage));
+
+      // Giới hạn 8 app hàng đầu để biểu đồ tròn không bị vụn quá nhiều lát.
+      return entries.take(8).toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  // Android không cho xin quyền "Usage access" qua runtime dialog, nhưng CÓ
+  // một intent hệ thống mở thẳng màn hình danh sách "Usage access" (thay vì
+  // chỉ mở trang Settings chung của app) — người dùng chỉ còn phải tìm tên
+  // app trong danh sách rồi bật lên, đỡ hơn vài bước so với trước.
   Future<void> openUsageAccessSettings() async {
-    if (Platform.isAndroid) {
+    if (!Platform.isAndroid) return;
+    try {
+      const intent = AndroidIntent(action: 'android.settings.USAGE_ACCESS_SETTINGS');
+      await intent.launch();
+    } catch (_) {
+      // Một số ROM tùy biến không hỗ trợ intent trên -> lùi về mở Settings
+      // chung của app để người dùng tự điều hướng tiếp.
       await openAppSettings();
+    }
+  }
+
+  // Kiểm tra xem quyền Usage Access đã được cấp hay chưa, để UI hiện đúng
+  // trạng thái thay vì chỉ đoán qua việc dữ liệu có về hay không.
+  Future<bool> hasUsageAccessPermission() async {
+    if (!Platform.isAndroid) return false;
+    try {
+      final result = await _usageEventsChannel.invokeMethod<bool>('hasUsageAccess');
+      return result ?? false;
+    } catch (_) {
+      return false;
     }
   }
 

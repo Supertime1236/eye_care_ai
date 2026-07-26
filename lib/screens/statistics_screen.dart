@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import '../models/app_strings.dart';
 import '../providers/habit_provider.dart';
 import '../providers/language_provider.dart';
+import '../services/device_data_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/shared_widgets.dart';
 
@@ -351,8 +352,260 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                 ),
               ],
             ),
+            const SizedBox(height: 16),
+            const _AppUsageBreakdownCard(),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// _AppUsageBreakdownCard: biểu đồ tròn phân chia thời gian dùng máy hôm nay
+// theo TỪNG APP (tổng thời gian hiện ở chính giữa). Bấm vào một lát cắt để
+// xem chi tiết thời gian đã dùng app đó.
+class _AppUsageBreakdownCard extends StatefulWidget {
+  const _AppUsageBreakdownCard();
+
+  @override
+  State<_AppUsageBreakdownCard> createState() => _AppUsageBreakdownCardState();
+}
+
+class _AppUsageBreakdownCardState extends State<_AppUsageBreakdownCard> {
+  late Future<List<AppUsageBreakdownEntry>> _future;
+  int? _selectedIndex;
+
+  static const _sliceColors = [
+    AppColors.statsAccent,
+    AppColors.habitsAccent,
+    AppColors.homeAccent,
+    AppColors.primaryTeal,
+    AppColors.warning,
+    AppColors.chatAccent,
+    AppColors.testAccent,
+    AppColors.primaryBlue,
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _future = DeviceDataService.instance.getAppUsageBreakdownToday();
+  }
+
+  Future<void> _refresh() async {
+    setState(() {
+      _selectedIndex = null;
+      _future = DeviceDataService.instance.getAppUsageBreakdownToday();
+    });
+  }
+
+  String _formatDuration(Duration d, bool vi) {
+    final h = d.inHours;
+    final m = d.inMinutes % 60;
+    if (h == 0) return vi ? '$m phút' : '${m}m';
+    if (m == 0) return vi ? '$h giờ' : '${h}h';
+    return vi ? '$h giờ $m phút' : '${h}h ${m}m';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final strings = context.watch<LanguageProvider>().strings;
+
+    return SectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(strings.appUsageBreakdownTitle, style: Theme.of(context).textTheme.titleSmall),
+              ),
+              IconButton(
+                icon: const Icon(Icons.refresh_rounded, size: 18),
+                onPressed: _refresh,
+                tooltip: strings.vi ? 'Làm mới' : 'Refresh',
+              ),
+            ],
+          ),
+          FutureBuilder<List<AppUsageBreakdownEntry>>(
+            future: _future,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 24),
+                  child: Center(child: CircularProgressIndicator()),
+                );
+              }
+              final entries = snapshot.data ?? [];
+              if (entries.isEmpty) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 24),
+                  child: Column(
+                    children: [
+                      Text(
+                        strings.appDataUnavailable,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textMuted),
+                      ),
+                      const SizedBox(height: 8),
+                      OutlinedButton(
+                        onPressed: () => DeviceDataService.instance.openUsageAccessSettings(),
+                        child: Text(strings.grantUsageAccess),
+                      ),
+                    ],
+                  ),
+                );
+              }
+
+              final totalSeconds = entries.fold<int>(0, (sum, e) => sum + e.usage.inSeconds);
+              final totalDuration = Duration(seconds: totalSeconds);
+
+              return Column(
+                children: [
+                  SizedBox(
+                    height: 200,
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        PieChart(
+                          PieChartData(
+                            sectionsSpace: 2,
+                            centerSpaceRadius: 56,
+                            sections: List.generate(entries.length, (i) {
+                              final entry = entries[i];
+                              final isSelected = _selectedIndex == i;
+                              return PieChartSectionData(
+                                value: entry.usage.inSeconds.toDouble(),
+                                color: _sliceColors[i % _sliceColors.length],
+                                radius: isSelected ? 46 : 40,
+                                showTitle: false,
+                              );
+                            }),
+                            pieTouchData: PieTouchData(
+                              touchCallback: (event, response) {
+                                if (!event.isInterestedForInteractions ||
+                                    response == null ||
+                                    response.touchedSection == null) {
+                                  return;
+                                }
+                                setState(() {
+                                  _selectedIndex = response.touchedSection!.touchedSectionIndex;
+                                });
+                              },
+                            ),
+                          ),
+                        ),
+                        Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              _formatDuration(totalDuration, strings.vi),
+                              style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+                            ),
+                            Text(
+                              strings.appUsageTotalToday,
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textMuted),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  ...List.generate(entries.length, (i) {
+                    final entry = entries[i];
+                    final color = _sliceColors[i % _sliceColors.length];
+                    return InkWell(
+                      onTap: () => _showAppDetail(context, entry, strings),
+                      borderRadius: BorderRadius.circular(8),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 6),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 10,
+                              height: 10,
+                              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                entry.appName,
+                                style: Theme.of(context).textTheme.bodyMedium,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            Text(
+                              _formatDuration(entry.usage, strings.vi),
+                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+                            ),
+                            const SizedBox(width: 4),
+                            const Icon(Icons.chevron_right_rounded, size: 18, color: AppColors.textMuted),
+                          ],
+                        ),
+                      ),
+                    );
+                  }),
+                ],
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showAppDetail(BuildContext context, AppUsageBreakdownEntry entry, AppStrings strings) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(entry.appName, style: Theme.of(context).textTheme.titleLarge),
+              const SizedBox(height: 16),
+              _DetailRow(
+                icon: Icons.timer_outlined,
+                label: strings.appUsageDurationLabel,
+                value: _formatDuration(entry.usage, strings.vi),
+              ),
+              _DetailRow(
+                icon: Icons.open_in_new_rounded,
+                label: strings.appOpenCountLabel,
+                value: entry.launchCount != null ? '${entry.launchCount}' : strings.appDataUnavailable,
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _DetailRow extends StatelessWidget {
+  const _DetailRow({required this.icon, required this.label, required this.value});
+
+  final IconData icon;
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: AppColors.textMuted),
+          const SizedBox(width: 10),
+          Expanded(child: Text(label, style: Theme.of(context).textTheme.bodyMedium)),
+          Text(value, style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700)),
+        ],
       ),
     );
   }

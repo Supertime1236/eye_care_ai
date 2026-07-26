@@ -34,8 +34,16 @@ class HabitProvider extends ChangeNotifier {
   static const _kHabitTargetPrefix = 'pref_habit_target_';
 
   HabitProvider() {
-    _loadSavedPreferences();
+    ready = _loadSavedPreferences();
   }
+
+  // Awaiting này đảm bảo dữ liệu target đã lưu (nếu có) được nạp XONG trước
+  // khi bất kỳ màn hình nào (đặc biệt là khảo sát bắt buộc lần đầu) đọc hoặc
+  // ghi vào `habits` — tránh trường hợp việc nạp dữ liệu bất đồng bộ hoàn tất
+  // SAU khi khảo sát đã áp dụng kết quả mới, vô tình ghi đè ngược lại giá trị
+  // cũ/mặc định (đây là nguyên nhân gây ra lỗi "Outdoor Time luôn hiện 90
+  // phút" dù người dùng chọn khác trong khảo sát).
+  late final Future<void> ready;
 
   final List<HabitData> habits = [
     HabitData(
@@ -205,15 +213,15 @@ class HabitProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  void applySurveyTargets(Map<String, double> targets) {
+  Future<void> applySurveyTargets(Map<String, double> targets) async {
     for (final entry in targets.entries) {
       final index = habits.indexWhere((h) => h.id == entry.key);
       if (index == -1) continue;
       habits[index].target = entry.value;
-      _saveHabitTarget(habits[index].id, entry.value);
+      await _saveHabitTarget(habits[index].id, entry.value);
     }
     hasCustomHabitTargets = true;
-    _saveHasCustomHabitTargets();
+    await _saveHasCustomHabitTargets();
     _updateHabitsCompletion();
     notifyListeners();
   }

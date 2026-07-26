@@ -33,6 +33,23 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      # Giải mã keystore ký release từ GitHub Secret. Nếu secret KEYSTORE_BASE64
+      # chưa được thiết lập (chưa làm theo hướng dẫn tạo keystore), bước này bị
+      # bỏ qua và app build bằng debug key như cũ (build được, chỉ là không
+      # cập nhật đè lên bản cũ được — phải gỡ cài lại).
+      - name: Set up release signing
+        if: ${{ secrets.KEYSTORE_BASE64 != '' }}
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          echo "$KEYSTORE_BASE64" | base64 -d > android/app/release-keystore.jks
+          cat > android/key.properties <<EOF
+          storeFile=release-keystore.jks
+          storePassword=${{ secrets.KEYSTORE_PASSWORD }}
+          keyAlias=${{ secrets.KEY_ALIAS }}
+          keyPassword=${{ secrets.KEY_PASSWORD }}
+          EOF
+
       - name: Build release APK
         run: flutter build apk --release
 

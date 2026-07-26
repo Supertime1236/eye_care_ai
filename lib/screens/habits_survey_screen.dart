@@ -532,7 +532,7 @@ class _HabitsSurveyScreenState extends State<HabitsSurveyScreen> {
                     final selectedTargets = Map<String, double>.fromEntries(
                       _surveyTargetHabitIds.map((id) => MapEntry(id, _selectedTargetValues[id] ?? result.rows.firstWhere((row) => row.id == id).recommendedValue)),
                     );
-                    context.read<HabitProvider>().applySurveyTargets(selectedTargets);
+                    await context.read<HabitProvider>().applySurveyTargets(selectedTargets);
                     await context.read<HabitProvider>().markSurveyCompleted();
                     if (!context.mounted) return;
                     if (widget.mandatory) {

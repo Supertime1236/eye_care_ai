@@ -341,4 +341,14 @@ class AppStrings {
   String get habitCompletion => vi ? 'Hoàn thành thói quen' : 'Habit Completion';
   String get streak => vi ? 'Chuỗi' : 'Streak';
   String get dayStreak => vi ? 'ngày liên tiếp' : 'day streak';
+
+  // ---------------- App usage breakdown (Statistics pie chart) ----------------
+  String get appUsageBreakdownTitle => vi ? 'Sử dụng theo ứng dụng' : 'App Usage Breakdown';
+  String get appUsageTotalToday => vi ? 'Tổng hôm nay' : 'Total today';
+  String get appUsageDurationLabel => vi ? 'Thời gian đã dùng' : 'Time used';
+  String get appOpenCountLabel => vi ? 'Số lần mở' : 'Times opened';
+  String get appDataUnavailable => vi
+      ? 'Chưa có nguồn dữ liệu — cần cấp quyền xem thời gian sử dụng'
+      : 'No data source yet — grant usage access to enable this';
+  String get grantUsageAccess => vi ? 'Cấp quyền xem thời gian sử dụng' : 'Grant usage access';
 }
