@@ -148,8 +148,10 @@ class DeviceDataService {
       }).toList()
         ..sort((a, b) => b.usage.compareTo(a.usage));
 
-      // Giới hạn 8 app hàng đầu để biểu đồ tròn không bị vụn quá nhiều lát.
-      return entries.take(8).toList();
+      // Trả về TOÀN BỘ danh sách (không cắt bớt) — màn hình Thống kê sẽ tự
+      // gộp các app ít dùng vào một lát "Khác..." để tổng luôn khớp chính
+      // xác với tổng thời gian dùng máy thật.
+      return entries;
     } catch (_) {
       // Kênh native chưa sẵn sàng (chưa rebuild app sau khi thêm code Kotlin
       // mới) hoặc lỗi khác -> trả về rỗng, UI hiện "Chưa có nguồn dữ liệu".
@@ -394,6 +396,80 @@ class DeviceDataService {
   Future<int?> loadBreakReminderIntervalMinutes() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getInt(_kBreakReminderIntervalKey);
+  }
+
+  // ---------------- Daily snapshot history (for real Statistics charts) ----------------
+  // Mỗi ngày, sau khi đồng bộ dữ liệu thiết bị xong, HabitProvider lưu lại
+  // MỘT snapshot của ngày hôm đó (điểm hoàn thành habit, giờ dùng màn hình,
+  // giờ ngủ). Biểu đồ tuần ở trang Thống kê đọc từ đây thay vì số liệu giả
+  // cố định — những ngày CHƯA TỚI trong tuần hiện tại sẽ không có snapshot,
+  // UI sẽ vẽ chúng như đoạn chưa hoàn thành thay vì bịa số.
+  static const _kDailySnapshotPrefix = 'daily_snapshot_';
+
+  Future<void> saveDailySnapshot({
+    required int score,
+    required double screenHours,
+    required double sleepHours,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final today = DateTime.now().toIso8601String().substring(0, 10);
+    await prefs.setString(
+      '$_kDailySnapshotPrefix$today',
+      '$score|$screenHours|$sleepHours',
+    );
+  }
+
+  // Trả về snapshot cho một ngày cụ thể, null nếu ngày đó chưa có dữ liệu
+  // (chưa tới, hoặc người dùng không mở app hôm đó).
+  Future<({int score, double screenHours, double sleepHours})?> loadDailySnapshot(
+    DateTime date,
+  ) async {
+    final prefs = await SharedPreferences.getInstance();
+    final key = '$_kDailySnapshotPrefix${date.toIso8601String().substring(0, 10)}';
+    final raw = prefs.getString(key);
+    if (raw == null) return null;
+    final parts = raw.split('|');
+    if (parts.length != 3) return null;
+    return (
+      score: int.tryParse(parts[0]) ?? 0,
+      screenHours: double.tryParse(parts[1]) ?? 0,
+      sleepHours: double.tryParse(parts[2]) ?? 0,
+    );
+  }
+
+  // Trả về danh sách 7 ngày của TUẦN HIỆN TẠI (Thứ 2 -> Chủ nhật). Với các
+  // ngày đã qua/hôm nay: snapshot thật nếu có, null nếu không mở app hôm đó.
+  // Với các ngày CHƯA TỚI: luôn null (chưa xảy ra thì không thể có dữ liệu).
+  Future<List<({int score, double screenHours, double sleepHours})?>> loadCurrentWeekSnapshots() async {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final monday = today.subtract(Duration(days: today.weekday - 1));
+
+    final result = <({int score, double screenHours, double sleepHours})?>[];
+    for (var i = 0; i < 7; i++) {
+      final day = monday.add(Duration(days: i));
+      if (day.isAfter(today)) {
+        result.add(null);
+      } else {
+        result.add(await loadDailySnapshot(day));
+      }
+    }
+    return result;
+  }
+
+  // Tính chuỗi ngày liên tiếp (streak) thật: đếm ngược từ hôm nay, mỗi ngày
+  // có snapshot với điểm hoàn thành >= 80% thì tính là 1 ngày trong chuỗi,
+  // dừng lại ở ngày đầu tiên không đạt hoặc không có dữ liệu.
+  Future<int> calculateStreakDays() async {
+    var streak = 0;
+    var day = DateTime.now();
+    for (var i = 0; i < 365; i++) {
+      final snapshot = await loadDailySnapshot(DateTime(day.year, day.month, day.day));
+      if (snapshot == null || snapshot.score < 80) break;
+      streak++;
+      day = day.subtract(const Duration(days: 1));
+    }
+    return streak;
   }
 
   void dispose() {

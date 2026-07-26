@@ -28,29 +28,59 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
   // 0 = Score, 1 = Screen Time, 2 = Sleep.
   static const _metrics = ['Score', 'Screen Time', 'Sleep'];
 
-  // Dữ liệu mẫu tuần/tháng cho mỗi loại số liệu.
-  // Nếu muốn thay đổi biểu đồ demo, sửa trực tiếp các mảng này.
-  static const _weeklyScore = [78.0, 80.0, 82.0, 79.0, 84.0, 81.0, 84.0];
+  // Dữ liệu THÁNG vẫn là số mẫu — chưa xây hệ thống lưu lịch sử theo tháng
+  // (việc riêng, sẽ làm sau nếu cần). Dữ liệu TUẦN đã là dữ liệu thật, xem
+  // _loadWeekSnapshots() bên dưới.
   static const _monthlyScore = [72.0, 74.0, 76.0, 78.0, 80.0, 82.0, 84.0];
-
-  static const _weeklyScreen = [5.2, 4.8, 4.5, 4.9, 4.2, 3.8, 4.2];
   static const _monthlyScreen = [6.1, 5.8, 5.5, 5.2, 4.8, 4.5, 4.2];
-
-  static const _weeklySleep = [6.5, 7.0, 7.5, 6.8, 7.2, 8.0, 7.0];
   static const _monthlySleep = [6.0, 6.2, 6.5, 6.8, 7.0, 7.2, 7.0];
+
+  // Snapshot thật của 7 ngày trong tuần hiện tại (null = chưa có dữ liệu,
+  // bao gồm cả các ngày chưa tới trong tuần).
+  List<({int score, double screenHours, double sleepHours})?>? _weekSnapshots;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadWeekSnapshots();
+  }
+
+  Future<void> _loadWeekSnapshots() async {
+    final snapshots = await DeviceDataService.instance.loadCurrentWeekSnapshots();
+    if (!mounted) return;
+    setState(() => _weekSnapshots = snapshots);
+  }
 
   // Chọn dữ liệu biểu đồ dựa vào tab đang chọn và loại số liệu.
   // HabitProvider.statsTabIndex xác định Weekly / Monthly.
   // HabitProvider.statsMetricIndex xác định Score / Screen Time / Sleep.
-  List<double> _getData(HabitProvider state) {
+  // Giá trị null trong danh sách nghĩa là "chưa có dữ liệu ngày đó" — UI vẽ
+  // đoạn đó như một đoạn CHƯA HOÀN THÀNH thay vì bịa số.
+  List<double?> _getData(HabitProvider state) {
     final isWeekly = state.statsTabIndex == 0;
+    if (isWeekly) {
+      final snapshots = _weekSnapshots;
+      if (snapshots == null) return List.filled(7, null);
+      return snapshots.map((s) {
+        if (s == null) return null;
+        switch (state.statsMetricIndex) {
+          case 1:
+            return s.screenHours;
+          case 2:
+            return s.sleepHours;
+          default:
+            return s.score.toDouble();
+        }
+      }).toList();
+    }
+
     switch (state.statsMetricIndex) {
       case 1:
-        return isWeekly ? _weeklyScreen : _monthlyScreen;
+        return _monthlyScreen;
       case 2:
-        return isWeekly ? _weeklySleep : _monthlySleep;
+        return _monthlySleep;
       default:
-        return isWeekly ? _weeklyScore : _monthlyScore;
+        return _monthlyScore;
     }
   }
 
@@ -93,8 +123,11 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     final data = _getData(state);
     final labels = _getLabels(state, strings);
     final unit = _getUnit(state, strings);
-    // maxY được dùng để định nghĩa giới hạn trục dọc của biểu đồ.
-    final maxY = data.reduce(math.max) * 1.15;
+    final realValues = data.whereType<double>().toList();
+    // maxY được dùng để định nghĩa giới hạn trục dọc của biểu đồ — chỉ tính
+    // từ các ngày ĐÃ CÓ dữ liệu thật, bỏ qua các ngày null (chưa tới/chưa mở app).
+    final maxY = realValues.isEmpty ? 100.0 : realValues.reduce(math.max) * 1.15;
+    final latestValue = realValues.isEmpty ? null : realValues.last;
 
     return Material(
       color: Theme.of(context).scaffoldBackgroundColor,
@@ -160,7 +193,9 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                         style: Theme.of(context).textTheme.titleSmall,
                       ),
                       Text(
-                        '${data.last.toStringAsFixed(state.statsMetricIndex == 0 ? 0 : 1)} $unit',
+                        latestValue != null
+                            ? '${latestValue.toStringAsFixed(state.statsMetricIndex == 0 ? 0 : 1)} $unit'
+                            : '—',
                         style: Theme.of(context).textTheme.titleMedium?.copyWith(
                               color: AppColors.statsAccent,
                             ),
@@ -215,10 +250,10 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                         ),
                         lineBarsData: [
                           LineChartBarData(
-                            spots: List.generate(
-                              data.length,
-                              (i) => FlSpot(i.toDouble(), data[i]),
-                            ),
+                            spots: [
+                              for (var i = 0; i < data.length; i++)
+                                if (data[i] != null) FlSpot(i.toDouble(), data[i]!),
+                            ],
                             isCurved: true,
                             color: AppColors.statsAccent,
                             barWidth: 3,
@@ -436,8 +471,8 @@ class _AppUsageBreakdownCardState extends State<_AppUsageBreakdownCard> {
                   child: Center(child: CircularProgressIndicator()),
                 );
               }
-              final entries = snapshot.data ?? [];
-              if (entries.isEmpty) {
+              final allEntries = snapshot.data ?? [];
+              if (allEntries.isEmpty) {
                 return Padding(
                   padding: const EdgeInsets.symmetric(vertical: 24),
                   child: Column(
@@ -456,8 +491,20 @@ class _AppUsageBreakdownCardState extends State<_AppUsageBreakdownCard> {
                 );
               }
 
-              final totalSeconds = entries.fold<int>(0, (sum, e) => sum + e.usage.inSeconds);
+              // Hiện tối đa 7 app riêng lẻ, phần còn lại gộp vào lát "Khác..."
+              // để tổng của biểu đồ luôn khớp CHÍNH XÁC với tổng thời gian
+              // dùng máy thật (không bị "biến mất" phần chênh lệch).
+              const maxIndividualSlices = 7;
+              final entries = allEntries.take(maxIndividualSlices).toList();
+              final otherSeconds = allEntries
+                  .skip(maxIndividualSlices)
+                  .fold<int>(0, (sum, e) => sum + e.usage.inSeconds);
+              final hasOther = otherSeconds > 0;
+
+              final totalSeconds =
+                  allEntries.fold<int>(0, (sum, e) => sum + e.usage.inSeconds);
               final totalDuration = Duration(seconds: totalSeconds);
+              final sliceCount = entries.length + (hasOther ? 1 : 0);
 
               return Column(
                 children: [
@@ -470,12 +517,15 @@ class _AppUsageBreakdownCardState extends State<_AppUsageBreakdownCard> {
                           PieChartData(
                             sectionsSpace: 2,
                             centerSpaceRadius: 56,
-                            sections: List.generate(entries.length, (i) {
-                              final entry = entries[i];
+                            sections: List.generate(sliceCount, (i) {
+                              final isOtherSlice = hasOther && i == entries.length;
+                              final value = isOtherSlice
+                                  ? otherSeconds.toDouble()
+                                  : entries[i].usage.inSeconds.toDouble();
                               final isSelected = _selectedIndex == i;
                               return PieChartSectionData(
-                                value: entry.usage.inSeconds.toDouble(),
-                                color: _sliceColors[i % _sliceColors.length],
+                                value: value,
+                                color: isOtherSlice ? AppColors.textMuted : _sliceColors[i % _sliceColors.length],
                                 radius: isSelected ? 46 : 40,
                                 showTitle: false,
                               );
@@ -545,6 +595,30 @@ class _AppUsageBreakdownCardState extends State<_AppUsageBreakdownCard> {
                       ),
                     );
                   }),
+                  if (hasOther)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 6),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 10,
+                            height: 10,
+                            decoration: const BoxDecoration(color: AppColors.textMuted, shape: BoxShape.circle),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              strings.vi ? 'Khác...' : 'Other...',
+                              style: Theme.of(context).textTheme.bodyMedium,
+                            ),
+                          ),
+                          Text(
+                            _formatDuration(Duration(seconds: otherSeconds), strings.vi),
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                      ),
+                    ),
                 ],
               );
             },

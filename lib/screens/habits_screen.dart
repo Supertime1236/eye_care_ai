@@ -412,9 +412,9 @@ class _ChangeTargetSheetState extends State<_ChangeTargetSheet> {
                         : null,
                   ),
                   SizedBox(
-                    width: 56,
+                    width: 84,
                     child: Text(
-                      value % 1 == 0 ? value.round().toString() : value.toStringAsFixed(1),
+                      '${value % 1 == 0 ? value.round().toString() : value.toStringAsFixed(1)} ${strings.habitUnit(h.unit)}',
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
                     ),

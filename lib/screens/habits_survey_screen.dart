@@ -6,6 +6,7 @@ import '../models/eye_health_standards.dart';
 import '../providers/habit_provider.dart';
 import '../providers/language_provider.dart';
 import '../providers/settings_provider.dart';
+import '../providers/theme_provider.dart';
 import '../theme/app_colors.dart';
 import '../widgets/shared_widgets.dart';
 import 'main_shell.dart';
@@ -131,7 +132,9 @@ class _HabitsSurveyScreenState extends State<HabitsSurveyScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final strings = context.watch<LanguageProvider>().strings;
+    final language = context.watch<LanguageProvider>();
+    final theme = context.watch<ThemeProvider>();
+    final strings = language.strings;
 
     return PopScope(
       canPop: !widget.mandatory || _result != null,
@@ -139,6 +142,23 @@ class _HabitsSurveyScreenState extends State<HabitsSurveyScreen> {
         appBar: AppBar(
           automaticallyImplyLeading: !widget.mandatory,
           title: Text(_result == null ? strings.surveyTitle : strings.surveyResultsTitle),
+          actions: [
+            // Cho phép đổi ngôn ngữ và chế độ sáng/tối ngay trong khảo sát
+            // bắt buộc lần đầu — lúc này người dùng chưa vào được trang Settings.
+            TextButton(
+              onPressed: () => language.toggleVietnamese(!language.isVietnamese),
+              child: Text(
+                strings.vi ? 'EN' : 'VI',
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+            ),
+            IconButton(
+              icon: Icon(theme.isDarkMode ? Icons.light_mode_outlined : Icons.dark_mode_outlined),
+              tooltip: strings.vi ? 'Đổi giao diện' : 'Toggle theme',
+              onPressed: () => theme.toggleDarkMode(!theme.isDarkMode),
+            ),
+            const SizedBox(width: 4),
+          ],
         ),
         body: SafeArea(
           child: _result == null ? _buildWizard(context, strings) : _buildResults(context, strings),
@@ -529,25 +549,12 @@ class _HabitsSurveyScreenState extends State<HabitsSurveyScreen> {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
                   onPressed: () async {
-                    final habitProvider = context.read<HabitProvider>();
-
                     final selectedTargets = Map<String, double>.fromEntries(
-                      _surveyTargetHabitIds.map(
-                        (id) => MapEntry(
-                          id,
-                          _selectedTargetValues[id] ??
-                              result.rows
-                                  .firstWhere((row) => row.id == id)
-                                  .recommendedValue,
-                        ),
-                      ),
+                      _surveyTargetHabitIds.map((id) => MapEntry(id, _selectedTargetValues[id] ?? result.rows.firstWhere((row) => row.id == id).recommendedValue)),
                     );
-
-                    await habitProvider.applySurveyTargets(selectedTargets);
-                    await habitProvider.markSurveyCompleted();
-
+                    await context.read<HabitProvider>().applySurveyTargets(selectedTargets);
+                    await context.read<HabitProvider>().markSurveyCompleted();
                     if (!context.mounted) return;
-
                     if (widget.mandatory) {
                       Navigator.of(context).pushReplacement(
                         MaterialPageRoute(builder: (_) => const MainShell()),

@@ -99,7 +99,7 @@ class HabitProvider extends ChangeNotifier {
   int eyeBreaksTakenToday = 0;
   int statsTabIndex = 0;
   int statsMetricIndex = 0;
-  int streakDays = 12;
+  int streakDays = 0;
   bool hasCustomHabitTargets = false;
   bool surveyCompleted = false;
 
@@ -171,6 +171,16 @@ class HabitProvider extends ChangeNotifier {
     _updateHabitsCompletion();
     habitsLastUpdated = DateTime.now();
     isRefreshingHabits = false;
+
+    // Lưu snapshot thật của hôm nay + tính lại streak thật (thay cho số liệu
+    // giả cố định trước đây).
+    await service.saveDailySnapshot(
+      score: habitsCompletionPercent,
+      screenHours: screenTimeHours,
+      sleepHours: habits.firstWhere((h) => h.id == 'sleep').current,
+    );
+    streakDays = await service.calculateStreakDays();
+
     notifyListeners();
   }
 
