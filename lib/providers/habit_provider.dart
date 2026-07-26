@@ -145,12 +145,19 @@ class HabitProvider extends ChangeNotifier {
     notifyListeners();
 
     final service = DeviceDataService.instance;
+    // Mỗi nguồn dữ liệu có timeout RIÊNG (không dùng chung Future.wait không
+    // giới hạn thời gian) — nếu một nguồn bị treo (ví dụ hộp thoại xin quyền
+    // sức khỏe/GPS chưa được người dùng phản hồi), nó sẽ tự trả về null sau
+    // vài giây thay vì làm toàn bộ refresh không bao giờ hoàn tất. Đây chính
+    // là lý do trước đây trang chủ đôi khi mãi hiện 0 cho tới khi người dùng
+    // chuyển sang tab khác rồi quay lại (lúc đó refresh mới có cơ hội chạy
+    // lại và may mắn không bị treo).
     final results = await Future.wait([
-      service.getReadingMinutesToday(),
-      service.getPhoneUsageHours(),
-      service.getSleepHours(),
-      service.getOutdoorMinutesToday(),
-      service.getEyeBreaksToday(),
+      service.getReadingMinutesToday().timeout(const Duration(seconds: 6), onTimeout: () => 0),
+      service.getPhoneUsageHours().timeout(const Duration(seconds: 6), onTimeout: () => null),
+      service.getSleepHours().timeout(const Duration(seconds: 6), onTimeout: () => null),
+      service.getOutdoorMinutesToday().timeout(const Duration(seconds: 6), onTimeout: () => 0),
+      service.getEyeBreaksToday().timeout(const Duration(seconds: 6), onTimeout: () => 0),
     ]);
 
     _applyHabitValue('reading', results[0] as double?);
@@ -210,6 +217,17 @@ class HabitProvider extends ChangeNotifier {
 
   void setSurveyCompleted(bool value) {
     surveyCompleted = value;
+    notifyListeners();
+  }
+
+  Future<void> setHabitTarget(String habitId, double value) async {
+    final index = habits.indexWhere((h) => h.id == habitId);
+    if (index == -1) return;
+    habits[index].target = value;
+    await _saveHabitTarget(habitId, value);
+    hasCustomHabitTargets = true;
+    await _saveHasCustomHabitTargets();
+    _updateHabitsCompletion();
     notifyListeners();
   }
 

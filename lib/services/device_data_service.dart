@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:android_intent_plus/android_intent.dart';
-import 'package:app_usage/app_usage.dart';
 import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:health/health.dart';
@@ -79,21 +78,10 @@ class DeviceDataService {
     try {
       final now = DateTime.now();
       final startOfDay = DateTime(now.year, now.month, now.day);
-      final infoList = await AppUsage().getAppUsage(startOfDay, now);
+      final breakdown = await getAppUsageBreakdownToday();
+      if (breakdown.isEmpty) return null;
 
-      final maxSecondsPerPackage = <String, int>{};
-      for (final info in infoList) {
-        final seconds = info.usage.inSeconds;
-        final existing = maxSecondsPerPackage[info.packageName] ?? 0;
-        if (seconds > existing) {
-          maxSecondsPerPackage[info.packageName] = seconds;
-        }
-      }
-
-      final totalSeconds = maxSecondsPerPackage.values.fold<int>(
-        0,
-        (sum, seconds) => sum + seconds,
-      );
+      final totalSeconds = breakdown.fold<int>(0, (sum, e) => sum + e.usage.inSeconds);
 
       // Chặn trên an toàn: tổng thời gian dùng máy không thể vượt quá số giờ
       // thực tế đã trôi qua từ đầu ngày đến giờ. Nếu vượt (do lỗi hệ điều
@@ -136,28 +124,35 @@ class DeviceDataService {
     try {
       final now = DateTime.now();
       final startOfDay = DateTime(now.year, now.month, now.day);
-      final infoList = await AppUsage().getAppUsage(startOfDay, now);
       final launchCounts = await _getLaunchCounts(startOfDay, now);
 
-      final byPackage = <String, AppUsageBreakdownEntry>{};
-      for (final info in infoList) {
-        final existing = byPackage[info.packageName];
-        if (existing == null || info.usage > existing.usage) {
-          byPackage[info.packageName] = AppUsageBreakdownEntry(
-            packageName: info.packageName,
-            appName: info.appName,
-            usage: info.usage,
-            launchCount: launchCounts[info.packageName],
-          );
-        }
-      }
+      final raw = await _usageEventsChannel.invokeListMethod<dynamic>(
+        'getUsageBreakdown',
+        {
+          'startMillis': startOfDay.millisecondsSinceEpoch,
+          'endMillis': now.millisecondsSinceEpoch,
+        },
+      );
 
-      final entries = byPackage.values.where((e) => e.usage.inSeconds >= 30).toList()
+      if (raw == null) return [];
+
+      final entries = raw.map((item) {
+        final map = Map<String, dynamic>.from(item as Map);
+        final packageName = map['packageName'] as String;
+        return AppUsageBreakdownEntry(
+          packageName: packageName,
+          appName: map['appName'] as String,
+          usage: Duration(milliseconds: (map['usageMillis'] as num).toInt()),
+          launchCount: launchCounts[packageName],
+        );
+      }).toList()
         ..sort((a, b) => b.usage.compareTo(a.usage));
 
       // Giới hạn 8 app hàng đầu để biểu đồ tròn không bị vụn quá nhiều lát.
       return entries.take(8).toList();
     } catch (_) {
+      // Kênh native chưa sẵn sàng (chưa rebuild app sau khi thêm code Kotlin
+      // mới) hoặc lỗi khác -> trả về rỗng, UI hiện "Chưa có nguồn dữ liệu".
       return [];
     }
   }

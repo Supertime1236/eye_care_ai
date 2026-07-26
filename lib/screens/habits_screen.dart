@@ -142,9 +142,33 @@ class _HabitsScreenState extends State<HabitsScreen> {
                 child: _HabitCard(habit: habitItem),
               );
             }),
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                icon: const Icon(Icons.tune_rounded, size: 18),
+                label: Text(strings.changeTargetButton),
+                onPressed: () => _showChangeTargetSheet(context, habit, strings),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ),
           ],
         ),
       ),
+    );
+  }
+
+  void _showChangeTargetSheet(BuildContext context, HabitProvider habit, AppStrings strings) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetContext) => _ChangeTargetSheet(habitProvider: habit, strings: strings),
     );
   }
 
@@ -311,5 +335,118 @@ class _HabitCard extends StatelessWidget {
       return strings.vi ? 'Sắp đạt mục tiêu!' : 'Almost there!';
     }
     return strings.vi ? 'Đang theo dõi...' : 'Tracking...';
+  }
+}
+
+// _ChangeTargetSheet: cho phép người dùng tự chỉnh lại mục tiêu (target)
+// của từng habit bằng nút +/-, tách biệt với target được đề xuất từ khảo sát.
+class _ChangeTargetSheet extends StatefulWidget {
+  const _ChangeTargetSheet({required this.habitProvider, required this.strings});
+
+  final HabitProvider habitProvider;
+  final AppStrings strings;
+
+  @override
+  State<_ChangeTargetSheet> createState() => _ChangeTargetSheetState();
+}
+
+class _ChangeTargetSheetState extends State<_ChangeTargetSheet> {
+  late final Map<String, double> _localTargets;
+
+  @override
+  void initState() {
+    super.initState();
+    _localTargets = {
+      for (final h in widget.habitProvider.habits) h.id: h.target,
+    };
+  }
+
+  double _stepFor(String unit) {
+    switch (unit) {
+      case 'hrs':
+        return 0.5;
+      case 'min':
+        return 10;
+      default:
+        return 1;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final strings = widget.strings;
+    return Padding(
+      padding: EdgeInsets.only(
+        left: 20,
+        right: 20,
+        top: 20,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(strings.changeTargetButton, style: Theme.of(context).textTheme.titleLarge),
+          const SizedBox(height: 4),
+          Text(
+            strings.changeTargetSubtitle,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textMuted),
+          ),
+          const SizedBox(height: 16),
+          ...widget.habitProvider.habits.map((h) {
+            final step = _stepFor(h.unit);
+            final value = _localTargets[h.id] ?? h.target;
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Row(
+                children: [
+                  Text(h.icon, style: const TextStyle(fontSize: 20)),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(strings.habitTitle(h.id), style: Theme.of(context).textTheme.bodyMedium),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.remove_circle_outline, size: 20),
+                    onPressed: value > step
+                        ? () => setState(() => _localTargets[h.id] = value - step)
+                        : null,
+                  ),
+                  SizedBox(
+                    width: 56,
+                    child: Text(
+                      value % 1 == 0 ? value.round().toString() : value.toStringAsFixed(1),
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.add_circle_outline, size: 20),
+                    onPressed: () => setState(() => _localTargets[h.id] = value + step),
+                  ),
+                ],
+              ),
+            );
+          }),
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.habitsAccent,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              onPressed: () async {
+                for (final entry in _localTargets.entries) {
+                  await widget.habitProvider.setHabitTarget(entry.key, entry.value);
+                }
+                if (context.mounted) Navigator.of(context).pop();
+              },
+              child: Text(strings.changeTargetSave),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

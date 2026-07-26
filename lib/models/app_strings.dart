@@ -351,4 +351,11 @@ class AppStrings {
       ? 'Chưa có nguồn dữ liệu — cần cấp quyền xem thời gian sử dụng'
       : 'No data source yet — grant usage access to enable this';
   String get grantUsageAccess => vi ? 'Cấp quyền xem thời gian sử dụng' : 'Grant usage access';
+
+  // ---------------- Change target sheet ----------------
+  String get changeTargetButton => vi ? 'Đổi mục tiêu' : 'Change Target';
+  String get changeTargetSubtitle => vi
+      ? 'Tự chỉnh mục tiêu hằng ngày cho từng thói quen'
+      : 'Manually adjust your daily target for each habit';
+  String get changeTargetSave => vi ? 'Lưu mục tiêu' : 'Save targets';
 }

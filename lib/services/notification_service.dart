@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timezone/data/latest.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
 
@@ -68,7 +69,18 @@ class NotificationService {
     await androidPlugin?.createNotificationChannel(channel);
 
     await androidPlugin?.requestNotificationsPermission();
-    await androidPlugin?.requestExactAlarmsPermission();
+
+    // requestExactAlarmsPermission() MỞ THẲNG một màn hình Settings của hệ
+    // thống (ảnh "Chuông báo và lời nhắc") — nếu gọi lại mỗi lần app khởi
+    // động thì người dùng cứ bị đưa tới màn đó liên tục dù đã cấp/từ chối rồi
+    // trước đó. Chỉ gọi hàm này MỘT LẦN DUY NHẤT trong vòng đời cài đặt app.
+    final prefs = await SharedPreferences.getInstance();
+    const askedKey = 'pref_exact_alarm_permission_asked';
+    if (!(prefs.getBool(askedKey) ?? false)) {
+      await androidPlugin?.requestExactAlarmsPermission();
+      await prefs.setBool(askedKey, true);
+    }
+
     await notifications
         .resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>()
         ?.requestPermissions(alert: true, badge: true, sound: true);
