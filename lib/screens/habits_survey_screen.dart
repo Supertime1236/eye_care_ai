@@ -529,12 +529,25 @@ class _HabitsSurveyScreenState extends State<HabitsSurveyScreen> {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
                   onPressed: () async {
+                    final habitProvider = context.read<HabitProvider>();
+
                     final selectedTargets = Map<String, double>.fromEntries(
-                      _surveyTargetHabitIds.map((id) => MapEntry(id, _selectedTargetValues[id] ?? result.rows.firstWhere((row) => row.id == id).recommendedValue)),
+                      _surveyTargetHabitIds.map(
+                        (id) => MapEntry(
+                          id,
+                          _selectedTargetValues[id] ??
+                              result.rows
+                                  .firstWhere((row) => row.id == id)
+                                  .recommendedValue,
+                        ),
+                      ),
                     );
-                    await context.read<HabitProvider>().applySurveyTargets(selectedTargets);
-                    await context.read<HabitProvider>().markSurveyCompleted();
+
+                    await habitProvider.applySurveyTargets(selectedTargets);
+                    await habitProvider.markSurveyCompleted();
+
                     if (!context.mounted) return;
+
                     if (widget.mandatory) {
                       Navigator.of(context).pushReplacement(
                         MaterialPageRoute(builder: (_) => const MainShell()),
