@@ -1,9 +1,31 @@
+import 'dart:async';
+
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
-/// Boundary for authentication state.
-///
-/// The current application has no Firebase configuration or existing
-/// login, logout, guardian-email, or user-session flow to migrate. Keeping
-/// this provider registered establishes a single ownership point without
-/// inventing authentication behavior.
-class AuthProvider extends ChangeNotifier {}
+import '../services/auth_service.dart';
+
+/// Theo dõi trạng thái đăng nhập, dùng bởi _AppGate (main.dart) và Settings.
+class AuthProvider extends ChangeNotifier {
+  AuthProvider() {
+    _sub = AuthService.instance.authStateChanges.listen((user) {
+      _user = user;
+      notifyListeners();
+    });
+  }
+
+  StreamSubscription<User?>? _sub;
+  User? _user = AuthService.instance.currentUser;
+
+  User? get user => _user;
+  bool get isLoggedIn => _user != null;
+  String get displayName => _user?.displayName ?? _user?.email?.split('@').first ?? '';
+
+  Future<void> signOut() => AuthService.instance.signOut();
+
+  @override
+  void dispose() {
+    _sub?.cancel();
+    super.dispose();
+  }
+}

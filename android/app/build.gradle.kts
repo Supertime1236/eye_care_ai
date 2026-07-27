@@ -8,6 +8,7 @@ plugins {
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
     id("org.jetbrains.kotlin.android")
+    id("com.google.gms.google-services") // Firebase — cần file google-services.json
 }
 
 // Đọc cấu hình ký release từ android/key.properties (không commit file này lên

@@ -1,3 +1,4 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -5,10 +6,12 @@ import 'providers/auth_provider.dart';
 import 'providers/chat_provider.dart';
 import 'providers/habit_provider.dart';
 import 'providers/language_provider.dart';
+import 'providers/profile_provider.dart';
 import 'providers/reminder_provider.dart';
 import 'providers/settings_provider.dart';
 import 'providers/theme_provider.dart';
 import 'screens/habits_survey_screen.dart';
+import 'screens/login_screen.dart';
 import 'screens/main_shell.dart';
 import 'services/device_data_service.dart';
 import 'services/notification_service.dart';
@@ -16,6 +19,9 @@ import 'theme/app_theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Cần google-services.json (Android) / GoogleService-Info.plist (iOS) đã
+  // đặt đúng chỗ — xem hướng dẫn Firebase mình gửi kèm.
+  await Firebase.initializeApp();
   await NotificationService.instance.initialize();
   runApp(
     MultiProvider(
@@ -27,6 +33,10 @@ Future<void> main() async {
         ChangeNotifierProvider(create: (_) => HabitProvider()),
         ChangeNotifierProvider(create: (_) => ChatProvider()),
         ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProxyProvider<AuthProvider, ProfileProvider>(
+          create: (_) => ProfileProvider(),
+          update: (_, auth, profile) => profile!..syncFromUser(auth.user),
+        ),
       ],
       child: const EyeCareApp(),
     ),
@@ -81,7 +91,9 @@ class _AppGateState extends State<_AppGate> {
         }
         if (snapshot.data == true) {
           context.read<HabitProvider>().setSurveyCompleted(true);
-          return const MainShell();
+          // Sau khảo sát: cần đăng nhập mới vào được app chính.
+          final auth = context.watch<AuthProvider>();
+          return auth.isLoggedIn ? const MainShell() : const LoginScreen();
         }
         return const HabitsSurveyScreen(mandatory: true);
       },

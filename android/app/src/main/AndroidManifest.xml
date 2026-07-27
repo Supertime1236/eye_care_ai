@@ -14,6 +14,11 @@
     <uses-permission android:name="android.permission.health.READ_SLEEP" />
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"/>
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
+    <!-- Break Reminder: Android 13+ yêu cầu xin quyền runtime để hiện thông báo -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <!-- Break Reminder: cho phép thông báo hết giờ bật full-screen giống chuông báo thức -->
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT"/>
+    <uses-permission android:name="android.permission.VIBRATE"/>
     <application
         android:label="eye_care_ai"
         android:name="${applicationName}"

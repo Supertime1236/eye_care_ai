@@ -3,11 +3,14 @@ import 'package:provider/provider.dart';
 import '../utils/permission_helper.dart';
 
 import '../models/app_strings.dart';
+import '../providers/auth_provider.dart';
 import '../providers/language_provider.dart';
+import '../providers/profile_provider.dart';
 import '../providers/settings_provider.dart';
 import '../providers/theme_provider.dart';
 import '../theme/app_colors.dart';
 import '../widgets/shared_widgets.dart';
+import 'edit_profile_screen.dart';
 
 // SettingsScreen là màn hình cài đặt chính của ứng dụng.
 // Mục tiêu của màn hình này là cho phép người dùng thay đổi:
@@ -29,6 +32,7 @@ class SettingsScreen extends StatelessWidget {
     final theme = context.watch<ThemeProvider>();
     final language = context.watch<LanguageProvider>();
     final settings = context.watch<SettingsProvider>();
+    final profile = context.watch<ProfileProvider>();
     final strings = language.strings;
     final isDark = theme.isDarkMode;
 
@@ -40,31 +44,43 @@ class SettingsScreen extends StatelessWidget {
           Text(strings.settings, style: Theme.of(context).textTheme.headlineMedium),
           const SizedBox(height: 16),
           SectionCard(
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: 28,
-                  backgroundColor: AppColors.primaryBlue.withValues(alpha: 0.12),
-                  child: const Text('👤', style: TextStyle(fontSize: 28)),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Alex Nguyen',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      Text(
-                        'alex.nguyen@email.com',
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                    ],
+            child: InkWell(
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const EditProfileScreen()),
+              ),
+              borderRadius: BorderRadius.circular(16),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 28,
+                    backgroundColor: AppColors.primaryBlue.withValues(alpha: 0.12),
+                    backgroundImage: profile.avatarUrl != null ? NetworkImage(profile.avatarUrl!) : null,
+                    child: profile.avatarUrl == null
+                        ? Text(
+                            profile.name.isNotEmpty ? profile.name[0].toUpperCase() : '👤',
+                            style: const TextStyle(fontSize: 20, color: AppColors.primaryBlue),
+                          )
+                        : null,
                   ),
-                ),
-                Icon(Icons.edit_outlined, color: AppColors.textMuted, size: 20),
-              ],
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          profile.name.isEmpty ? '—' : profile.name,
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        Text(
+                          profile.email,
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(Icons.edit_outlined, color: AppColors.textMuted, size: 20),
+                ],
+              ),
             ),
           ),
           const SizedBox(height: 20),
@@ -203,6 +219,7 @@ class SettingsScreen extends StatelessWidget {
                   icon: '🚪',
                   title: strings.signOut,
                   color: AppColors.error,
+                  onTap: () => context.read<AuthProvider>().signOut(),
                 ),
               ],
             ),

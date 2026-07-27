@@ -74,10 +74,30 @@ class MainActivity : FlutterActivity() {
         return counts
     }
 
+    // Những package không nên tính vào "Phone Usage" giống Digital Wellbeing:
+    // chính app mình (đứng "foreground" khi mở app để xem thống kê thì không
+    // tính là "dùng điện thoại"), và các launcher/system-ui thường đứng nền
+    // trước/sau mỗi lần chuyển app nhưng người dùng không thật sự "dùng" nó.
+    private val excludedPackages = setOf(
+        packageName, // com.eyecare.eye_care_ai — chính app này
+        "com.android.systemui"
+    )
+
     // Ghép cặp MOVE_TO_FOREGROUND -> MOVE_TO_BACKGROUND (hoặc kết thúc
     // khoảng truy vấn nếu app vẫn đang mở) để tính tổng thời gian foreground
     // thật sự của từng app, kèm tên hiển thị (app label) để không cần gọi
     // thêm package_manager phía Dart.
+    //
+    // QUAN TRỌNG (lý do Phone Usage từng hiện SAI, cao hơn Digital Wellbeing
+    // thực tế): nếu người dùng khoá màn hình trong khi một app vẫn là app
+    // "foreground" gần nhất (ví dụ đang nghe nhạc/xem video rồi tắt màn
+    // hình), Android không phải lúc nào cũng bắn MOVE_TO_BACKGROUND ngay khi
+    // khoá máy — app đó có thể vẫn được tính là "đang mở" trong lúc màn hình
+    // tắt, khiến tổng thời gian bị cộng dồn nhầm cả lúc không hề nhìn màn
+    // hình. Cách xử lý: theo dõi thêm sự kiện SCREEN_INTERACTIVE /
+    // SCREEN_NON_INTERACTIVE của hệ thống — mỗi khi màn hình tắt, CẮT NGAY
+    // khoảng thời gian đang mở tại đúng thời điểm đó (coi như app đã "đóng"
+    // tạm thời), rồi mở lại mốc bắt đầu mới khi màn hình sáng lại.
     private fun getUsageBreakdown(startMillis: Long, endMillis: Long): List<Map<String, Any>> {
         if (!hasUsageAccessPermission()) return emptyList()
 
@@ -87,12 +107,24 @@ class MainActivity : FlutterActivity() {
 
         val openTimestamps = mutableMapOf<String, Long>()
         val totalMillis = mutableMapOf<String, Long>()
+        var screenOn = true // giả định màn hình đang sáng tại startMillis
+
+        fun closeAllOpenApps(atTime: Long) {
+            for ((pkg, openedAt) in openTimestamps) {
+                if (atTime > openedAt) {
+                    totalMillis[pkg] = (totalMillis[pkg] ?: 0L) + (atTime - openedAt)
+                }
+            }
+            openTimestamps.clear()
+        }
 
         while (events.hasNextEvent()) {
             events.getNextEvent(event)
             when (event.eventType) {
                 UsageEvents.Event.MOVE_TO_FOREGROUND -> {
-                    openTimestamps[event.packageName] = event.timeStamp
+                    if (screenOn) {
+                        openTimestamps[event.packageName] = event.timeStamp
+                    }
                 }
                 UsageEvents.Event.MOVE_TO_BACKGROUND -> {
                     val openedAt = openTimestamps.remove(event.packageName)
@@ -101,19 +133,28 @@ class MainActivity : FlutterActivity() {
                         totalMillis[event.packageName] = (totalMillis[event.packageName] ?: 0L) + duration
                     }
                 }
+                UsageEvents.Event.SCREEN_NON_INTERACTIVE -> {
+                    // Màn hình vừa tắt/khoá -> cắt ngay mọi app đang "mở" tại
+                    // đúng thời điểm này, không cộng dồn thêm thời gian sau đó.
+                    closeAllOpenApps(event.timeStamp)
+                    screenOn = false
+                }
+                UsageEvents.Event.SCREEN_INTERACTIVE -> {
+                    // Màn hình sáng lại -> coi như app top hiện tại (nếu có)
+                    // vừa được mở lại từ mốc này.
+                    screenOn = true
+                }
             }
         }
-        // Bất kỳ app nào còn "đang mở" (chưa có sự kiện background tương ứng
-        // trước khi hết khoảng truy vấn) -> tính tới thời điểm endMillis.
-        for ((pkg, openedAt) in openTimestamps) {
-            if (endMillis > openedAt) {
-                totalMillis[pkg] = (totalMillis[pkg] ?: 0L) + (endMillis - openedAt)
-            }
+        // Bất kỳ app nào còn "đang mở" khi hết khoảng truy vấn VÀ màn hình
+        // vẫn đang sáng lúc đó -> tính tới thời điểm endMillis.
+        if (screenOn) {
+            closeAllOpenApps(endMillis)
         }
 
         val pm = packageManager
         return totalMillis.entries
-            .filter { it.value >= 30_000 } // bỏ qua app dùng dưới 30 giây (nhiễu)
+            .filter { it.value >= 30_000 && it.key !in excludedPackages } // bỏ app dùng <30s hoặc bị loại trừ
             .sortedByDescending { it.value }
             .map { (pkg, millis) ->
                 val label = try {

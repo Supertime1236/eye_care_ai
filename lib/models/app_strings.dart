@@ -358,4 +358,23 @@ class AppStrings {
       ? 'Tự chỉnh mục tiêu hằng ngày cho từng thói quen'
       : 'Manually adjust your daily target for each habit';
   String get changeTargetSave => vi ? 'Lưu mục tiêu' : 'Save targets';
+
+  // ---------------- Auth ----------------
+  String get login => vi ? 'Đăng nhập' : 'Log in';
+  String get register => vi ? 'Đăng ký' : 'Sign up';
+  String get email => 'Email';
+  String get password => vi ? 'Mật khẩu' : 'Password';
+  String get confirmPassword => vi ? 'Xác nhận mật khẩu' : 'Confirm password';
+  String get fullName => vi ? 'Họ tên' : 'Full name';
+  String get forgotPassword => vi ? 'Quên mật khẩu?' : 'Forgot password?';
+  String get orDivider => vi ? 'hoặc' : 'or';
+  String get continueWithGoogle => vi ? 'Tiếp tục với Google' : 'Continue with Google';
+  String get noAccountYet => vi ? 'Chưa có tài khoản? Đăng ký' : "Don't have an account? Sign up";
+  String get haveAccount => vi ? 'Đã có tài khoản? Đăng nhập' : 'Already have an account? Log in';
+  String get resetEmailSent => vi ? 'Đã gửi email đặt lại mật khẩu.' : 'Password reset email sent.';
+  String get enterEmailFirst => vi ? 'Nhập email trước khi lấy lại mật khẩu.' : 'Enter your email first.';
+  String get passwordsDontMatch => vi ? 'Mật khẩu xác nhận không khớp.' : "Passwords don't match.";
+  String get requiredField => vi ? 'Bắt buộc nhập' : 'Required';
+  String get welcomeBack => vi ? 'Chào mừng quay lại' : 'Welcome back';
+  String get createAccount => vi ? 'Tạo tài khoản mới' : 'Create your account';
 }

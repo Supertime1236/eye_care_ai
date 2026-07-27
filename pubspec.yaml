@@ -49,6 +49,11 @@ dependencies:
   shared_preferences: ^2.3.3 # persists today's accumulated minutes across app restarts
   android_intent_plus: ^5.2.0 # mở thẳng màn hình cấp quyền Usage Access
 
+  # --- Đăng nhập / tài khoản ---
+  firebase_core: ^3.8.0
+  firebase_auth: ^5.3.3
+  google_sign_in: ^6.2.2
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
