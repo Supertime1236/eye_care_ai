@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "794355212425",
+    "project_id": "eye-care-ai-ecb35",
+    "storage_bucket": "eye-care-ai-ecb35.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:794355212425:android:605638c685213c779fa658",
+        "android_client_info": {
+          "package_name": "com.eyecare.eye_care_ai"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCP6jhy9tF95Nyj6MmzPEj2zJqm0H5DR3E"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

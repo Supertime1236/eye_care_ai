@@ -78,10 +78,12 @@ class MainActivity : FlutterActivity() {
     // chính app mình (đứng "foreground" khi mở app để xem thống kê thì không
     // tính là "dùng điện thoại"), và các launcher/system-ui thường đứng nền
     // trước/sau mỗi lần chuyển app nhưng người dùng không thật sự "dùng" nó.
-    private val excludedPackages = setOf(
-        packageName, // com.eyecare.eye_care_ai — chính app này
-        "com.android.systemui"
-    )
+    private val excludedPackages by lazy {
+        setOf(
+            packageName, // com.eyecare.eye_care_ai — chính app này
+            "com.android.systemui"
+        )
+    }   
 
     // Ghép cặp MOVE_TO_FOREGROUND -> MOVE_TO_BACKGROUND (hoặc kết thúc
     // khoảng truy vấn nếu app vẫn đang mở) để tính tổng thời gian foreground

@@ -11,6 +11,7 @@ import '../providers/theme_provider.dart';
 import '../theme/app_colors.dart';
 import '../widgets/shared_widgets.dart';
 import 'edit_profile_screen.dart';
+import 'settings_more_page.dart';
 
 // SettingsScreen là màn hình cài đặt chính của ứng dụng.
 // Mục tiêu của màn hình này là cho phép người dùng thay đổi:
@@ -203,11 +204,35 @@ class SettingsScreen extends StatelessWidget {
             padding: EdgeInsets.zero,
             child: Column(
               children: [
-                _MenuItem(icon: '🔒', title: strings.privacySecurity),
+                _MenuItem(
+                  icon: '🔒',
+                  title: strings.privacySecurity,
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const SettingsMorePage(initialSection: SettingsMoreSection.privacy),
+                    ),
+                  ),
+                ),
                 const Divider(height: 1, indent: 56),
-                _MenuItem(icon: '📋', title: strings.termsOfService),
+                _MenuItem(
+                  icon: '📋',
+                  title: strings.termsOfService,
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const SettingsMorePage(initialSection: SettingsMoreSection.terms),
+                    ),
+                  ),
+                ),
                 const Divider(height: 1, indent: 56),
-                _MenuItem(icon: '❓', title: strings.helpSupport),
+                _MenuItem(
+                  icon: '❓',
+                  title: strings.helpSupport,
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const SettingsMorePage(initialSection: SettingsMoreSection.help),
+                    ),
+                  ),
+                ),
                 const Divider(height: 1, indent: 56),
                 _MenuItem(
                   icon: '📊',
@@ -343,7 +368,7 @@ class _MenuItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return InkWell(
-      onTap: () {},
+      onTap: onTap,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         child: Row(

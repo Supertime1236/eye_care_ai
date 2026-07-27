@@ -61,6 +61,24 @@ class AuthService {
 
   Future<void> deleteAccount() => _auth.currentUser!.delete();
 
+  /// Đổi mật khẩu: xác thực lại bằng mật khẩu hiện tại (bắt buộc với Firebase
+  /// khi phiên đăng nhập đã cũ) rồi mới cập nhật mật khẩu mới.
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    final user = _auth.currentUser;
+    if (user == null || user.email == null) {
+      throw FirebaseAuthException(code: 'user-not-found');
+    }
+    final credential = EmailAuthProvider.credential(
+      email: user.email!,
+      password: currentPassword,
+    );
+    await user.reauthenticateWithCredential(credential);
+    await user.updatePassword(newPassword);
+  }
+
   static String errorMessage(FirebaseAuthException e, bool vi) {
     final map = {
       'invalid-email': (vi ? 'Email không hợp lệ.' : 'Invalid email.'),

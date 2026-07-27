@@ -8,6 +8,7 @@ import 'providers/habit_provider.dart';
 import 'providers/language_provider.dart';
 import 'providers/profile_provider.dart';
 import 'providers/reminder_provider.dart';
+import 'providers/settings_more_provider.dart';
 import 'providers/settings_provider.dart';
 import 'providers/theme_provider.dart';
 import 'screens/habits_survey_screen.dart';
@@ -30,6 +31,7 @@ Future<void> main() async {
         ChangeNotifierProvider(create: (_) => LanguageProvider()),
         ChangeNotifierProvider(create: (_) => ReminderProvider()),
         ChangeNotifierProvider(create: (_) => SettingsProvider()),
+        ChangeNotifierProvider(create: (_) => SettingsMoreProvider()),
         ChangeNotifierProvider(create: (_) => HabitProvider()),
         ChangeNotifierProvider(create: (_) => ChatProvider()),
         ChangeNotifierProvider(create: (_) => AuthProvider()),

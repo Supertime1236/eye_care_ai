@@ -377,4 +377,85 @@ class AppStrings {
   String get requiredField => vi ? 'Bắt buộc nhập' : 'Required';
   String get welcomeBack => vi ? 'Chào mừng quay lại' : 'Welcome back';
   String get createAccount => vi ? 'Tạo tài khoản mới' : 'Create your account';
+
+  // ---------------- Settings > More ----------------
+  String get settingsMoreTitle => vi ? 'Cài đặt thêm' : 'More';
+
+  // Privacy & Security section
+  String get sectionPrivacy => vi ? 'Quyền riêng tư' : 'Privacy';
+  String get sectionSecurity => vi ? 'Bảo mật' : 'Security';
+  String get sectionDataManagement => vi ? 'Quản lý dữ liệu' : 'Data Management';
+  String get dataCollectionTitle => vi ? 'Thu thập dữ liệu' : 'Data Collection';
+  String get dataCollectionDesc => vi
+      ? 'Cho phép ứng dụng thu thập dữ liệu sử dụng ẩn danh để cải thiện gợi ý AI.'
+      : 'Allow the app to collect anonymous usage data to improve AI recommendations.';
+  String get cloudBackupTitle => vi ? 'Sao lưu đám mây' : 'Cloud Backup';
+  String get cloudBackupDesc => vi
+      ? 'Tự động sao lưu tiến trình và hồ sơ sức khỏe mắt lên Firebase.'
+      : 'Automatically back up your progress and eye health records to Firebase.';
+  String get personalizedAiTitle => vi ? 'Phân tích AI cá nhân hóa' : 'Personalized AI Analysis';
+  String get personalizedAiDesc => vi
+      ? 'Cho phép AI phân tích thói quen sử dụng để đưa ra gợi ý cá nhân hóa.'
+      : 'Allow AI to analyze your usage habits for personalized suggestions.';
+  String get changePasswordTitle => vi ? 'Đổi mật khẩu' : 'Change Password';
+  String get biometricLoginTitle => vi ? 'Bật đăng nhập sinh trắc học' : 'Enable Biometric Login';
+  String get biometricSupportedDesc =>
+      vi ? 'Có thể dùng vân tay / Face ID trên thiết bị này' : 'Fingerprint / Face ID available on this device';
+  String get biometricUnsupportedDesc =>
+      vi ? 'Thiết bị này không hỗ trợ' : 'Not supported on this device';
+  String get twoFactorAuthTitle => vi ? 'Xác thực 2 lớp' : 'Two-Factor Authentication';
+  String get twoFactorAuthOnDesc =>
+      vi ? 'Yêu cầu xác minh qua email khi đăng nhập' : 'Email verification required at login';
+  String get twoFactorAuthOffDesc =>
+      vi ? 'Thêm bước xác minh email khi đăng nhập' : 'Adds an email verification step at login';
+  String get exportMyData => vi ? 'Xuất dữ liệu của tôi' : 'Export My Data';
+  String get exportMyDataDone =>
+      vi ? 'Dữ liệu của bạn đã sẵn sàng để tải xuống.' : 'Your data export is ready.';
+  String get downloadEyeHealthReport =>
+      vi ? 'Tải báo cáo sức khỏe mắt (PDF)' : 'Download Eye Health Report (PDF)';
+  String get deleteAllLocalData => vi ? 'Xóa toàn bộ dữ liệu cục bộ' : 'Delete All Local Data';
+  String get deleteAllLocalDataTitle =>
+      vi ? 'Xóa toàn bộ dữ liệu cục bộ?' : 'Delete all local data?';
+  String get deleteAllLocalDataDesc => vi
+      ? 'Thao tác này chỉ xóa dữ liệu đã lưu trên thiết bị này. Dữ liệu sao lưu trên đám mây không bị ảnh hưởng.'
+      : 'This clears cached progress on this device only. Cloud backups are unaffected.';
+  String get deleteAccountAction => vi ? 'Xóa tài khoản' : 'Delete Account';
+  String get deleteAccountTitle => vi ? 'Xóa tài khoản?' : 'Delete Account?';
+  String get deleteAccountDesc => vi
+      ? 'Thao tác này sẽ xóa vĩnh viễn tài khoản, hồ sơ sức khỏe mắt và toàn bộ dữ liệu liên quan. Không thể hoàn tác.'
+      : 'This will permanently delete your account, eye health records, and all associated data. This action cannot be undone.';
+  String get delete => vi ? 'Xóa' : 'Delete';
+
+  // Terms of Service section
+  String get docAppUsagePolicy => vi ? 'Chính sách sử dụng ứng dụng' : 'App Usage Policy';
+  String get docUserResponsibilities => vi ? 'Trách nhiệm người dùng' : 'User Responsibilities';
+  String get docAiDisclaimer => vi ? 'Tuyên bố miễn trừ AI' : 'AI Disclaimer';
+  String get docMedicalDisclaimer => vi ? 'Tuyên bố miễn trừ y tế' : 'Medical Disclaimer';
+  String get docDataProtectionPolicy => vi ? 'Chính sách bảo vệ dữ liệu' : 'Data Protection Policy';
+  String get docOpenSourceLicenses => vi ? 'Giấy phép mã nguồn mở' : 'Open Source Licenses';
+  String get termsVersion => vi ? 'Phiên bản điều khoản 1.0' : 'Terms Version 1.0';
+  String get termsLastUpdated => vi ? 'Cập nhật lần cuối: Tháng 7, 2026' : 'Last Updated: July 2026';
+
+  // Help & Support section
+  String get faqTitle => vi ? 'Câu hỏi thường gặp' : 'Frequently Asked Questions';
+  String get contactSupport => vi ? 'Liên hệ hỗ trợ' : 'Contact Support';
+  String get emailSupport => vi ? 'Hỗ trợ qua Email' : 'Email Support';
+  String get reportBug => vi ? 'Báo lỗi' : 'Report a Bug';
+  String get requestFeature => vi ? 'Đề xuất tính năng' : 'Request a Feature';
+  String get feedbackTitle => vi ? 'Phản hồi' : 'Feedback';
+  String get feedbackHint =>
+      vi ? 'Cho chúng tôi biết cần cải thiện gì ở Eye Care AI...' : 'Tell us how we can improve Eye Care AI...';
+  String get submitFeedback => vi ? 'Gửi phản hồi' : 'Submit Feedback';
+  String get feedbackThanks => vi ? 'Cảm ơn bạn đã phản hồi!' : 'Thanks for your feedback!';
+  String get aboutTitle => vi ? 'Giới thiệu' : 'About';
+
+  // Sign out / change password flows
+  String get signOutConfirmTitle => vi ? 'Đăng xuất?' : 'Sign Out?';
+  String get signOutConfirmDesc =>
+      vi ? 'Bạn có chắc muốn đăng xuất khỏi tài khoản không?' : 'Are you sure you want to sign out of your account?';
+  String get currentPassword => vi ? 'Mật khẩu hiện tại' : 'Current Password';
+  String get newPassword => vi ? 'Mật khẩu mới' : 'New Password';
+  String get confirmNewPassword => vi ? 'Xác nhận mật khẩu mới' : 'Confirm New Password';
+  String get updatePassword => vi ? 'Cập nhật mật khẩu' : 'Update Password';
+  String get passwordUpdated => vi ? 'Đã cập nhật mật khẩu.' : 'Password updated.';
 }
