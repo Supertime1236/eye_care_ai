@@ -61,6 +61,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(AuthService.errorMessage(e, vi))),
       );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(vi ? 'Lỗi liên kết Gmail: $e' : 'Gmail link error: $e')),
+      );
     } finally {
       if (mounted) setState(() => _linkingGoogle = false);
     }

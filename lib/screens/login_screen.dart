@@ -53,9 +53,21 @@ class _LoginScreenState extends State<LoginScreen> {
       _error = null;
     });
     try {
-      await AuthService.instance.signInWithGoogle();
+      final user = await AuthService.instance.signInWithGoogle();
+      if (user == null && mounted) {
+        // Người dùng tự đóng hộp thoại chọn tài khoản Google -> không phải lỗi.
+        setState(() => _isLoading = false);
+      }
     } on FirebaseAuthException catch (e) {
       setState(() => _error = AuthService.errorMessage(e, vi));
+    } catch (e) {
+      // QUAN TRỌNG: GoogleSignIn ném PlatformException (không phải
+      // FirebaseAuthException) khi cấu hình sai — vd thiếu SHA-1 trong
+      // Firebase Console. Trước đây lỗi này bị "nuốt" âm thầm, màn hình chỉ
+      // đứng im không phản hồi gì. Giờ hiện rõ ra để biết chính xác lỗi gì.
+      setState(() => _error = vi
+          ? 'Lỗi đăng nhập Google: $e\n(Thường do thiếu SHA-1 trong Firebase Console)'
+          : 'Google sign-in error: $e\n(Usually a missing SHA-1 in Firebase Console)');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
