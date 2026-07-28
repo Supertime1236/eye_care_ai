@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -19,17 +21,42 @@ class MainShell extends StatefulWidget {
   State<MainShell> createState() => _MainShellState();
 }
 
-class _MainShellState extends State<MainShell> {
+class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
   int _currentIndex = 0;
+  // Trước đây Phone Usage/App Usage chỉ tải MỘT LẦN lúc mở app
+  // (refreshHabitsFromDevice() gọi đúng 1 lần trong initState) — số liệu sau
+  // đó đứng yên dù người dùng vẫn đang dùng máy. Thêm timer định kỳ để số
+  // liệu tự cập nhật trong lúc app đang mở, giống Digital Wellbeing.
+  Timer? _usagePollTimer;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     final habit = context.read<HabitProvider>();
     habit.startHabitTracking();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       habit.refreshHabitsFromDevice();
     });
+    _usagePollTimer = Timer.periodic(const Duration(seconds: 60), (_) {
+      context.read<HabitProvider>().refreshHabitsFromDevice();
+    });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Mở app trở lại (từ nền) -> làm mới ngay, không chờ tick 60s tiếp theo,
+    // vì người dùng vừa dùng các app khác trong lúc app này ở nền.
+    if (state == AppLifecycleState.resumed && mounted) {
+      context.read<HabitProvider>().refreshHabitsFromDevice();
+    }
+  }
+
+  @override
+  void dispose() {
+    _usagePollTimer?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
   }
 
   static const _screens = [
@@ -83,7 +110,14 @@ class _MainShellState extends State<MainShell> {
                   return _NavButton(
                     item: item,
                     selected: selected,
-                    onTap: () => setState(() => _currentIndex = index),
+                    onTap: () {
+                      setState(() => _currentIndex = index);
+                      // Vào lại Trang chủ/Thói quen/Thống kê -> làm mới ngay
+                      // để không phải chờ chu kỳ 60s.
+                      if (index == 0 || index == 2 || index == 3) {
+                        context.read<HabitProvider>().refreshHabitsFromDevice();
+                      }
+                    },
                   );
                 }),
               ),

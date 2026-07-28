@@ -30,6 +30,13 @@ class NotificationService {
   static const _channelName = 'Eye Break Reminder';
   static const _alarmNotificationId = 1001;
 
+  // Thông báo GHIM (ongoing) hiển thị thời gian còn lại trong lúc đếm ngược
+  // đang chạy — kênh riêng vì cần im lặng (không kêu/rung mỗi lần cập nhật
+  // nội dung), khác hẳn với thông báo hết-giờ ở trên.
+  static const _ongoingChannelId = 'break_ongoing_channel';
+  static const _ongoingChannelName = 'Break Reminder Countdown';
+  static const ongoingNotificationId = 1002;
+
   // Đổi tên này nếu bạn đặt tên file âm thanh khác trong thư mục res/raw.
   static const String _customSoundResourceName = 'eye_break_alert';
 
@@ -67,6 +74,19 @@ class NotificationService {
       audioAttributesUsage: AudioAttributesUsage.alarm,
     );
     await androidPlugin?.createNotificationChannel(channel);
+
+    // Kênh riêng cho thông báo ghim đếm ngược: importance thấp, không âm
+    // thanh/rung vì được cập nhật liên tục (mỗi giây) chứ không phải bắn 1
+    // lần như thông báo hết giờ.
+    const ongoingChannel = AndroidNotificationChannel(
+      _ongoingChannelId,
+      _ongoingChannelName,
+      description: 'Hiển thị thời gian còn lại tới lần nhắc nghỉ mắt tiếp theo',
+      importance: Importance.low,
+      playSound: false,
+      enableVibration: false,
+    );
+    await androidPlugin?.createNotificationChannel(ongoingChannel);
 
     await androidPlugin?.requestNotificationsPermission();
 
@@ -146,5 +166,44 @@ class NotificationService {
 
   Future<void> cancelBreakAlarm() async {
     await notifications.cancel(_alarmNotificationId);
+  }
+
+  // Hiện/cập nhật thông báo GHIM trên thanh thông báo, hiển thị mm:ss còn
+  // lại. `ongoing: true` + `autoCancel: false` khiến người dùng không vuốt bỏ
+  // được (chỉ biến mất khi cancelOngoingCountdown() được gọi, tức là khi
+  // dừng/hết giờ) — đúng ý "ghim luôn trên thanh thông báo". `onlyAlertOnce`
+  // đảm bảo mỗi lần cập nhật không kêu/rung lại.
+  Future<void> updateOngoingCountdown({
+    required int secondsRemaining,
+    required String title,
+    required String remainingSuffix,
+  }) async {
+    await initialize();
+    final clamped = secondsRemaining < 0 ? 0 : secondsRemaining;
+    final minutes = (clamped ~/ 60).toString().padLeft(2, '0');
+    final seconds = (clamped % 60).toString().padLeft(2, '0');
+    final details = AndroidNotificationDetails(
+      _ongoingChannelId,
+      _ongoingChannelName,
+      channelDescription: 'Hiển thị thời gian còn lại tới lần nhắc nghỉ mắt tiếp theo',
+      importance: Importance.low,
+      priority: Priority.low,
+      ongoing: true,
+      autoCancel: false,
+      onlyAlertOnce: true,
+      playSound: false,
+      enableVibration: false,
+      showWhen: false,
+    );
+    await notifications.show(
+      ongoingNotificationId,
+      title,
+      '$minutes:$seconds $remainingSuffix',
+      NotificationDetails(android: details),
+    );
+  }
+
+  Future<void> cancelOngoingCountdown() async {
+    await notifications.cancel(ongoingNotificationId);
   }
 }

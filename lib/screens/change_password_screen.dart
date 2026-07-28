@@ -78,19 +78,19 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
               TextField(
                 controller: _currentController,
                 obscureText: true,
-                decoration: _decoration(strings.currentPassword),
+                decoration: _decoration(context, strings.currentPassword),
               ),
               const SizedBox(height: 14),
               TextField(
                 controller: _newController,
                 obscureText: true,
-                decoration: _decoration(strings.newPassword),
+                decoration: _decoration(context, strings.newPassword),
               ),
               const SizedBox(height: 14),
               TextField(
                 controller: _confirmController,
                 obscureText: true,
-                decoration: _decoration(strings.confirmNewPassword),
+                decoration: _decoration(context, strings.confirmNewPassword),
               ),
               if (_error != null) ...[
                 const SizedBox(height: 12),
@@ -121,10 +121,14 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     );
   }
 
-  InputDecoration _decoration(String label) => InputDecoration(
+  // Trước đây fillColor cứng AppColors.background (màu sáng cố định) khiến ô
+  // nhập luôn trắng dù app đang ở Dark Mode -> chữ tối màu trên nền tối gần
+  // như vô hình. Đổi sang màu "surface" của Theme hiện tại, tự đổi theo
+  // sáng/tối.
+  InputDecoration _decoration(BuildContext context, String label) => InputDecoration(
         labelText: label,
         filled: true,
-        fillColor: AppColors.background,
+        fillColor: Theme.of(context).colorScheme.surfaceContainerHighest,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide: BorderSide.none,

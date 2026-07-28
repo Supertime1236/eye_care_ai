@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 
 import '../providers/habit_provider.dart';
 import '../providers/language_provider.dart';
+import '../providers/profile_provider.dart';
+import '../services/device_data_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/shared_widgets.dart';
 import 'habits_survey_screen.dart';
@@ -38,11 +40,20 @@ class HomeScreen extends StatelessWidget {
                   ),
                 ],
               ),
-              CircleAvatar(
-                radius: 22,
-                backgroundColor: AppColors.primaryBlue.withValues(alpha: 0.1),
-                child: const Text('👤', style: TextStyle(fontSize: 20)),
-              ),
+              Builder(builder: (context) {
+                final profile = context.watch<ProfileProvider>();
+                return CircleAvatar(
+                  radius: 22,
+                  backgroundColor: AppColors.primaryBlue.withValues(alpha: 0.1),
+                  backgroundImage: profile.avatarUrl != null ? NetworkImage(profile.avatarUrl!) : null,
+                  child: profile.avatarUrl == null
+                      ? Text(
+                          profile.name.isNotEmpty ? profile.name[0].toUpperCase() : '👤',
+                          style: const TextStyle(fontSize: 18, color: AppColors.primaryBlue),
+                        )
+                      : null,
+                );
+              }),
             ],
           ),
           const SizedBox(height: 20),
@@ -118,55 +129,7 @@ class HomeScreen extends StatelessWidget {
           const SizedBox(height: 20),
           Text(strings.weeklyOverview, style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 12),
-          SectionCard(
-            child: SizedBox(
-              height: 120,
-              child: BarChart(
-                BarChartData(
-                  alignment: BarChartAlignment.spaceAround,
-                  maxY: 100,
-                  gridData: const FlGridData(show: false),
-                  borderData: FlBorderData(show: false),
-                  titlesData: FlTitlesData(
-                    topTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),
-                    ),
-                    rightTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),
-                    ),
-                    leftTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),
-                    ),
-                    bottomTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        getTitlesWidget: (value, meta) {
-                          const days = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
-                          final idx = value.toInt();
-                          if (idx < 0 || idx >= days.length) {
-                            return const SizedBox.shrink();
-                          }
-                          return Text(
-                            days[idx],
-                            style: Theme.of(context).textTheme.bodySmall,
-                          );
-                        },
-                      ),
-                    ),
-                  ),
-                  barGroups: [
-                    _bar(0, 72),
-                    _bar(1, 78),
-                    _bar(2, 84),
-                    _bar(3, 80),
-                    _bar(4, 88),
-                    _bar(5, 76),
-                    _bar(6, 84, isToday: true),
-                  ],
-                ),
-              ),
-            ),
-          ),
+          const _WeeklyOverviewChart(),
           const SizedBox(height: 20),
           Text(strings.aiSuggestions, style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 12),
@@ -175,6 +138,17 @@ class HomeScreen extends StatelessWidget {
             title: strings.takeBreak,
             subtitle: strings.takeBreakSubtitle,
             color: AppColors.primaryTeal,
+            bullets: strings.vi
+                ? const [
+                    ('✨', 'AI: hôm qua bạn nhìn màn hình liên tục ~47 phút, gần gấp đôi mức thường thấy.'),
+                    ('👁️', '20 phút nhìn màn hình → 20 giây nhìn xa 6 mét.'),
+                    ('🔥', 'Duy trì 3 ngày liên tiếp để mở khoá huy hiệu.'),
+                  ]
+                : const [
+                    ('✨', 'AI: yesterday you had ~47 min of continuous screen time, almost double your usual.'),
+                    ('👁️', '20 min on screen → 20 sec looking 6m away.'),
+                    ('🔥', 'Keep a 3-day streak to unlock a badge.'),
+                  ],
           ),
           const SizedBox(height: 10),
           _SuggestionCard(
@@ -182,6 +156,17 @@ class HomeScreen extends StatelessWidget {
             title: strings.moreOutdoor,
             subtitle: strings.moreOutdoorSubtitle,
             color: AppColors.warning,
+            bullets: strings.vi
+                ? const [
+                    ('✨', 'AI: ước tính thời gian ngoài trời từ hoạt động hằng ngày của bạn.'),
+                    ('🌤️', 'Ánh sáng tự nhiên giúp làm chậm tiến triển cận thị.'),
+                    ('💡', 'Kết hợp đi bộ ngoài trời với cuộc gọi hoặc giờ ăn trưa.'),
+                  ]
+                : const [
+                    ('✨', "AI estimates outdoor exposure from your daily activity."),
+                    ('🌤️', 'Natural light helps slow myopia progression.'),
+                    ('💡', 'Pair outdoor time with a call or lunch break.'),
+                  ],
           ),
           const SizedBox(height: 10),
           _SuggestionCard(
@@ -189,32 +174,20 @@ class HomeScreen extends StatelessWidget {
             title: strings.improveSleep,
             subtitle: strings.improveSleepSubtitle,
             color: AppColors.testAccent,
+            bullets: strings.vi
+                ? const [
+                    ('✨', 'AI: tuần này màn hình chỉ tắt trước giờ ngủ trung bình 11 phút.'),
+                    ('🌙', 'Nên để màn hình nghỉ ít nhất 30 phút trước khi ngủ.'),
+                    ('⏰', 'Mục tiêu: 7-8 giờ ngủ mỗi đêm.'),
+                  ]
+                : const [
+                    ('✨', 'AI: your screens were on until 11 min before bed on average this week.'),
+                    ('🌙', 'Aim for at least 30 screen-free minutes before bed.'),
+                    ('⏰', 'Target: 7-8 hours of sleep per night.'),
+                  ],
           ),
         ],
       ),
-    );
-  }
-
-  BarChartGroupData _bar(int x, double y, {bool isToday = false}) {
-    return BarChartGroupData(
-      x: x,
-      barRods: [
-        BarChartRodData(
-          toY: y,
-          width: 18,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
-          gradient: LinearGradient(
-            begin: Alignment.bottomCenter,
-            end: Alignment.topCenter,
-            colors: isToday
-                ? [AppColors.primaryBlue, AppColors.primaryTeal]
-                : [
-                    AppColors.primaryBlue.withValues(alpha: 0.4),
-                    AppColors.primaryTeal.withValues(alpha: 0.4),
-                  ],
-          ),
-        ),
-      ],
     );
   }
 }
@@ -328,41 +301,196 @@ class _SuggestionCard extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.color,
+    required this.bullets,
   });
 
   final String icon;
   final String title;
   final String subtitle;
   final Color color;
+  // Các gợi ý rút gọn (icon + vài chữ) hiện khi mở chi tiết — thay cho đoạn
+  // văn dài, đúng tinh thần "tóm gọn bằng phương tiện phi ngôn ngữ".
+  final List<(String, String)> bullets;
 
   @override
   Widget build(BuildContext context) {
     return SectionCard(
-      child: Row(
-        children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () => _showDetail(context),
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              alignment: Alignment.center,
+              child: Text(icon, style: const TextStyle(fontSize: 22)),
             ),
-            alignment: Alignment.center,
-            child: Text(icon, style: const TextStyle(fontSize: 22)),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: Theme.of(context).textTheme.titleSmall),
-                const SizedBox(height: 2),
-                Text(subtitle, style: Theme.of(context).textTheme.bodySmall),
-              ],
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: Theme.of(context).textTheme.titleSmall),
+                  const SizedBox(height: 2),
+                  Text(subtitle, style: Theme.of(context).textTheme.bodySmall),
+                ],
+              ),
             ),
+            Icon(Icons.chevron_right, color: AppColors.textMuted),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showDetail(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      showDragHandle: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetContext) {
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(20, 4, 20, 28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(color: color.withValues(alpha: 0.12), shape: BoxShape.circle),
+                    alignment: Alignment.center,
+                    child: Text(icon, style: const TextStyle(fontSize: 24)),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Text(title, style: Theme.of(sheetContext).textTheme.titleMedium),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 18),
+              for (final b in bullets)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(b.$1, style: const TextStyle(fontSize: 18)),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(b.$2, style: Theme.of(sheetContext).textTheme.bodyMedium),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
           ),
-          Icon(Icons.chevron_right, color: AppColors.textMuted),
-        ],
+        );
+      },
+    );
+  }
+}
+
+// Trước đây biểu đồ "Tổng quan tuần" ở Trang chủ dùng 7 số cứng
+// (72,78,84,80,88,76,84) — không phản ánh dữ liệu thật của người dùng.
+// Widget này tự tải snapshot điểm sức khỏe mắt của 7 ngày gần nhất từ
+// DeviceDataService (cùng nguồn dữ liệu với biểu đồ Tuần ở màn Statistics),
+// ngày nào chưa có dữ liệu thì vẽ cột rất thấp/mờ thay vì bịa số.
+class _WeeklyOverviewChart extends StatefulWidget {
+  const _WeeklyOverviewChart();
+
+  @override
+  State<_WeeklyOverviewChart> createState() => _WeeklyOverviewChartState();
+}
+
+class _WeeklyOverviewChartState extends State<_WeeklyOverviewChart> {
+  List<({int score, double screenHours, double sleepHours})?>? _snapshots;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final snapshots = await DeviceDataService.instance.loadCurrentWeekSnapshots();
+    if (!mounted) return;
+    setState(() => _snapshots = snapshots);
+  }
+
+  BarChartGroupData _bar(int x, double? y, {bool isToday = false}) {
+    final value = y ?? 4.0; // chưa có dữ liệu -> cột rất thấp thay vì bịa số
+    return BarChartGroupData(
+      x: x,
+      barRods: [
+        BarChartRodData(
+          toY: value,
+          width: 18,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
+          gradient: LinearGradient(
+            begin: Alignment.bottomCenter,
+            end: Alignment.topCenter,
+            colors: y == null
+                ? [AppColors.border, AppColors.border]
+                : isToday
+                    ? [AppColors.primaryBlue, AppColors.primaryTeal]
+                    : [
+                        AppColors.primaryBlue.withValues(alpha: 0.4),
+                        AppColors.primaryTeal.withValues(alpha: 0.4),
+                      ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final snapshots = _snapshots;
+    final today = DateTime.now().weekday - 1; // 0 = thứ 2 ... 6 = chủ nhật
+
+    return SectionCard(
+      child: SizedBox(
+        height: 120,
+        child: snapshots == null
+            ? const Center(child: CircularProgressIndicator(strokeWidth: 2))
+            : BarChart(
+                BarChartData(
+                  alignment: BarChartAlignment.spaceAround,
+                  maxY: 100,
+                  gridData: const FlGridData(show: false),
+                  borderData: FlBorderData(show: false),
+                  titlesData: FlTitlesData(
+                    topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    bottomTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        getTitlesWidget: (value, meta) {
+                          const days = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
+                          final idx = value.toInt();
+                          if (idx < 0 || idx >= days.length) return const SizedBox.shrink();
+                          return Text(days[idx], style: Theme.of(context).textTheme.bodySmall);
+                        },
+                      ),
+                    ),
+                  ),
+                  barGroups: List.generate(7, (i) {
+                    final score = (i < snapshots.length ? snapshots[i]?.score.toDouble() : null);
+                    return _bar(i, score, isToday: i == today);
+                  }),
+                ),
+              ),
       ),
     );
   }

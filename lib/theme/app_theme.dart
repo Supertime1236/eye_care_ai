@@ -7,8 +7,8 @@ class AppTheme {
   AppTheme._();
 
   static ThemeData light() {
-    final heading = GoogleFonts.plusJakartaSansTextTheme();
-    final body = GoogleFonts.dmSansTextTheme();
+    final heading = GoogleFonts.beVietnamProTextTheme();
+    final body = GoogleFonts.beVietnamProTextTheme();
 
     return ThemeData(
       useMaterial3: true,
@@ -78,7 +78,7 @@ class AppTheme {
         scrolledUnderElevation: 0,
         backgroundColor: AppColors.background,
         foregroundColor: AppColors.textPrimary,
-        titleTextStyle: GoogleFonts.plusJakartaSans(
+        titleTextStyle: GoogleFonts.beVietnamPro(
           fontSize: 18,
           fontWeight: FontWeight.w700,
           color: AppColors.textPrimary,
@@ -97,8 +97,8 @@ class AppTheme {
   }
 
   static ThemeData dark() {
-    final heading = GoogleFonts.plusJakartaSansTextTheme();
-    final body = GoogleFonts.dmSansTextTheme();
+    final heading = GoogleFonts.beVietnamProTextTheme();
+    final body = GoogleFonts.beVietnamProTextTheme();
 
     return ThemeData(
       useMaterial3: true,
@@ -169,7 +169,7 @@ class AppTheme {
         scrolledUnderElevation: 0,
         backgroundColor: AppColors.darkBackground,
         foregroundColor: Colors.white,
-        titleTextStyle: GoogleFonts.plusJakartaSans(
+        titleTextStyle: GoogleFonts.beVietnamPro(
           fontSize: 18,
           fontWeight: FontWeight.w700,
           color: Colors.white,

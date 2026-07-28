@@ -89,6 +89,7 @@ class _EyeBreakScreenState extends State<EyeBreakScreen> with WidgetsBindingObse
         _secondsRemaining = secondsLeft;
         _scheduleAlarmFor(endAt);
         _startCountdown(reminder);
+        _updateOngoingNotification();
       } else {
         _secondsRemaining = 0;
         _breakPromptShowing = true;
@@ -106,7 +107,19 @@ class _EyeBreakScreenState extends State<EyeBreakScreen> with WidgetsBindingObse
     _saveReminderEnd(reminder.reminderMinutes, endAt);
     _scheduleAlarmFor(endAt);
     _startCountdown(reminder);
+    _updateOngoingNotification();
     setState(() {});
+  }
+
+  // Cập nhật nội dung thông báo ghim với số giây còn lại hiện tại.
+  void _updateOngoingNotification() {
+    if (!mounted) return;
+    final strings = context.read<LanguageProvider>().strings;
+    NotificationService.instance.updateOngoingCountdown(
+      secondsRemaining: _secondsRemaining,
+      title: strings.breakNotificationTitle,
+      remainingSuffix: strings.breakNotificationRemaining,
+    );
   }
 
   // Lên lịch thông báo hệ thống cho đúng thời điểm hết giờ — sẽ tự bắn kể cả
@@ -138,6 +151,7 @@ class _EyeBreakScreenState extends State<EyeBreakScreen> with WidgetsBindingObse
           // giây — bắn thêm một thông báo tức thì để chắc chắn người dùng
           // thấy ngay, đồng thời huỷ bản đã lên lịch để tránh trùng lặp.
           NotificationService.instance.cancelBreakAlarm();
+          NotificationService.instance.cancelOngoingCountdown();
           NotificationService.instance.showInstantNotification(
             title: context.read<LanguageProvider>().strings.eyeBreakTimeUp,
             body: context.read<LanguageProvider>().strings.eyeBreakLookAway,
@@ -145,6 +159,9 @@ class _EyeBreakScreenState extends State<EyeBreakScreen> with WidgetsBindingObse
           );
         }
       });
+      if (_secondsRemaining > 0) {
+        _updateOngoingNotification();
+      }
     });
   }
 
@@ -154,6 +171,7 @@ class _EyeBreakScreenState extends State<EyeBreakScreen> with WidgetsBindingObse
     reminder.toggleEyeBreakReminder(false);
     DeviceDataService.instance.clearBreakReminderEnd();
     NotificationService.instance.cancelBreakAlarm();
+    NotificationService.instance.cancelOngoingCountdown();
     setState(() {
       _secondsRemaining = 0;
       _breakPromptShowing = false;

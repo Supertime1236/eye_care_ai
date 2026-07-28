@@ -59,8 +59,12 @@ class _ContactButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Trước đây nền cứng AppColors.background (màu sáng) + chữ không set màu
+    // tường minh -> ở Dark Mode nút hiện nền sáng/chữ tối gần như không đọc
+    // được. Đổi sang màu surface + màu chữ mặc định của Theme hiện tại.
+    final onSurface = Theme.of(context).colorScheme.onSurface;
     return Material(
-      color: AppColors.background,
+      color: Theme.of(context).colorScheme.surfaceContainerHighest,
       borderRadius: BorderRadius.circular(14),
       child: InkWell(
         borderRadius: BorderRadius.circular(14),
@@ -71,9 +75,12 @@ class _ContactButton extends StatelessWidget {
             children: [
               Icon(icon, size: 19, color: Theme.of(context).colorScheme.primary),
               const SizedBox(width: 12),
-              Text(label, style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14.5)),
+              Text(
+                label,
+                style: TextStyle(fontWeight: FontWeight.w500, fontSize: 14.5, color: onSurface),
+              ),
               const Spacer(),
-              const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted),
+              Icon(Icons.chevron_right_rounded, color: onSurface.withValues(alpha: 0.4)),
             ],
           ),
         ),
@@ -97,6 +104,7 @@ class _AboutGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final onSurface = Theme.of(context).colorScheme.onSurface;
     return Wrap(
       spacing: 8,
       runSpacing: 8,
@@ -105,7 +113,7 @@ class _AboutGrid extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
-              color: AppColors.background,
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
               borderRadius: BorderRadius.circular(12),
             ),
             constraints: const BoxConstraints(minWidth: 140),
@@ -114,9 +122,9 @@ class _AboutGrid extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(item.key,
-                    style: const TextStyle(fontSize: 11, color: AppColors.textMuted, fontWeight: FontWeight.w600)),
+                    style: TextStyle(fontSize: 11, color: onSurface.withValues(alpha: 0.6), fontWeight: FontWeight.w600)),
                 const SizedBox(height: 2),
-                Text(item.value, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w500)),
+                Text(item.value, style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w500, color: onSurface)),
               ],
             ),
           ),

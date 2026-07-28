@@ -50,7 +50,7 @@ class _FeedbackFormState extends State<FeedbackForm> {
           decoration: InputDecoration(
             hintText: strings.feedbackHint,
             filled: true,
-            fillColor: AppColors.background,
+            fillColor: Theme.of(context).colorScheme.surfaceContainerHighest,
             contentPadding: const EdgeInsets.all(14),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),

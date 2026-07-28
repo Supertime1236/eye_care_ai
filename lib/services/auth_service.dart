@@ -43,6 +43,41 @@ class AuthService {
     return _auth.sendPasswordResetEmail(email: email);
   }
 
+  /// Liên kết tài khoản Google vào user ĐANG đăng nhập (email/password...).
+  /// Trước đây gọi thẳng signInWithCredential nên sẽ ĐỔI HẲN sang một phiên
+  /// đăng nhập Google mới thay vì gắn vào tài khoản hiện tại — đó là lý do
+  /// sau khi "đăng nhập Gmail" xong app vẫn không hiện đúng vì currentUser đã
+  /// bị tráo, provider/email cũ bị mất, có lúc còn văng lỗi
+  /// credential-already-in-use nếu email Google trùng tài khoản khác.
+  Future<User?> linkGoogleAccount() async {
+    final googleUser = await _googleSignIn.signIn();
+    if (googleUser == null) return null;
+    final googleAuth = await googleUser.authentication;
+    final credential = GoogleAuthProvider.credential(
+      accessToken: googleAuth.accessToken,
+      idToken: googleAuth.idToken,
+    );
+
+    final current = _auth.currentUser;
+    if (current != null) {
+      try {
+        final result = await current.linkWithCredential(credential);
+        return result.user;
+      } on FirebaseAuthException catch (e) {
+        if (e.code == 'credential-already-in-use' || e.code == 'provider-already-linked') {
+          // Tài khoản Google này đã tồn tại/đã liên kết sẵn ở nơi khác ->
+          // đăng nhập thẳng vào tài khoản Google đó.
+          final userCredential = await _auth.signInWithCredential(credential);
+          return userCredential.user;
+        }
+        rethrow;
+      }
+    }
+
+    final userCredential = await _auth.signInWithCredential(credential);
+    return userCredential.user;
+  }
+
   Future<User?> signInWithGoogle() async {
     final googleUser = await _googleSignIn.signIn();
     if (googleUser == null) return null;

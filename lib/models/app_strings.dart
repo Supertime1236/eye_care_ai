@@ -112,6 +112,8 @@ class AppStrings {
   String get eyeBreakStart => vi ? 'Bắt đầu nhắc nghỉ mắt' : 'Start reminding';
   String get eyeBreakStop => vi ? 'Dừng nhắc' : 'Stop reminding';
   String get eyeBreakNextIn => vi ? 'Lần nhắc tiếp theo sau' : 'Next reminder in';
+  String get breakNotificationTitle => vi ? 'Đang đếm giờ nghỉ mắt' : 'Eye break countdown';
+  String get breakNotificationRemaining => vi ? 'còn lại' : 'remaining';
   String get eyeBreakTimeUp => vi ? 'Đến giờ nghỉ mắt rồi!' : 'Time for an eye break!';
   String get eyeBreakLookAway =>
       vi ? 'Nhìn vào một vật cách xa khoảng 6 mét' : 'Look at something about 20 feet away';

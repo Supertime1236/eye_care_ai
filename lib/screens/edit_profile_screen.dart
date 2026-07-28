@@ -48,8 +48,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   Future<void> _linkGoogleAccount(bool vi) async {
     setState(() => _linkingGoogle = true);
     try {
-      await AuthService.instance.signInWithGoogle();
+      await AuthService.instance.linkGoogleAccount();
       if (!mounted) return;
+      // Không chờ authStateChanges stream (có độ trễ) -> đồng bộ ngay để nút
+      // và ô email đổi trạng thái tức thì.
+      context.read<ProfileProvider>().refresh();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(vi ? 'Đã liên kết Gmail!' : 'Gmail linked!')),
       );
@@ -61,6 +64,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     } finally {
       if (mounted) setState(() => _linkingGoogle = false);
     }
+  }
+
+  Future<void> _signOut() async {
+    await AuthService.instance.signOut();
+    if (!mounted) return;
+    Navigator.of(context).popUntil((route) => route.isFirst);
   }
 
   @override
@@ -150,18 +159,31 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 const SizedBox(height: 12),
                 SizedBox(
                   width: double.infinity,
-                  child: OutlinedButton.icon(
-                    onPressed: _linkingGoogle ? null : () => _linkGoogleAccount(strings.vi),
-                    icon: _linkingGoogle
-                        ? const SizedBox(
-                            height: 16,
-                            width: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const GoogleGBadge(size: 18),
-                    label: Text(strings.vi ? 'Đăng nhập bằng Gmail' : 'Sign in with Gmail'),
-                    style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14)),
-                  ),
+                  child: profile.isGoogleLinked
+                      ? OutlinedButton.icon(
+                          onPressed: _signOut,
+                          icon: const Icon(Icons.logout, size: 18, color: AppColors.error),
+                          label: Text(
+                            strings.vi ? 'Đăng xuất' : 'Sign out',
+                            style: const TextStyle(color: AppColors.error),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            side: const BorderSide(color: AppColors.error),
+                          ),
+                        )
+                      : OutlinedButton.icon(
+                          onPressed: _linkingGoogle ? null : () => _linkGoogleAccount(strings.vi),
+                          icon: _linkingGoogle
+                              ? const SizedBox(
+                                  height: 16,
+                                  width: 16,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : const GoogleGBadge(size: 18),
+                          label: Text(strings.vi ? 'Đăng nhập bằng Gmail' : 'Sign in with Gmail'),
+                          style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14)),
+                        ),
                 ),
               ],
             ),

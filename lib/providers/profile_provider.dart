@@ -14,14 +14,33 @@ class ProfileProvider extends ChangeNotifier {
   String? get avatarUrl => _avatarUrl;
   bool get isSaving => _isSaving;
 
+  // Tài khoản Google đã được liên kết với user hiện tại hay chưa — dựa vào
+  // providerData thực tế (không suy ra từ "email có rỗng hay không", vì user
+  // đăng ký bằng email/password vẫn có email dù chưa liên kết Gmail).
+  bool get isGoogleLinked =>
+      FirebaseAuth.instance.currentUser?.providerData.any((p) => p.providerId == 'google.com') ??
+      false;
+
   /// Gọi lại mỗi khi AuthProvider đổi user (đăng nhập/đăng xuất/đổi tên).
   void syncFromUser(User? user) {
-    if (user == null) return;
+    if (user == null) {
+      _name = '';
+      _email = '';
+      _avatarUrl = null;
+      notifyListeners();
+      return;
+    }
     _name = user.displayName ?? user.email?.split('@').first ?? '';
     _email = user.email ?? '';
     _avatarUrl = user.photoURL;
     notifyListeners();
   }
+
+  /// Đồng bộ ngay lập tức từ FirebaseAuth.currentUser — dùng ngay sau một
+  /// thao tác đăng nhập/liên kết thủ công (link Google...) để không phải chờ
+  /// tới lần phát tiếp theo của authStateChanges stream, vốn có thể có độ
+  /// trễ nhỏ khiến UI hiện sai trạng thái trong giây lát.
+  void refresh() => syncFromUser(FirebaseAuth.instance.currentUser);
 
   Future<bool> saveProfile({required String name}) async {
     final user = FirebaseAuth.instance.currentUser;
