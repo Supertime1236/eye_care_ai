@@ -79,9 +79,21 @@ class MainActivity : FlutterActivity() {
     // tính là "dùng điện thoại"), và các launcher/system-ui thường đứng nền
     // trước/sau mỗi lần chuyển app nhưng người dùng không thật sự "dùng" nó.
     private val excludedPackages by lazy {
-        setOf(
+        val launcherPackage = try {
+            val intent = android.content.Intent(android.content.Intent.ACTION_MAIN)
+            intent.addCategory(android.content.Intent.CATEGORY_HOME)
+            packageManager.resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY)
+                ?.activityInfo?.packageName
+        } catch (e: Exception) {
+            null
+        }
+        // Digital Wellbeing của Google KHÔNG tính thời gian ở màn hình chính
+        // (launcher) vào tổng screen-time — loại trừ tương tự để số liệu sát
+        // hơn với Digital Wellbeing.
+        setOfNotNull(
             packageName, // com.eyecare.eye_care_ai — chính app này
-            "com.android.systemui"
+            "com.android.systemui",
+            launcherPackage,
         )
     }   
 

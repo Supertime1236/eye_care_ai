@@ -1,6 +1,7 @@
 // AppStrings chứa tất cả các chuỗi văn bản hiển thị trong ứng dụng.
 // File này giúp tách riêng phần nội dung hiển thị khỏi logic, nên bạn không cần sửa UI khi thay đổi text.
 //
+import '../providers/theme_provider.dart';
 // Cách hoạt động:
 // - LanguageProvider tạo AppStrings dựa trên giá trị isVietnamese.
 // - Các màn hình lấy strings từ LanguageProvider.
@@ -49,6 +50,18 @@ class AppStrings {
   // Phần này bao gồm các nhãn cho màn hình cài đặt và lựa chọn người dùng.
   String get preferences => vi ? 'Tùy chọn' : 'Preferences';
   String get darkMode => vi ? 'Chế độ tối' : 'Dark Mode';
+  String get themeLabel => vi ? 'Giao diện' : 'Theme';
+  String get themeSubtitle => vi ? 'Sáng, tối hoặc theo máy' : 'Light, dark, or match device';
+  String themePreferenceLabel(AppThemePreference pref) {
+    switch (pref) {
+      case AppThemePreference.light:
+        return vi ? 'Sáng' : 'Light';
+      case AppThemePreference.dark:
+        return vi ? 'Tối' : 'Dark';
+      case AppThemePreference.system:
+        return vi ? 'Theo hệ thống' : 'System';
+    }
+  }
   String get metricUnits => vi ? 'Đơn vị mét' : 'Metric Units';
   String get imperialUnits => vi ? 'Đơn vị Anh' : 'Imperial Units';
   String get metricUnitsSubtitle => vi ? 'Xem centimet và giờ' : 'Centimeters, hours';

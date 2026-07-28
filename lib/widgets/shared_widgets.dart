@@ -178,7 +178,39 @@ class _AnimatedProgressBarState extends State<AnimatedProgressBar>
   }
 }
 
-class SectionCard extends StatelessWidget {
+// Icon "G" nhiều màu kiểu Google, dùng thay cho Icons.g_mobiledata (nhìn như
+// icon bàn phím số, không giống logo Google).
+class GoogleGBadge extends StatelessWidget {
+  const GoogleGBadge({super.key, this.size = 20});
+
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: size,
+      height: size,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Container(
+            decoration: const BoxDecoration(shape: BoxShape.circle, color: Colors.white),
+          ),
+          Text(
+            'G',
+            style: TextStyle(
+              fontSize: size * 0.75,
+              fontWeight: FontWeight.w800,
+              color: const Color(0xFF4285F4),
+              height: 1,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+  class SectionCard extends StatelessWidget {
   const SectionCard({
     super.key,
     required this.child,
@@ -195,6 +227,7 @@ class SectionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Material(
       color: color ?? (isDark ? AppColors.darkSurface : AppColors.surface),
       borderRadius: BorderRadius.circular(16),
@@ -204,7 +237,8 @@ class SectionCard extends StatelessWidget {
           color: Colors.transparent,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: borderColor ?? (isDark ? AppColors.darkBorder : AppColors.border),
+            color: borderColor ??
+                (isDark ? AppColors.darkBorder : AppColors.border),
           ),
           boxShadow: isDark
               ? null

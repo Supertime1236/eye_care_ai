@@ -406,6 +406,9 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
 // _AppUsageBreakdownCard: biểu đồ tròn phân chia thời gian dùng máy hôm nay
 // theo TỪNG APP (tổng thời gian hiện ở chính giữa). Bấm vào một lát cắt để
 // xem chi tiết thời gian đã dùng app đó.
+//
+// Đọc từ HabitProvider.appUsageBreakdown (dữ liệu CHUNG với Trang chủ) thay
+// vì tự query native riêng — đảm bảo số giờ ở đây luôn khớp với Trang chủ.
 class _AppUsageBreakdownCard extends StatefulWidget {
   const _AppUsageBreakdownCard();
 
@@ -414,31 +417,24 @@ class _AppUsageBreakdownCard extends StatefulWidget {
 }
 
 class _AppUsageBreakdownCardState extends State<_AppUsageBreakdownCard> {
-  late Future<List<AppUsageBreakdownEntry>> _future;
   int? _selectedIndex;
 
+  // Bảng màu tương phản rõ ràng (Material categorical palette) — tránh 2 lát
+  // liền kề trông giống hệt nhau như trước.
   static const _sliceColors = [
-    AppColors.statsAccent,
-    AppColors.habitsAccent,
-    AppColors.homeAccent,
-    AppColors.primaryTeal,
-    AppColors.warning,
-    AppColors.chatAccent,
-    AppColors.testAccent,
-    AppColors.primaryBlue,
+    Color(0xFF3B82F6), // blue
+    Color(0xFFEF4444), // red
+    Color(0xFF22C55E), // green
+    Color(0xFFF97316), // orange
+    Color(0xFFA855F7), // purple
+    Color(0xFFEC4899), // pink
+    Color(0xFF14B8A6), // teal
+    Color(0xFFEAB308), // yellow
   ];
 
-  @override
-  void initState() {
-    super.initState();
-    _future = DeviceDataService.instance.getAppUsageBreakdownToday();
-  }
-
   Future<void> _refresh() async {
-    setState(() {
-      _selectedIndex = null;
-      _future = DeviceDataService.instance.getAppUsageBreakdownToday();
-    });
+    setState(() => _selectedIndex = null);
+    await context.read<HabitProvider>().refreshHabitsFromDevice();
   }
 
   String _formatDuration(Duration d, bool vi) {
@@ -452,6 +448,7 @@ class _AppUsageBreakdownCardState extends State<_AppUsageBreakdownCard> {
   @override
   Widget build(BuildContext context) {
     final strings = context.watch<LanguageProvider>().strings;
+    final allEntries = context.watch<HabitProvider>().appUsageBreakdown;
 
     return SectionCard(
       child: Column(
@@ -469,16 +466,8 @@ class _AppUsageBreakdownCardState extends State<_AppUsageBreakdownCard> {
               ),
             ],
           ),
-          FutureBuilder<List<AppUsageBreakdownEntry>>(
-            future: _future,
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 24),
-                  child: Center(child: CircularProgressIndicator()),
-                );
-              }
-              final allEntries = snapshot.data ?? [];
+          Builder(
+            builder: (context) {
               if (allEntries.isEmpty) {
                 return Padding(
                   padding: const EdgeInsets.symmetric(vertical: 24),

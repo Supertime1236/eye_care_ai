@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../providers/language_provider.dart';
 import '../services/auth_service.dart';
 import '../theme/app_colors.dart';
+import '../widgets/shared_widgets.dart';
 import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -170,7 +171,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(height: 12),
                   OutlinedButton.icon(
                     onPressed: _isLoading ? null : () => _signInWithGoogle(strings.vi),
-                    icon: const Icon(Icons.g_mobiledata, size: 28),
+                    icon: const GoogleGBadge(size: 20),
                     label: Text(strings.continueWithGoogle),
                     style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14)),
                   ),

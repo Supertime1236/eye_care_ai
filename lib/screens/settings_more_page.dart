@@ -51,13 +51,10 @@ class _SettingsMorePageState extends State<SettingsMorePage> {
   Widget build(BuildContext context) {
     final strings = context.watch<LanguageProvider>().strings;
     return Scaffold(
-      backgroundColor: AppColors.background,
       appBar: AppBar(
         title: Text(strings.settingsMoreTitle),
-        backgroundColor: AppColors.background,
         elevation: 0,
         scrolledUnderElevation: 0,
-        foregroundColor: AppColors.textPrimary,
         centerTitle: false,
       ),
       body: SingleChildScrollView(

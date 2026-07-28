@@ -103,6 +103,12 @@ class HabitProvider extends ChangeNotifier {
   bool hasCustomHabitTargets = false;
   bool surveyCompleted = false;
 
+  // Danh sách dùng chung cho Trang chủ + Thống kê — CHỈ fetch 1 lần mỗi khi
+  // refreshHabitsFromDevice() chạy, để 2 màn hình luôn hiện CÙNG MỘT con số
+  // (trước đây Thống kê tự fetch riêng, dễ lệch với Trang chủ do khác thời
+  // điểm truy vấn).
+  List<AppUsageBreakdownEntry> appUsageBreakdown = [];
+
   int get eyeHealthScore => habitsCompletionPercent;
   double get screenTimeHours => habits.firstWhere((h) => h.id == 'phone').current;
   double get outdoorHours => habits.firstWhere((h) => h.id == 'outdoor').current / 60;
@@ -152,16 +158,25 @@ class HabitProvider extends ChangeNotifier {
     // là lý do trước đây trang chủ đôi khi mãi hiện 0 cho tới khi người dùng
     // chuyển sang tab khác rồi quay lại (lúc đó refresh mới có cơ hội chạy
     // lại và may mắn không bị treo).
+    //
+    // QUAN TRỌNG: getAppUsageBreakdownToday() chỉ gọi Ở ĐÂY, MỘT LẦN DUY
+    // NHẤT — Trang chủ và Thống kê đều đọc lại cùng kết quả này (appUsageBreakdown)
+    // thay vì mỗi màn hình tự query native riêng, vốn là lý do 2 nơi từng
+    // hiện số giờ khác nhau (query ở 2 thời điểm khác nhau).
     final results = await Future.wait([
       service.getReadingMinutesToday().timeout(const Duration(seconds: 6), onTimeout: () => 0),
-      service.getPhoneUsageHours().timeout(const Duration(seconds: 6), onTimeout: () => null),
+      service.getAppUsageBreakdownToday().timeout(const Duration(seconds: 6), onTimeout: () => <AppUsageBreakdownEntry>[]),
       service.getSleepHours().timeout(const Duration(seconds: 6), onTimeout: () => null),
       service.getOutdoorMinutesToday().timeout(const Duration(seconds: 6), onTimeout: () => 0),
       service.getEyeBreaksToday().timeout(const Duration(seconds: 6), onTimeout: () => 0),
     ]);
 
+    appUsageBreakdown = results[1] as List<AppUsageBreakdownEntry>;
+    final totalUsageSeconds = appUsageBreakdown.fold<int>(0, (sum, e) => sum + e.usage.inSeconds);
+    final phoneHours = appUsageBreakdown.isEmpty ? null : totalUsageSeconds / 3600.0;
+
     _applyHabitValue('reading', results[0] as double?);
-    _applyHabitValue('phone', results[1] as double?);
+    _applyHabitValue('phone', phoneHours);
     _applyHabitValue('sleep', results[2] as double?);
     _applyHabitValue('outdoor', results[3] as double?);
     final breaks = results[4] as int;

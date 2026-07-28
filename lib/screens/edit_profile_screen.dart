@@ -1,8 +1,10 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/language_provider.dart';
 import '../providers/profile_provider.dart';
+import '../services/auth_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/shared_widgets.dart';
 
@@ -14,19 +16,24 @@ class EditProfileScreen extends StatefulWidget {
 }
 
 class _EditProfileScreenState extends State<EditProfileScreen> {
-  late final TextEditingController _nameController;
+  final _nameController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
-
-  @override
-  void initState() {
-    super.initState();
-    _nameController = TextEditingController(text: context.read<ProfileProvider>().name);
-  }
+  // Đồng bộ text field với ProfileProvider MỖI LẦN build (không chỉ 1 lần ở
+  // initState) — trước đây nếu Firebase chưa kịp trả dữ liệu lúc mở màn hình
+  // này thì field mãi trống, không tự cập nhật khi dữ liệu về sau đó.
+  String? _lastSyncedName;
+  bool _linkingGoogle = false;
 
   @override
   void dispose() {
     _nameController.dispose();
     super.dispose();
+  }
+
+  void _syncNameField(String name) {
+    if (_lastSyncedName == name) return;
+    _lastSyncedName = name;
+    _nameController.text = name;
   }
 
   Future<void> _save(String successMsg, String failMsg) async {
@@ -38,10 +45,29 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     if (ok) Navigator.of(context).pop();
   }
 
+  Future<void> _linkGoogleAccount(bool vi) async {
+    setState(() => _linkingGoogle = true);
+    try {
+      await AuthService.instance.signInWithGoogle();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(vi ? 'Đã liên kết Gmail!' : 'Gmail linked!')),
+      );
+    } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(AuthService.errorMessage(e, vi))),
+      );
+    } finally {
+      if (mounted) setState(() => _linkingGoogle = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final profile = context.watch<ProfileProvider>();
     final strings = context.watch<LanguageProvider>().strings;
+    _syncNameField(profile.name);
 
     return Scaffold(
       appBar: AppBar(title: Text(strings.vi ? 'Chỉnh sửa hồ sơ' : 'Edit Profile')),
@@ -78,10 +104,22 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 SectionCard(
                   child: Row(
                     children: [
+                      Icon(Icons.email_outlined, size: 18, color: AppColors.textMuted),
+                      const SizedBox(width: 10),
                       Expanded(
-                        child: Text(profile.email, style: Theme.of(context).textTheme.bodyMedium),
+                        child: Text(
+                          profile.email.isEmpty
+                              ? (strings.vi ? 'Chưa liên kết email' : 'No email linked')
+                              : profile.email,
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
                       ),
-                      const Icon(Icons.lock_outline, size: 16, color: AppColors.textMuted),
+                      Tooltip(
+                        message: strings.vi
+                            ? 'Email không thể sửa trực tiếp'
+                            : "Email can't be edited directly",
+                        child: const Icon(Icons.lock_outline, size: 16, color: AppColors.textMuted),
+                      ),
                     ],
                   ),
                 ),
@@ -107,6 +145,22 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                           )
                         : Text(strings.vi ? 'Lưu' : 'Save'),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: _linkingGoogle ? null : () => _linkGoogleAccount(strings.vi),
+                    icon: _linkingGoogle
+                        ? const SizedBox(
+                            height: 16,
+                            width: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const GoogleGBadge(size: 18),
+                    label: Text(strings.vi ? 'Đăng nhập bằng Gmail' : 'Sign in with Gmail'),
+                    style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14)),
                   ),
                 ),
               ],

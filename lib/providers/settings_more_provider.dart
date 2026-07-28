@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/auth_service.dart';
 
@@ -90,7 +91,8 @@ class SettingsMoreProvider extends ChangeNotifier {
   Future<void> deleteAllLocalData() async {
     _isDeletingLocal = true;
     notifyListeners();
-    await Future.delayed(const Duration(seconds: 1));
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.clear();
     _isDeletingLocal = false;
     notifyListeners();
   }

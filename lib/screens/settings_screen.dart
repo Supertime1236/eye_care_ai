@@ -126,11 +126,12 @@ class SettingsScreen extends StatelessWidget {
             padding: EdgeInsets.zero,
             child: Column(
               children: [
-                _SwitchRow(
+                _ListTileOption(
                   icon: isDark ? '🌙' : '☀️',
-                  title: strings.darkMode,
-                  value: theme.isDarkMode,
-                  onChanged: theme.toggleDarkMode,
+                  title: strings.themeLabel,
+                  subtitle: strings.themeSubtitle,
+                  valueLabel: strings.themePreferenceLabel(theme.preference),
+                  onTap: () => _showThemeDialog(context, theme, strings),
                 ),
                 const Divider(height: 1, indent: 56),
                 Padding(
@@ -310,47 +311,6 @@ class _ToggleTile extends StatelessWidget {
   }
 }
 
-// Widget để hiển thị một tùy chọn dạng on/off trong phần cài đặt.
-class _SwitchRow extends StatelessWidget {
-  const _SwitchRow({
-    required this.icon,
-    required this.title,
-    required this.value,
-    required this.onChanged,
-  });
-
-  final String icon;
-  final String title;
-  final bool value;
-  final ValueChanged<bool> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Row(
-        children: [
-          Text(icon, style: const TextStyle(fontSize: 22)),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: Theme.of(context).textTheme.titleSmall),
-              ],
-            ),
-          ),
-          Switch.adaptive(
-            value: value,
-            onChanged: onChanged,
-            activeTrackColor: AppColors.primaryBlue.withValues(alpha: 0.5),
-            activeThumbColor: AppColors.primaryBlue,
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 class _MenuItem extends StatelessWidget {
   const _MenuItem({
@@ -492,6 +452,36 @@ class _ListTileOption extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+Future<void> _showThemeDialog(BuildContext context, ThemeProvider theme, AppStrings strings) async {
+  final selected = await showDialog<AppThemePreference>(
+    context: context,
+    builder: (context) {
+      return SimpleDialog(
+        title: Text(strings.themeLabel),
+        children: AppThemePreference.values.map((pref) {
+          return SimpleDialogOption(
+            onPressed: () => Navigator.pop(context, pref),
+            child: Row(
+              children: [
+                if (theme.preference == pref)
+                  const Icon(Icons.check, size: 18, color: AppColors.primaryBlue)
+                else
+                  const SizedBox(width: 18),
+                const SizedBox(width: 8),
+                Text(strings.themePreferenceLabel(pref)),
+              ],
+            ),
+          );
+        }).toList(),
+      );
+    },
+  );
+
+  if (selected != null) {
+    theme.setPreference(selected);
   }
 }
 

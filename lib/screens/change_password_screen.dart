@@ -66,12 +66,9 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   Widget build(BuildContext context) {
     final strings = context.watch<LanguageProvider>().strings;
     return Scaffold(
-      backgroundColor: AppColors.background,
       appBar: AppBar(
         title: Text(strings.changePasswordTitle),
-        backgroundColor: AppColors.background,
         elevation: 0,
-        foregroundColor: AppColors.textPrimary,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
