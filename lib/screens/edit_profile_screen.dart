@@ -164,7 +164,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 const SizedBox(height: 12),
                 SizedBox(
                   width: double.infinity,
-                  child: profile.isGoogleLinked
+                  child: profile.isLoggedIn
                       ? OutlinedButton.icon(
                           onPressed: _signOut,
                           icon: const Icon(Icons.logout, size: 18, color: AppColors.error),

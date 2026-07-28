@@ -6,6 +6,7 @@ import '../providers/language_provider.dart';
 import '../services/auth_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/shared_widgets.dart';
+import 'main_shell.dart';
 import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -196,6 +197,19 @@ class _LoginScreenState extends State<LoginScreen> {
                               MaterialPageRoute(builder: (_) => const RegisterScreen()),
                             ),
                     child: Text(strings.noAccountYet),
+                  ),
+                  // Bỏ qua đăng nhập lần đầu: vào thẳng app ở chế độ khách,
+                  // vẫn có thể đăng nhập sau này trong Settings/Edit profile.
+                  TextButton(
+                    onPressed: _isLoading
+                        ? null
+                        : () => Navigator.of(context).pushReplacement(
+                              MaterialPageRoute(builder: (_) => const MainShell()),
+                            ),
+                    child: Text(
+                      strings.vi ? 'Bỏ qua, dùng thử trước' : 'Skip for now',
+                      style: const TextStyle(color: AppColors.textMuted),
+                    ),
                   ),
                 ],
               ),

@@ -21,6 +21,13 @@ class ProfileProvider extends ChangeNotifier {
       FirebaseAuth.instance.currentUser?.providerData.any((p) => p.providerId == 'google.com') ??
       false;
 
+  // Đã đăng nhập hay chưa, KHÔNG PHÂN BIỆT phương thức (email/password hay
+  // Google) — dùng để quyết định hiện nút "Đăng xuất" hay "Đăng nhập bằng
+  // Gmail" ở Edit Profile. Trước đây màn hình đó dùng nhầm isGoogleLinked,
+  // nên người đăng nhập bằng email/password vẫn thấy nút "Sign in with
+  // Gmail" dù đã đăng nhập.
+  bool get isLoggedIn => FirebaseAuth.instance.currentUser != null;
+
   /// Gọi lại mỗi khi AuthProvider đổi user (đăng nhập/đăng xuất/đổi tên).
   void syncFromUser(User? user) {
     if (user == null) {

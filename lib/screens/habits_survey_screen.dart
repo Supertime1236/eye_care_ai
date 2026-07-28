@@ -3,12 +3,14 @@ import 'package:provider/provider.dart';
 
 import '../models/app_strings.dart';
 import '../models/eye_health_standards.dart';
+import '../providers/auth_provider.dart';
 import '../providers/habit_provider.dart';
 import '../providers/language_provider.dart';
 import '../providers/settings_provider.dart';
 import '../providers/theme_provider.dart';
 import '../theme/app_colors.dart';
 import '../widgets/shared_widgets.dart';
+import 'login_screen.dart';
 import 'main_shell.dart';
 
 // HabitsSurveyScreen: khảo sát từng câu một (giống dạng wizard/onboarding),
@@ -548,7 +550,7 @@ class _HabitsSurveyScreenState extends State<HabitsSurveyScreen> {
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
-                  onPressed: () {
+                  onPressed: () async {
                     final habitProvider = context.read<HabitProvider>();
                     for (final id in _surveyTargetHabitIds) {
                       final value = _selectedTargetValues[id];
@@ -556,9 +558,22 @@ class _HabitsSurveyScreenState extends State<HabitsSurveyScreen> {
                         habitProvider.setHabitTarget(id, value);
                       }
                     }
+                    // QUAN TRỌNG: phải đánh dấu khảo sát đã hoàn thành và lưu
+                    // xuống SharedPreferences — trước đây bước này bị thiếu
+                    // nên _AppGate luôn đọc lại survey_completed = false, bắt
+                    // người dùng làm lại khảo sát mỗi lần mở app.
+                    await habitProvider.markSurveyCompleted();
+                    if (!context.mounted) return;
                     if (widget.mandatory) {
+                      // Sau khảo sát bắt buộc: nếu đã đăng nhập thì vào thẳng
+                      // MainShell, còn chưa thì phải qua màn Đăng nhập trước
+                      // (đúng như luồng _AppGate mô tả), thay vì luôn nhảy
+                      // thẳng vào MainShell bất kể trạng thái đăng nhập.
+                      final isLoggedIn = context.read<AuthProvider>().isLoggedIn;
                       Navigator.of(context).pushReplacement(
-                        MaterialPageRoute(builder: (_) => const MainShell()),
+                        MaterialPageRoute(
+                          builder: (_) => isLoggedIn ? const MainShell() : const LoginScreen(),
+                        ),
                       );
                     } else {
                       Navigator.of(context).pop();

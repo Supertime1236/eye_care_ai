@@ -154,14 +154,32 @@ class NotificationService {
     await initialize();
     await cancelBreakAlarm();
 
-    await notifications.zonedSchedule(
-      _alarmNotificationId,
-      title,
-      body,
-      tz.TZDateTime.from(when, tz.local),
-      _details(insistent: true),
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-    );
+    final scheduledDate = tz.TZDateTime.from(when, tz.local);
+    try {
+      await notifications.zonedSchedule(
+        _alarmNotificationId,
+        title,
+        body,
+        scheduledDate,
+        _details(insistent: true),
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      );
+    } catch (_) {
+      // QUAN TRỌNG: exactAllowWhileIdle có thể ném lỗi nếu người dùng chưa
+      // cấp quyền "Alarms & reminders" (Android 12+) — trước đây lỗi này
+      // không được bắt, khiến lệnh lên lịch âm thầm thất bại và thông báo
+      // KHÔNG BAO GIỜ bắn khi hết giờ nếu app đang ở nền/bị đóng. Lùi về chế
+      // độ inexact (không cần quyền đặc biệt) để thông báo vẫn được đảm bảo
+      // bắn ra, dù có thể trễ vài phút so với giờ hẹn chính xác.
+      await notifications.zonedSchedule(
+        _alarmNotificationId,
+        title,
+        body,
+        scheduledDate,
+        _details(insistent: true),
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      );
+    }
   }
 
   Future<void> cancelBreakAlarm() async {
