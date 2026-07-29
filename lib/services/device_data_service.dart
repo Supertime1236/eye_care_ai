@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:android_intent_plus/android_intent.dart';
 import 'package:flutter/services.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:health/health.dart';
 import 'package:light/light.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -217,83 +218,80 @@ class DeviceDataService {
     }
   }
 
-  // ---------------- Outdoor Time: TIME_IN_DAYLIGHT (ưu tiên) + cảm biến ánh sáng (dự phòng) ----------------
-  // KHÔNG dùng GPS nữa: độ chính xác GPS không phản ánh đúng việc đang ở
-  // ngoài trời hay trong nhà (VD: bắt GPS tốt gần cửa sổ, trong nhà kính...).
+  // ---------------- Outdoor Time: cảm biến ánh sáng (lux) + GPS ----------------
+  // KHÔNG dùng HealthDataType.TIME_IN_DAYLIGHT nữa: enum này không tồn tại
+  // trong package `health: ^13.3.1` (đã kiểm tra toàn bộ source), nên đã bỏ
+  // hoàn toàn phụ thuộc vào Health Connect / HealthKit cho tính năng này.
+  // `health` package chỉ còn được dùng cho Sleep (xem getSleepHours() ở trên).
   //
-  // Ưu tiên 1: đọc chỉ số TIME_IN_DAYLIGHT qua package `health` (HealthKit
-  // trên iOS 17+ / Health Connect trên Android) — đây là số liệu hệ điều
-  // hành tự tính từ cảm biến ánh sáng + vị trí kết hợp, đáng tin hơn nhiều so
-  // với tự đo trong app. Nếu có dữ liệu hôm nay, GHI ĐÈ (không cộng dồn) vì
-  // đây đã là tổng thật của cả ngày tính đến thời điểm hiện tại.
+  // Cách xác định "đang ở ngoài trời" mỗi ~2 phút, dựa trên 2 tín hiệu độc
+  // lập rồi kết hợp lại để tăng độ chính xác thực tế:
   //
-  // Ưu tiên 2 (dự phòng khi máy không có Health Connect / chưa cấp quyền /
-  // phiên bản `health` cài đặt chưa hỗ trợ TIME_IN_DAYLIGHT): mỗi ~2 phút lấy
-  // 1 mẫu tức thời từ cảm biến ánh sáng thật (lux). lux > 1000 được coi là
-  // đang ở ngoài trời (ánh sáng trong nhà thường < 500 lux, ánh sáng ban
-  // ngày ngoài trời dù râm cũng thường > 1000 lux).
+  //  1) Cảm biến ánh sáng (lux) - tín hiệu chính, tức thời, không tốn pin:
+  //     - lux > 10000  -> gần như chắc chắn đang ở ngoài trời (ánh sáng ban
+  //       ngày ngoài trời, kể cả trời râm, thường mạnh hơn nhiều so với đèn
+  //       trong nhà).
+  //     - lux < 1000   -> gần như chắc chắn đang ở trong nhà.
+  //     - 1000 <= lux <= 10000 -> vùng mập mờ (VD: gần cửa sổ, ban công có
+  //       mái che, trời âm u...) -> cần thêm tín hiệu GPS để xác nhận.
+  //
+  //  2) GPS - tín hiệu xác nhận cho vùng mập mờ ở trên:
+  //     - Có fix vị trí với độ chính xác tốt (accuracy <= ~30m, lấy nhanh
+  //       trong vài giây) thường đồng nghĩa ăng-ten GPS "nhìn thấy trời" ->
+  //       hỗ trợ giả thuyết đang ở ngoài trời khi kết hợp với lux ở mức khá.
+  //     - Không lấy được fix / độ chính xác kém (bị nhà/mái che chắn tín
+  //       hiệu vệ tinh) -> nghiêng về trong nhà.
+  //
+  // Quy tắc quyết định cuối cùng cho mỗi mẫu 2 phút:
+  //   lux > 10000                      => NGOÀI TRỜI
+  //   lux < 1000                       => TRONG NHÀ
+  //   1000 <= lux <= 10000 và GPS tốt  => NGOÀI TRỜI (xác nhận)
+  //   1000 <= lux <= 10000 và GPS kém  => TRONG NHÀ
+  //   không đọc được lux               => bỏ qua mẫu (không cộng dồn, không
+  //                                        trừ, để tránh đoán mò khi thiếu
+  //                                        dữ liệu thật)
+  static const _kLuxOutdoorThreshold = 10000; // lux > mức này: chắc chắn ngoài trời
+  static const _kLuxIndoorThreshold = 1000; // lux < mức này: chắc chắn trong nhà
+  static const _kGpsGoodAccuracyMeters = 30.0; // độ chính xác GPS coi là "tốt"
+
   Future<double> getOutdoorMinutesToday() async {
     final prefs = await SharedPreferences.getInstance();
     await _resetIfNewDay(prefs, _kOutdoorMinutesKey, _kOutdoorDateKey);
     return prefs.getDouble(_kOutdoorMinutesKey) ?? 0;
   }
 
-  Future<double?> _tryReadDaylightMinutesToday() async {
-    try {
-      final health = Health();
-      final types = [HealthDataType.TIME_IN_DAYLIGHT];
-      final granted = await health.requestAuthorization(types);
-      if (!granted) return null;
-
-      final now = DateTime.now();
-      final startOfDay = DateTime(now.year, now.month, now.day);
-      final points = await health.getHealthDataFromTypes(
-        types: types,
-        startTime: startOfDay,
-        endTime: now,
-      );
-      if (points.isEmpty) return null;
-
-      final totalMinutes = points.fold<double>(0, (sum, p) {
-        final value = p.value;
-        if (value is NumericHealthValue) {
-          return sum + value.numericValue.toDouble();
-        }
-        return sum + p.dateTo.difference(p.dateFrom).inMinutes;
-      });
-      return totalMinutes;
-    } catch (_) {
-      // Không có Health Connect / chưa cấp quyền / kiểu dữ liệu này chưa có
-      // trên phiên bản `health` đang cài -> lùi về cảm biến ánh sáng.
-      return null;
-    }
-  }
-
   Future<void> startOutdoorTracking() async {
     _outdoorSampleTimer?.cancel();
     _outdoorSampleTimer = Timer.periodic(const Duration(minutes: 2), (_) async {
-      // Ưu tiên 1: TIME_IN_DAYLIGHT từ Health Connect / HealthKit.
-      final daylightMinutes = await _tryReadDaylightMinutesToday();
-      if (daylightMinutes != null) {
-        final prefs = await SharedPreferences.getInstance();
-        await _resetIfNewDay(prefs, _kOutdoorMinutesKey, _kOutdoorDateKey);
-        await prefs.setDouble(_kOutdoorMinutesKey, daylightMinutes);
-        return;
-      }
-
-      // Ưu tiên 2 (dự phòng): 1 mẫu lux tức thời từ cảm biến ánh sáng.
-      final lux = await _sampleLux();
       final elapsedMinutes = _lastOutdoorSample == null
           ? 2.0
           : DateTime.now().difference(_lastOutdoorSample!).inSeconds / 60.0;
       _lastOutdoorSample = DateTime.now();
-      if (lux != null && lux > 1000) {
+
+      final isOutdoor = await _detectOutdoorSample();
+      if (isOutdoor == true) {
         final prefs = await SharedPreferences.getInstance();
         await _resetIfNewDay(prefs, _kOutdoorMinutesKey, _kOutdoorDateKey);
         final current = prefs.getDouble(_kOutdoorMinutesKey) ?? 0;
         await prefs.setDouble(_kOutdoorMinutesKey, current + elapsedMinutes);
       }
+      // isOutdoor == false: trong nhà, không cộng dồn.
+      // isOutdoor == null: không đọc được lux, bỏ qua mẫu này hoàn toàn.
     });
+  }
+
+  // Trả về true (ngoài trời) / false (trong nhà) / null (không đủ dữ liệu
+  // cảm biến ánh sáng để kết luận cho mẫu này).
+  Future<bool?> _detectOutdoorSample() async {
+    final lux = await _sampleLux();
+    if (lux == null) return null;
+
+    if (lux > _kLuxOutdoorThreshold) return true;
+    if (lux < _kLuxIndoorThreshold) return false;
+
+    // Vùng mập mờ: dùng GPS để xác nhận thêm.
+    final gpsGood = await _hasGoodGpsFix();
+    return gpsGood;
   }
 
   // Mở stream cảm biến ánh sáng trong tối đa 3 giây để lấy đúng 1 mẫu lux
@@ -318,6 +316,52 @@ class DeviceDataService {
       return result;
     } catch (_) {
       return null;
+    }
+  }
+
+  // Kiểm tra quyền vị trí đã được cấp hay chưa (không tự xin quyền ở đây —
+  // việc xin quyền runtime nên do UI chủ động gọi requestLocationPermission()
+  // để hiển thị đúng ngữ cảnh cho người dùng).
+  Future<bool> hasLocationPermission() async {
+    final permission = await Geolocator.checkPermission();
+    return permission == LocationPermission.always ||
+        permission == LocationPermission.whileInUse;
+  }
+
+  // Xin quyền vị trí runtime. Gọi từ UI (VD: màn hình cài đặt Outdoor Time)
+  // trước khi bật tracking, để người dùng hiểu vì sao app cần quyền này.
+  Future<bool> requestLocationPermission() async {
+    var permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+    }
+    if (permission == LocationPermission.deniedForever) return false;
+    return permission == LocationPermission.always ||
+        permission == LocationPermission.whileInUse;
+  }
+
+  // Lấy nhanh 1 fix GPS (tối đa 5 giây) và đánh giá độ chính xác. Trả về
+  // false (không phải null) khi thiếu quyền/dịch vụ vị trí hoặc không lấy
+  // được fix trong thời gian cho phép, vì trong các trường hợp đó không có
+  // căn cứ để xác nhận "ngoài trời" -> coi như không xác nhận được.
+  Future<bool> _hasGoodGpsFix() async {
+    try {
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) return false;
+
+      final hasPermission = await hasLocationPermission();
+      if (!hasPermission) return false;
+
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 5),
+        ),
+      );
+      return position.accuracy <= _kGpsGoodAccuracyMeters;
+    } catch (_) {
+      // Timeout, dịch vụ bị tắt giữa chừng, hoặc lỗi phần cứng.
+      return false;
     }
   }
 
