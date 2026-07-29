@@ -44,4 +44,14 @@ class ChatProvider extends ChangeNotifier {
     isTyping = false;
     notifyListeners();
   }
+
+  // Chuyển lịch sử hội thoại hiện có (bỏ qua bong bóng "đang gõ...") sang
+  // đúng định dạng Anthropic Messages API để gửi lên EyeChatService, giữ
+  // ngữ cảnh nhiều lượt hỏi-đáp thay vì chỉ gửi mỗi câu hỏi mới nhất.
+  List<Map<String, String>> toApiHistory() {
+    return messages
+        .where((m) => !m.isTyping && m.text.trim().isNotEmpty)
+        .map((m) => {'role': m.isUser ? 'user' : 'assistant', 'content': m.text})
+        .toList();
+  }
 }

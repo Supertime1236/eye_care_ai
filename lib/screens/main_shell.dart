@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../models/app_strings.dart';
 import '../providers/habit_provider.dart';
 import '../providers/language_provider.dart';
+import '../providers/reminder_provider.dart';
 import '../theme/app_colors.dart';
 import 'chat_screen.dart';
 import 'eye_break_screen.dart';
@@ -29,6 +30,16 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
   // liệu tự cập nhật trong lúc app đang mở, giống Digital Wellbeing.
   Timer? _usagePollTimer;
 
+  // Mốc thời gian app bị đưa xuống nền — dùng cho chế độ nghỉ mắt THỤ ĐỘNG:
+  // nếu người dùng khoá màn hình/rời app đủ lâu rồi quay lại, coi như đã có
+  // 1 lần nghỉ mắt (xem didChangeAppLifecycleState bên dưới).
+  DateTime? _pausedAt;
+  static const _autoBreakMinGap = Duration(seconds: 20);
+  // Giới hạn trên để tránh tính bậy: rời máy hàng giờ (đi ngủ, họp dài...)
+  // không phải là "nghỉ mắt" theo quy tắc 20-20-20, nên chỉ tính khoảng nghỉ
+  // hợp lý trong khung này.
+  static const _autoBreakMaxGap = Duration(minutes: 20);
+
   @override
   void initState() {
     super.initState();
@@ -45,10 +56,24 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // Mở app trở lại (từ nền) -> làm mới ngay, không chờ tick 60s tiếp theo,
-    // vì người dùng vừa dùng các app khác trong lúc app này ở nền.
+    if (state == AppLifecycleState.paused) {
+      _pausedAt = DateTime.now();
+      return;
+    }
+
     if (state == AppLifecycleState.resumed && mounted) {
+      // Mở app trở lại (từ nền) -> làm mới ngay, không chờ tick 60s tiếp
+      // theo, vì người dùng vừa dùng các app khác trong lúc app này ở nền.
       context.read<HabitProvider>().refreshHabitsFromDevice();
+
+      final pausedAt = _pausedAt;
+      _pausedAt = null;
+      if (pausedAt == null) return;
+      final gap = DateTime.now().difference(pausedAt);
+      final reminder = context.read<ReminderProvider>();
+      if (reminder.autoDetectEyeBreaks && gap >= _autoBreakMinGap && gap <= _autoBreakMaxGap) {
+        context.read<HabitProvider>().recordEyeBreak();
+      }
     }
   }
 

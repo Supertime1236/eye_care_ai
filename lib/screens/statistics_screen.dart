@@ -14,8 +14,8 @@ import '../widgets/shared_widgets.dart';
 // StatisticsScreen hiển thị biểu đồ và số liệu thống kê sức khỏe mắt.
 //
 // Đây là nơi người dùng xem các xu hướng theo tuần hoặc theo tháng.
-// Màn hình đọc dữ liệu thói quen từ HabitProvider. Dữ liệu mẫu biểu đồ
-// được giữ cục bộ trong màn hình bên dưới.
+// Cả hai tab Weekly và Monthly đều đọc snapshot NGÀY thật đã lưu qua
+// DeviceDataService (xem loadCurrentWeekSnapshots / loadCurrentMonthWeeklySnapshots).
 class StatisticsScreen extends StatefulWidget {
   const StatisticsScreen({super.key});
 
@@ -28,27 +28,32 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
   // 0 = Score, 1 = Screen Time, 2 = Sleep.
   static const _metrics = ['Score', 'Screen Time', 'Sleep'];
 
-  // Dữ liệu THÁNG vẫn là số mẫu — chưa xây hệ thống lưu lịch sử theo tháng
-  // (việc riêng, sẽ làm sau nếu cần). Dữ liệu TUẦN đã là dữ liệu thật, xem
-  // _loadWeekSnapshots() bên dưới.
-  static const _monthlyScore = [72.0, 74.0, 76.0, 78.0, 80.0, 82.0, 84.0];
-  static const _monthlyScreen = [6.1, 5.8, 5.5, 5.2, 4.8, 4.5, 4.2];
-  static const _monthlySleep = [6.0, 6.2, 6.5, 6.8, 7.0, 7.2, 7.0];
-
   // Snapshot thật của 7 ngày trong tuần hiện tại (null = chưa có dữ liệu,
   // bao gồm cả các ngày chưa tới trong tuần).
   List<({int score, double screenHours, double sleepHours})?>? _weekSnapshots;
+
+  // Snapshot thật của tháng hiện tại, gộp theo tuần (xem
+  // loadCurrentMonthWeeklySnapshots trong DeviceDataService). null = chưa
+  // tải xong; phần tử null bên trong = tuần đó chưa có dữ liệu.
+  List<({int score, double screenHours, double sleepHours})?>? _monthSnapshots;
 
   @override
   void initState() {
     super.initState();
     _loadWeekSnapshots();
+    _loadMonthSnapshots();
   }
 
   Future<void> _loadWeekSnapshots() async {
     final snapshots = await DeviceDataService.instance.loadCurrentWeekSnapshots();
     if (!mounted) return;
     setState(() => _weekSnapshots = snapshots);
+  }
+
+  Future<void> _loadMonthSnapshots() async {
+    final snapshots = await DeviceDataService.instance.loadCurrentMonthWeeklySnapshots();
+    if (!mounted) return;
+    setState(() => _monthSnapshots = snapshots);
   }
 
   // Chọn dữ liệu biểu đồ dựa vào tab đang chọn và loại số liệu.
@@ -74,14 +79,19 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
       }).toList();
     }
 
-    switch (state.statsMetricIndex) {
-      case 1:
-        return _monthlyScreen;
-      case 2:
-        return _monthlySleep;
-      default:
-        return _monthlyScore;
-    }
+    final snapshots = _monthSnapshots;
+    if (snapshots == null) return List.filled(7, null);
+    return snapshots.map((s) {
+      if (s == null) return null;
+      switch (state.statsMetricIndex) {
+        case 1:
+          return s.screenHours;
+        case 2:
+          return s.sleepHours;
+        default:
+          return s.score.toDouble();
+      }
+    }).toList();
   }
 
   // Trả về đơn vị hiển thị phụ thuộc vào loại số liệu.

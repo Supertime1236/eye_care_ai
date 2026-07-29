@@ -9,6 +9,7 @@ import '../providers/reminder_provider.dart';
 import '../services/device_data_service.dart';
 import '../services/notification_service.dart';
 import '../theme/app_colors.dart';
+import '../widgets/settings_toggle_tile.dart';
 import '../widgets/shared_widgets.dart';
 
 // EyeBreakScreen thay thế hoàn toàn màn hình Eye Test cũ.
@@ -59,6 +60,20 @@ class _EyeBreakScreenState extends State<EyeBreakScreen> with WidgetsBindingObse
     // dừng trong lúc app ở nền).
     if (state == AppLifecycleState.resumed && _endAt != null) {
       _recomputeFromEndAt();
+      if (_secondsRemaining > 0) {
+        _updateOngoingNotification();
+      }
+    } else if (state == AppLifecycleState.paused && _endAt != null) {
+      // Timer.periodic sẽ ngừng tick khi app xuống nền -> đổi thông báo ghim
+      // sang giờ hẹn CỐ ĐỊNH thay vì để lại con số mm:ss "đứng hình" gây hiểu
+      // lầm app bị treo. Báo thức hệ thống (đã lên lịch từ trước) không phụ
+      // thuộc vào việc này, vẫn tự bắn đúng giờ.
+      final strings = context.read<LanguageProvider>().strings;
+      NotificationService.instance.showStaticOngoingUntil(
+        endAt: _endAt!,
+        title: strings.breakNotificationTitle,
+        untilPrefix: strings.breakNotificationUntil,
+      );
     }
   }
 
@@ -307,6 +322,15 @@ class _EyeBreakScreenState extends State<EyeBreakScreen> with WidgetsBindingObse
                   ),
                 ),
               ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          SectionCard(
+            child: SettingsToggleTile(
+              title: strings.autoDetectEyeBreakTitle,
+              description: strings.autoDetectEyeBreakDescription,
+              value: reminder.autoDetectEyeBreaks,
+              onChanged: (value) => reminder.setAutoDetectEyeBreaks(value),
             ),
           ),
           const SizedBox(height: 16),

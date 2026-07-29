@@ -3,6 +3,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class ReminderProvider extends ChangeNotifier {
   static const _kReminderMinutesKey = 'pref_reminder_minutes';
+  // Chế độ THỤ ĐỘNG (Cách 1 trong tài liệu tham khảo): khi người dùng khoá
+  // màn hình / rời app từ 20 giây trở lên, tự động tính là 1 lần nghỉ mắt —
+  // phù hợp với thói quen của thanh thiếu niên (hay tự nhiên úp điện thoại
+  // xuống / khoá màn hình hơn là bấm nút "Xong" thủ công). Không tốn thêm
+  // pin/quyền vì chỉ dùng WidgetsBindingObserver có sẵn của Flutter.
+  static const _kAutoDetectKey = 'pref_auto_detect_eye_breaks';
 
   ReminderProvider() {
     _loadSavedPreferences();
@@ -10,13 +16,23 @@ class ReminderProvider extends ChangeNotifier {
 
   bool _isEyeBreakReminderActive = false;
   int _reminderMinutes = 20;
+  bool _autoDetectEyeBreaks = true;
 
   bool get isEyeBreakReminderActive => _isEyeBreakReminderActive;
   int get reminderMinutes => _reminderMinutes;
+  bool get autoDetectEyeBreaks => _autoDetectEyeBreaks;
 
   Future<void> _loadSavedPreferences() async {
     final prefs = await SharedPreferences.getInstance();
     _reminderMinutes = prefs.getInt(_kReminderMinutesKey) ?? _reminderMinutes;
+    _autoDetectEyeBreaks = prefs.getBool(_kAutoDetectKey) ?? _autoDetectEyeBreaks;
+    notifyListeners();
+  }
+
+  Future<void> setAutoDetectEyeBreaks(bool value) async {
+    _autoDetectEyeBreaks = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_kAutoDetectKey, value);
     notifyListeners();
   }
 

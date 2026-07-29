@@ -42,9 +42,12 @@ dependencies:
 
   # --- Real device data sources for the Habits screen ---
   sensors_plus: ^6.0.1     # accelerometer (reading posture, sleep motion heuristic)
-  geolocator: ^13.0.1      # GPS (outdoor time)
+  light: ^5.0.0            # cảm biến ánh sáng (lux) - dự phòng cho Outdoor time, thay geolocator
   app_usage: ^4.1.0        # OS screen-on time (Android only, needs Usage Access permission)
-  health: ^11.1.1          # HealthKit / Health Connect (sleep)
+  # health: cần bản có HealthDataType.TIME_IN_DAYLIGHT (Outdoor time) - nếu
+  # CI báo lỗi enum này không tồn tại, nghĩa là cần bump lên bản mới hơn nữa
+  # (kiểm tra CHANGELOG trên pub.dev, không truy cập được từ môi trường build).
+  health: ^13.0.0           # HealthKit / Health Connect (sleep, time in daylight)
   permission_handler: ^11.3.1
   shared_preferences: ^2.3.3 # persists today's accumulated minutes across app restarts
   android_intent_plus: ^5.2.0 # mở thẳng màn hình cấp quyền Usage Access

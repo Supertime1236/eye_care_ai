@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../models/app_strings.dart';
 import '../providers/chat_provider.dart';
 import '../providers/language_provider.dart';
+import '../services/eye_chat_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/shared_widgets.dart';
 
@@ -36,9 +38,20 @@ class _ChatScreenState extends State<ChatScreen> {
     });
   }
 
-  Future<void> _sendMessage(String text, Map<String, String> responses, String fallback) async {
+  Future<void> _sendMessage(String text) async {
     final provider = context.read<ChatProvider>();
     if (text.trim().isEmpty || provider.isTyping) return;
+    final strings = context.read<LanguageProvider>().strings;
+
+    final apiKey = await EyeChatService.instance.getSavedApiKey();
+    if (apiKey == null || apiKey.isEmpty) {
+      if (!mounted) return;
+      final entered = await _promptForApiKey(strings);
+      if (entered == null || entered.isEmpty) {
+        provider.addBotMessage(strings.chatErrorMissingKey);
+        return;
+      }
+    }
 
     provider.addUserMessage(text);
     provider.setTyping(true);
@@ -46,21 +59,76 @@ class _ChatScreenState extends State<ChatScreen> {
     _controller.clear();
     _scrollToBottom();
 
-    await Future<void>.delayed(const Duration(milliseconds: 1500));
-
-    final response = responses.entries
-        .firstWhere(
-          (e) => text.toLowerCase().contains(e.key.toLowerCase().split(' ').first),
-          orElse: () => MapEntry('', fallback),
-        )
-        .value;
+    final key = apiKey ?? await EyeChatService.instance.getSavedApiKey();
+    String reply;
+    try {
+      if (key == null || key.isEmpty) throw Exception('invalid_api_key');
+      reply = await EyeChatService.instance.sendMessage(
+        apiKey: key,
+        history: provider.toApiHistory(),
+      );
+    } catch (e) {
+      final message = e.toString();
+      if (message.contains('invalid_api_key')) {
+        reply = strings.chatErrorInvalidKey;
+      } else if (message.contains('rate_limited')) {
+        reply = strings.chatErrorRateLimited;
+      } else if (message.contains('network_error')) {
+        reply = strings.chatErrorNetwork;
+      } else {
+        reply = strings.chatErrorGeneric;
+      }
+    }
 
     if (!mounted) return;
-
     provider.messages.removeLast();
-    provider.addBotMessage(response);
+    provider.addBotMessage(reply);
     provider.setTyping(false);
     _scrollToBottom();
+  }
+
+  // Hộp thoại nhập khoá API Anthropic lần đầu — chỉ hỏi khi chưa có khoá nào
+  // được lưu. Xem services/eye_chat_service.dart để biết vì sao khoá được
+  // người dùng tự nhập thay vì nhúng cứng trong app.
+  Future<String?> _promptForApiKey(AppStrings strings) async {
+    final controller = TextEditingController();
+    return showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(strings.chatApiKeySetupTitle),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(strings.chatApiKeySetupBody),
+            const SizedBox(height: 12),
+            TextField(
+              controller: controller,
+              obscureText: true,
+              decoration: InputDecoration(
+                hintText: strings.chatApiKeyHint,
+                border: const OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, null),
+            child: Text(strings.chatApiKeyCancel),
+          ),
+          FilledButton(
+            onPressed: () async {
+              final value = controller.text.trim();
+              if (value.isEmpty) return;
+              await EyeChatService.instance.saveApiKey(value);
+              if (context.mounted) Navigator.pop(context, value);
+            },
+            child: Text(strings.chatApiKeySave),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -75,8 +143,6 @@ class _ChatScreenState extends State<ChatScreen> {
     }
 
     final quickPrompts = strings.chatQuickPrompts;
-    final responses = strings.chatResponses;
-    final fallback = strings.chatFallbackResponse;
 
     return Material(
       color: Theme.of(context).scaffoldBackgroundColor,
@@ -123,6 +189,12 @@ class _ChatScreenState extends State<ChatScreen> {
                     ),
                   ],
                 ),
+                const Spacer(),
+                IconButton(
+                  tooltip: strings.chatApiKeyChange,
+                  icon: const Icon(Icons.settings_outlined, size: 20),
+                  onPressed: () => _promptForApiKey(strings),
+                ),
               ],
             ),
           ),
@@ -146,7 +218,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   side: BorderSide(
                     color: AppColors.chatAccent.withValues(alpha: 0.2),
                   ),
-                  onPressed: () => _sendMessage(quickPrompts[index], responses, fallback),
+                  onPressed: () => _sendMessage(quickPrompts[index]),
                 );
               },
             ),
@@ -195,7 +267,7 @@ class _ChatScreenState extends State<ChatScreen> {
                         vertical: 10,
                       ),
                     ),
-                    onSubmitted: (text) => _sendMessage(text, responses, fallback),
+                    onSubmitted: (text) => _sendMessage(text),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -203,7 +275,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   color: AppColors.chatAccent,
                   borderRadius: BorderRadius.circular(14),
                   child: InkWell(
-                    onTap: () => _sendMessage(_controller.text, responses, fallback),
+                    onTap: () => _sendMessage(_controller.text),
                     borderRadius: BorderRadius.circular(14),
                     child: const SizedBox(
                       width: 44,

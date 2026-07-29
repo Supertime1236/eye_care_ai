@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timezone/data/latest.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
@@ -101,6 +102,21 @@ class NotificationService {
       await prefs.setBool(askedKey, true);
     }
 
+    // NHIỀU HÃNG MÁY (Xiaomi/MIUI, Oppo, Vivo, Samsung...) tự ý "diệt" tiến
+    // trình app chạy nền để tiết kiệm pin — khi đó timer đang đếm VÀ báo thức
+    // đã lên lịch đều có thể không bắn đúng giờ. Xin miễn trừ tối ưu hoá pin
+    // giúp giảm đáng kể tình trạng này. Cũng chỉ hỏi 1 LẦN DUY NHẤT như quyền
+    // báo thức chính xác ở trên, để không làm phiền người dùng mỗi lần mở app.
+    const batteryAskedKey = 'pref_battery_optimization_asked';
+    if (!(prefs.getBool(batteryAskedKey) ?? false)) {
+      try {
+        await Permission.ignoreBatteryOptimizations.request();
+      } catch (_) {
+        // Bỏ qua nếu thiết bị/ROM không hỗ trợ dialog này.
+      }
+      await prefs.setBool(batteryAskedKey, true);
+    }
+
     await notifications
         .resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>()
         ?.requestPermissions(alert: true, badge: true, sound: true);
@@ -155,31 +171,52 @@ class NotificationService {
     await cancelBreakAlarm();
 
     final scheduledDate = tz.TZDateTime.from(when, tz.local);
-    try {
-      await notifications.zonedSchedule(
-        _alarmNotificationId,
-        title,
-        body,
-        scheduledDate,
-        _details(insistent: true),
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      );
-    } catch (_) {
-      // QUAN TRỌNG: exactAllowWhileIdle có thể ném lỗi nếu người dùng chưa
-      // cấp quyền "Alarms & reminders" (Android 12+) — trước đây lỗi này
-      // không được bắt, khiến lệnh lên lịch âm thầm thất bại và thông báo
-      // KHÔNG BAO GIỜ bắn khi hết giờ nếu app đang ở nền/bị đóng. Lùi về chế
-      // độ inexact (không cần quyền đặc biệt) để thông báo vẫn được đảm bảo
-      // bắn ra, dù có thể trễ vài phút so với giờ hẹn chính xác.
-      await notifications.zonedSchedule(
-        _alarmNotificationId,
-        title,
-        body,
-        scheduledDate,
-        _details(insistent: true),
-        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-      );
+    // THỨ TỰ ƯU TIÊN CÁC CHẾ ĐỘ LÊN LỊCH (từ đáng tin cậy nhất):
+    // 1. alarmClock: hệ thống coi như MỘT BÁO THỨC THẬT — gần như miễn nhiễm
+    //    với Doze/App Standby và các trình diệt tiến trình nền của OEM
+    //    (Xiaomi/MIUI, Oppo, Vivo...), đây là lý do chính khiến bản trước
+    //    "hết giờ vẫn không báo" khi app bị hệ điều hành đóng ở nền. Nhược
+    //    điểm nhỏ: có thể hiện icon đồng hồ báo thức trên thanh trạng thái.
+    // 2. exactAllowWhileIdle: dùng nếu alarmClock ném lỗi (hiếm, một số ROM
+    //    chặn riêng chế độ này).
+    // 3. inexactAllowWhileIdle: phương án cuối, không cần quyền đặc biệt,
+    //    đảm bảo vẫn có thông báo dù có thể trễ vài phút.
+    for (final mode in [
+      AndroidScheduleMode.alarmClock,
+      AndroidScheduleMode.exactAllowWhileIdle,
+      AndroidScheduleMode.inexactAllowWhileIdle,
+    ]) {
+      try {
+        await notifications.zonedSchedule(
+          _alarmNotificationId,
+          title,
+          body,
+          scheduledDate,
+          _details(insistent: true),
+          androidScheduleMode: mode,
+        );
+        return;
+      } catch (_) {
+        // Thử chế độ kế tiếp trong danh sách.
+      }
     }
+  }
+
+  // Kiểm tra người dùng đã cấp quyền "Báo thức & lời nhắc chính xác" chưa —
+  // dùng để UI hiện gợi ý bật quyền này nếu bị tắt (khác với lúc mới cài,
+  // requestExactAlarmsPermission() chỉ tự hỏi đúng 1 lần).
+  Future<bool> canScheduleExactAlarms() async {
+    final androidPlugin =
+        notifications.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+    return await androidPlugin?.canScheduleExactNotifications() ?? true;
+  }
+
+  // Mở thẳng màn hình Settings hệ thống để người dùng tự cấp lại quyền báo
+  // thức chính xác nếu trước đó đã từ chối.
+  Future<void> openExactAlarmSettings() async {
+    final androidPlugin =
+        notifications.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+    await androidPlugin?.requestExactAlarmsPermission();
   }
 
   Future<void> cancelBreakAlarm() async {
@@ -223,5 +260,42 @@ class NotificationService {
 
   Future<void> cancelOngoingCountdown() async {
     await notifications.cancel(ongoingNotificationId);
+  }
+
+  // Khi app bị đưa xuống nền, Timer trong Dart không còn chạy được nữa nên
+  // updateOngoingCountdown() sẽ ngừng cập nhật — người dùng kéo thanh thông
+  // báo ra sẽ thấy mm:ss "đứng hình" mãi ở giá trị cuối cùng trước khi rời
+  // app, gây cảm giác app bị treo. Để tránh nhầm lẫn này, ngay khi app
+  // chuyển xuống nền, đổi nội dung thông báo ghim sang giờ hẹn CỐ ĐỊNH
+  // (VD: "Sẽ nhắc lúc 15:40") thay vì con số đang chạy — báo thức thật
+  // (scheduleBreakAlarm) vẫn tự bắn đúng giờ này dù thông báo ghim không
+  // còn "tick" nữa.
+  Future<void> showStaticOngoingUntil({
+    required DateTime endAt,
+    required String title,
+    required String untilPrefix,
+  }) async {
+    await initialize();
+    final hh = endAt.hour.toString().padLeft(2, '0');
+    final mm = endAt.minute.toString().padLeft(2, '0');
+    const details = AndroidNotificationDetails(
+      _ongoingChannelId,
+      _ongoingChannelName,
+      channelDescription: 'Hiển thị thời gian còn lại tới lần nhắc nghỉ mắt tiếp theo',
+      importance: Importance.low,
+      priority: Priority.low,
+      ongoing: true,
+      autoCancel: false,
+      onlyAlertOnce: true,
+      playSound: false,
+      enableVibration: false,
+      showWhen: false,
+    );
+    await notifications.show(
+      ongoingNotificationId,
+      title,
+      '$untilPrefix $hh:$mm',
+      const NotificationDetails(android: details),
+    );
   }
 }

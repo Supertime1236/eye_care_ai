@@ -3,8 +3,8 @@ import 'dart:io';
 
 import 'package:android_intent_plus/android_intent.dart';
 import 'package:flutter/services.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:health/health.dart';
+import 'package:light/light.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -217,50 +217,108 @@ class DeviceDataService {
     }
   }
 
-  // ---------------- Outdoor Time: GPS presence sampling ----------------
-  // Không thể track liên tục khi app ở background nếu chưa có background
-  // service riêng, nên đây là bản đo khi app đang mở: mỗi ~2 phút kiểm tra vị
-  // trí + độ chính xác GPS, coi là "ngoài trời" nếu bắt được tín hiệu GPS tốt
-  // (độ chính xác < 30m, điều hiếm khi xảy ra trong nhà). Kết quả cộng dồn và
-  // lưu theo ngày bằng SharedPreferences.
+  // ---------------- Outdoor Time: TIME_IN_DAYLIGHT (ưu tiên) + cảm biến ánh sáng (dự phòng) ----------------
+  // KHÔNG dùng GPS nữa: độ chính xác GPS không phản ánh đúng việc đang ở
+  // ngoài trời hay trong nhà (VD: bắt GPS tốt gần cửa sổ, trong nhà kính...).
+  //
+  // Ưu tiên 1: đọc chỉ số TIME_IN_DAYLIGHT qua package `health` (HealthKit
+  // trên iOS 17+ / Health Connect trên Android) — đây là số liệu hệ điều
+  // hành tự tính từ cảm biến ánh sáng + vị trí kết hợp, đáng tin hơn nhiều so
+  // với tự đo trong app. Nếu có dữ liệu hôm nay, GHI ĐÈ (không cộng dồn) vì
+  // đây đã là tổng thật của cả ngày tính đến thời điểm hiện tại.
+  //
+  // Ưu tiên 2 (dự phòng khi máy không có Health Connect / chưa cấp quyền /
+  // phiên bản `health` cài đặt chưa hỗ trợ TIME_IN_DAYLIGHT): mỗi ~2 phút lấy
+  // 1 mẫu tức thời từ cảm biến ánh sáng thật (lux). lux > 1000 được coi là
+  // đang ở ngoài trời (ánh sáng trong nhà thường < 500 lux, ánh sáng ban
+  // ngày ngoài trời dù râm cũng thường > 1000 lux).
   Future<double> getOutdoorMinutesToday() async {
     final prefs = await SharedPreferences.getInstance();
     await _resetIfNewDay(prefs, _kOutdoorMinutesKey, _kOutdoorDateKey);
     return prefs.getDouble(_kOutdoorMinutesKey) ?? 0;
   }
 
-  Future<void> startOutdoorTracking() async {
-    final permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      final requested = await Geolocator.requestPermission();
-      if (requested == LocationPermission.denied ||
-          requested == LocationPermission.deniedForever) {
-        return;
-      }
-    }
-    if (!await Geolocator.isLocationServiceEnabled()) return;
+  Future<double?> _tryReadDaylightMinutesToday() async {
+    try {
+      final health = Health();
+      final types = [HealthDataType.TIME_IN_DAYLIGHT];
+      final granted = await health.requestAuthorization(types);
+      if (!granted) return null;
 
+      final now = DateTime.now();
+      final startOfDay = DateTime(now.year, now.month, now.day);
+      final points = await health.getHealthDataFromTypes(
+        types: types,
+        startTime: startOfDay,
+        endTime: now,
+      );
+      if (points.isEmpty) return null;
+
+      final totalMinutes = points.fold<double>(0, (sum, p) {
+        final value = p.value;
+        if (value is NumericHealthValue) {
+          return sum + value.numericValue.toDouble();
+        }
+        return sum + p.dateTo.difference(p.dateFrom).inMinutes;
+      });
+      return totalMinutes;
+    } catch (_) {
+      // Không có Health Connect / chưa cấp quyền / kiểu dữ liệu này chưa có
+      // trên phiên bản `health` đang cài -> lùi về cảm biến ánh sáng.
+      return null;
+    }
+  }
+
+  Future<void> startOutdoorTracking() async {
     _outdoorSampleTimer?.cancel();
     _outdoorSampleTimer = Timer.periodic(const Duration(minutes: 2), (_) async {
-      try {
-        final position = await Geolocator.getCurrentPosition(
-          locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
-        );
-        final isOutdoor = position.accuracy < 30;
-        final elapsedMinutes = _lastOutdoorSample == null
-            ? 2.0
-            : DateTime.now().difference(_lastOutdoorSample!).inSeconds / 60.0;
-        _lastOutdoorSample = DateTime.now();
-        if (isOutdoor) {
-          final prefs = await SharedPreferences.getInstance();
-          await _resetIfNewDay(prefs, _kOutdoorMinutesKey, _kOutdoorDateKey);
-          final current = prefs.getDouble(_kOutdoorMinutesKey) ?? 0;
-          await prefs.setDouble(_kOutdoorMinutesKey, current + elapsedMinutes);
-        }
-      } catch (_) {
-        // Bỏ qua lần lấy vị trí lỗi, thử lại ở chu kỳ tiếp theo.
+      // Ưu tiên 1: TIME_IN_DAYLIGHT từ Health Connect / HealthKit.
+      final daylightMinutes = await _tryReadDaylightMinutesToday();
+      if (daylightMinutes != null) {
+        final prefs = await SharedPreferences.getInstance();
+        await _resetIfNewDay(prefs, _kOutdoorMinutesKey, _kOutdoorDateKey);
+        await prefs.setDouble(_kOutdoorMinutesKey, daylightMinutes);
+        return;
+      }
+
+      // Ưu tiên 2 (dự phòng): 1 mẫu lux tức thời từ cảm biến ánh sáng.
+      final lux = await _sampleLux();
+      final elapsedMinutes = _lastOutdoorSample == null
+          ? 2.0
+          : DateTime.now().difference(_lastOutdoorSample!).inSeconds / 60.0;
+      _lastOutdoorSample = DateTime.now();
+      if (lux != null && lux > 1000) {
+        final prefs = await SharedPreferences.getInstance();
+        await _resetIfNewDay(prefs, _kOutdoorMinutesKey, _kOutdoorDateKey);
+        final current = prefs.getDouble(_kOutdoorMinutesKey) ?? 0;
+        await prefs.setDouble(_kOutdoorMinutesKey, current + elapsedMinutes);
       }
     });
+  }
+
+  // Mở stream cảm biến ánh sáng trong tối đa 3 giây để lấy đúng 1 mẫu lux
+  // rồi đóng ngay — không giữ stream chạy liên tục để đỡ tốn pin.
+  Future<int?> _sampleLux() async {
+    try {
+      final completer = Completer<int?>();
+      late final StreamSubscription<int> sub;
+      sub = Light().lightSensorStream.listen(
+        (lux) {
+          if (!completer.isCompleted) completer.complete(lux);
+        },
+        onError: (_) {
+          if (!completer.isCompleted) completer.complete(null);
+        },
+      );
+      final result = await completer.future.timeout(
+        const Duration(seconds: 3),
+        onTimeout: () => null,
+      );
+      await sub.cancel();
+      return result;
+    } catch (_) {
+      return null;
+    }
   }
 
   // ---------------- Reading Time: accelerometer stillness heuristic ----------------
@@ -454,6 +512,60 @@ class DeviceDataService {
         result.add(await loadDailySnapshot(day));
       }
     }
+    return result;
+  }
+
+  // Trả về dữ liệu THÁNG HIỆN TẠI, gộp theo tuần (W1..W7, tối đa 7 tuần cho
+  // các tháng có 5-6 tuần lịch) để vẽ biểu đồ Monthly bằng dữ liệu thật thay
+  // vì số mẫu cố định. Mỗi phần tử là trung bình các ngày có snapshot trong
+  // tuần đó; null nếu tuần đó chưa có ngày nào có dữ liệu (chưa tới hoặc
+  // người dùng chưa mở app ngày nào trong tuần đó).
+  Future<List<({int score, double screenHours, double sleepHours})?>>
+      loadCurrentMonthWeeklySnapshots() async {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final daysInMonth = DateTime(now.year, now.month + 1, 0).day;
+
+    // Chỉ số tuần trong tháng: gộp theo cụm 7 ngày kể từ ngày 1, không phải
+    // theo tuần lịch Thứ2-CN, để mọi tháng đều chia gọn thành tối đa 7 cụm.
+    final buckets = List.generate(
+      7,
+      (_) => <({int score, double screenHours, double sleepHours})>[],
+    );
+    for (var d = 1; d <= daysInMonth; d++) {
+      final day = DateTime(now.year, now.month, d);
+      if (day.isAfter(today)) break;
+      final snapshot = await loadDailySnapshot(day);
+      if (snapshot != null) {
+        final weekIndex = ((d - 1) ~/ 7).clamp(0, 6);
+        buckets[weekIndex].add(snapshot);
+      }
+    }
+
+    final result = <({int score, double screenHours, double sleepHours})?>[];
+
+    for (final bucket in buckets) {
+      if (bucket.isEmpty) {
+        result.add(null);
+        continue;
+      }
+
+      final avgScore =
+          bucket.map((s) => s.score).reduce((a, b) => a + b) / bucket.length;
+
+      final avgScreen =
+          bucket.map((s) => s.screenHours).reduce((a, b) => a + b) / bucket.length;
+
+      final avgSleep =
+          bucket.map((s) => s.sleepHours).reduce((a, b) => a + b) / bucket.length;
+
+      result.add((
+        score: avgScore.round(),
+        screenHours: avgScreen,
+        sleepHours: avgSleep,
+      ));
+    }
+
     return result;
   }
 

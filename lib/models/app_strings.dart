@@ -114,6 +114,12 @@ class AppStrings {
   String get eyeBreakNextIn => vi ? 'Lần nhắc tiếp theo sau' : 'Next reminder in';
   String get breakNotificationTitle => vi ? 'Đang đếm giờ nghỉ mắt' : 'Eye break countdown';
   String get breakNotificationRemaining => vi ? 'còn lại' : 'remaining';
+  String get breakNotificationUntil => vi ? 'Sẽ nhắc lúc' : 'Reminder at';
+  String get autoDetectEyeBreakTitle =>
+      vi ? 'Tự động ghi nhận khi khoá màn hình' : 'Auto-detect on screen lock';
+  String get autoDetectEyeBreakDescription => vi
+      ? 'Khoá màn hình / rời app từ 20 giây trở lên sẽ tự tính là 1 lần nghỉ mắt, không cần bấm "Xong" thủ công.'
+      : 'Locking the screen or leaving the app for 20+ seconds automatically counts as an eye break — no need to tap "Done".';
   String get eyeBreakTimeUp => vi ? 'Đến giờ nghỉ mắt rồi!' : 'Time for an eye break!';
   String get eyeBreakLookAway =>
       vi ? 'Nhìn vào một vật cách xa khoảng 6 mét' : 'Look at something about 20 feet away';
@@ -272,6 +278,27 @@ class AppStrings {
   String get aiAssistant => vi ? 'Trợ lý AI' : 'AI Assistant';
   String get online => vi ? 'Đang hoạt động' : 'Online';
   String get askAboutEyeHealth => vi ? 'Hỏi về sức khỏe mắt...' : 'Ask about eye health...';
+
+  String get chatApiKeySetupTitle => vi ? 'Kết nối trợ lý AI' : 'Connect AI assistant';
+  String get chatApiKeySetupBody => vi
+      ? 'Nhập khoá API Anthropic (Claude) để bắt đầu trò chuyện thật với AI. '
+          'Khoá chỉ được lưu trên máy bạn, không gửi đi đâu khác ngoài Anthropic.'
+      : 'Enter your Anthropic (Claude) API key to start chatting with a real AI. '
+          'The key is stored only on your device and sent only to Anthropic.';
+  String get chatApiKeyHint => vi ? 'Dán khoá API vào đây (sk-ant-...)' : 'Paste your API key (sk-ant-...)';
+  String get chatApiKeySave => vi ? 'Lưu & bắt đầu' : 'Save & start';
+  String get chatApiKeyCancel => vi ? 'Để sau' : 'Later';
+  String get chatApiKeyChange => vi ? 'Đổi khoá API' : 'Change API key';
+  String get chatErrorMissingKey =>
+      vi ? 'Chưa thiết lập khoá API. Nhấn vào biểu tượng ⚙️ ở trên để thêm khoá.' : 'No API key set. Tap the ⚙️ icon above to add one.';
+  String get chatErrorInvalidKey =>
+      vi ? 'Khoá API không hợp lệ hoặc đã hết hạn. Vui lòng kiểm tra lại.' : 'Invalid or expired API key. Please check it again.';
+  String get chatErrorRateLimited =>
+      vi ? 'Đã vượt hạn mức sử dụng. Vui lòng thử lại sau ít phút.' : 'Rate limit reached. Please try again in a few minutes.';
+  String get chatErrorNetwork =>
+      vi ? 'Không kết nối được mạng. Kiểm tra lại internet rồi thử lại.' : 'Couldn\'t reach the network. Check your connection and try again.';
+  String get chatErrorGeneric =>
+      vi ? 'Có lỗi xảy ra, vui lòng thử lại.' : 'Something went wrong, please try again.';
 
   String get chatGreeting => vi
       ? 'Chào bạn! Mình là trợ lý AI của EyeCare AI. Hỏi mình bất cứ điều gì về sức khỏe mắt, thời gian dùng màn hình, hoặc mẹo chăm sóc thị lực nhé.'
