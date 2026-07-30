@@ -98,6 +98,13 @@ class AppStrings {
   String get permGranted => vi ? 'Đã cấp' : 'Granted';
   String get permNotGranted => vi ? 'Chưa cấp' : 'Not granted';
 
+  // Nhập tay giờ ngủ (fallback khi Health Connect không có dữ liệu)
+  String get manualSleepTitle => vi ? 'Nhập giờ ngủ đêm qua' : 'Log last night\'s sleep';
+  String get manualSleepDesc => vi
+      ? 'Chưa tìm thấy dữ liệu ngủ từ Health Connect. Bạn có thể tự nhập số giờ đã ngủ.'
+      : 'No sleep data found from Health Connect. You can enter your sleep hours manually.';
+  String get save => vi ? 'Lưu' : 'Save';
+
   List<String> get quickPrompts => vi
       ? [
           'Làm sao giảm mỏi mắt?',
@@ -249,7 +256,7 @@ class AppStrings {
       case 'phone':
         return vi ? 'Thời gian màn hình (hệ điều hành)' : 'Screen-on time (OS)';
       case 'sleep':
-        return vi ? 'Đêm qua — gia tốc kế' : 'Last night — accelerometer';
+        return vi ? 'Health Connect hoặc nhập tay' : 'Health Connect or manual entry';
       case 'outdoor':
         return vi ? 'GPS & cảm biến UV' : 'GPS & UV sensor';
       case 'breaks':
@@ -292,11 +299,11 @@ class AppStrings {
 
   String get chatApiKeySetupTitle => vi ? 'Kết nối trợ lý AI' : 'Connect AI assistant';
   String get chatApiKeySetupBody => vi
-      ? 'Nhập khoá API Anthropic (Claude) để bắt đầu trò chuyện thật với AI. '
-          'Khoá chỉ được lưu trên máy bạn, không gửi đi đâu khác ngoài Anthropic.'
-      : 'Enter your Anthropic (Claude) API key to start chatting with a real AI. '
-          'The key is stored only on your device and sent only to Anthropic.';
-  String get chatApiKeyHint => vi ? 'Dán khoá API vào đây (sk-ant-...)' : 'Paste your API key (sk-ant-...)';
+      ? 'Nhập khoá Gemini API (miễn phí tại aistudio.google.com/apikey) để bắt đầu trò chuyện thật với AI. '
+          'Khoá chỉ được lưu trên máy bạn, không gửi đi đâu khác ngoài Google.'
+      : 'Enter your Gemini API key (free at aistudio.google.com/apikey) to start chatting with a real AI. '
+          'The key is stored only on your device and sent only to Google.';
+  String get chatApiKeyHint => vi ? 'Dán khoá API vào đây (AIzaSy...)' : 'Paste your API key (AIzaSy...)';
   String get chatApiKeySave => vi ? 'Lưu & bắt đầu' : 'Save & start';
   String get chatApiKeyCancel => vi ? 'Để sau' : 'Later';
   String get chatApiKeyChange => vi ? 'Đổi khoá API' : 'Change API key';
@@ -498,8 +505,11 @@ class AppStrings {
   String get feedbackTitle => vi ? 'Phản hồi' : 'Feedback';
   String get feedbackHint =>
       vi ? 'Cho chúng tôi biết cần cải thiện gì ở Eye Care AI...' : 'Tell us how we can improve Eye Care AI...';
-  String get submitFeedback => vi ? 'Gửi phản hồi' : 'Submit Feedback';
+  String get submitFeedback => vi ? 'Gửi qua Email' : 'Send via Email';
   String get feedbackThanks => vi ? 'Cảm ơn bạn đã phản hồi!' : 'Thanks for your feedback!';
+  String get feedbackNoEmailApp => vi
+      ? 'Không tìm thấy ứng dụng email trên máy. Vui lòng gửi góp ý tới support@eyecareai.app'
+      : 'No email app found on this device. Please send feedback to support@eyecareai.app';
   String get aboutTitle => vi ? 'Giới thiệu' : 'About';
 
   // Sign out / change password flows

@@ -1,23 +1,27 @@
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Gọi Anthropic Claude API để chat AI THẬT, giới hạn nghiêm ngặt trong chủ
-/// đề sức khoẻ mắt bằng system prompt.
+/// Gọi Google Gemini API trực tiếp để chat AI THẬT, giới hạn nghiêm ngặt
+/// trong chủ đề sức khoẻ mắt bằng system prompt.
 ///
 /// ⚠️ QUAN TRỌNG VỀ BẢO MẬT: khoá API ở đây do NGƯỜI DÙNG tự nhập và chỉ lưu
 /// cục bộ trên máy họ (SharedPreferences) — hệ số dùng cho MVP. TUYỆT ĐỐI
 /// KHÔNG nhúng cứng khoá API riêng của bạn vào code rồi build APK, vì bất kỳ
-/// ai giải nén APK (chỉ cần `apktool` hoặc `flutter build apk` rồi đọc lại
-/// libapp.so) cũng có thể lấy được khoá và dùng miễn phí bằng tiền của bạn.
-/// Khi lên bản chính thức, nên làm một backend nhỏ (VD: Firebase Cloud
+/// ai giải nén APK cũng có thể lấy được khoá và dùng miễn phí bằng tiền của
+/// bạn. Khi lên bản chính thức, nên làm một backend nhỏ (VD: Firebase Cloud
 /// Function) giữ khoá API phía server, app chỉ gọi tới backend đó — service
 /// này chỉ nên dùng để thử nghiệm/demo nội bộ.
+///
+/// Lấy khoá Gemini API MIỄN PHÍ tại: https://aistudio.google.com/apikey
+/// Khoá hợp lệ luôn có dạng "AIzaSy..." — nếu khoá bạn có KHÔNG bắt đầu bằng
+/// tiền tố này, đó không phải khoá Gemini API hợp lệ.
 class EyeChatService {
   EyeChatService._();
   static final EyeChatService instance = EyeChatService._();
 
-  static const _kApiKeyPref = 'pref_anthropic_api_key';
-  static const _model = 'claude-sonnet-4-6';
+  static const _kApiKeyPref = 'pref_gemini_api_key';
+  static const _model = 'gemini-2.0-flash';
+  static const _baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models';
 
   static const _systemPrompt = '''
 Bạn là trợ lý AI của ứng dụng EyeCare AI. Bạn CHỈ được trả lời các câu hỏi
@@ -51,9 +55,10 @@ khoa.
     await prefs.remove(_kApiKeyPref);
   }
 
-  /// Gửi lịch sử hội thoại tới Claude API, trả về câu trả lời dạng text.
+  /// Gửi lịch sử hội thoại tới Gemini API, trả về câu trả lời dạng text.
   /// `history` là danh sách {role: 'user'|'assistant', content: '...'} theo
-  /// đúng thứ tự hội thoại (không bao gồm system prompt — đã gắn sẵn ở đây).
+  /// đúng thứ tự hội thoại — được chuyển sang định dạng `contents` của Gemini
+  /// (role 'assistant' -> 'model') ngay trong hàm này.
   /// Ném Exception với mã lỗi ngắn gọn để UI tự dịch sang thông báo phù hợp.
   Future<String> sendMessage({
     required String apiKey,
@@ -61,24 +66,36 @@ khoa.
   }) async {
     final dio = Dio();
     try {
+      final contents = history
+          .map((m) => {
+                'role': m['role'] == 'assistant' ? 'model' : 'user',
+                'parts': [
+                  {'text': m['content'] ?? ''}
+                ],
+              })
+          .toList();
+
       final response = await dio.post(
-        'https://api.anthropic.com/v1/messages',
-        options: Options(headers: {
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01',
-          'content-type': 'application/json',
-        }),
+        '$_baseUrl/$_model:generateContent',
+        queryParameters: {'key': apiKey},
+        options: Options(headers: {'content-type': 'application/json'}),
         data: {
-          'model': _model,
-          'max_tokens': 1024,
-          'system': _systemPrompt,
-          'messages': history,
+          'system_instruction': {
+            'parts': [
+              {'text': _systemPrompt}
+            ],
+          },
+          'contents': contents,
         },
       );
-      final content = response.data['content'] as List<dynamic>?;
-      final text = content
-          ?.where((b) => b['type'] == 'text')
-          .map((b) => b['text'] as String)
+
+      final candidates = response.data['candidates'] as List<dynamic>?;
+      if (candidates == null || candidates.isEmpty) {
+        throw Exception('empty_response');
+      }
+      final parts = candidates.first['content']?['parts'] as List<dynamic>?;
+      final text = parts
+          ?.map((p) => p['text'] as String? ?? '')
           .join('\n')
           .trim();
       if (text == null || text.isEmpty) {
@@ -87,7 +104,7 @@ khoa.
       return text;
     } on DioException catch (e) {
       final status = e.response?.statusCode;
-      if (status == 401 || status == 403) {
+      if (status == 400 || status == 401 || status == 403) {
         throw Exception('invalid_api_key');
       } else if (status == 429) {
         throw Exception('rate_limited');

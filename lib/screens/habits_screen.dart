@@ -139,7 +139,13 @@ class _HabitsScreenState extends State<HabitsScreen> {
             ...habit.habits.map((habitItem) {
               return Padding(
                 padding: const EdgeInsets.only(bottom: 12),
-                child: _HabitCard(habit: habitItem),
+                child: habitItem.id == 'sleep'
+                    ? InkWell(
+                        borderRadius: BorderRadius.circular(16),
+                        onTap: () => _showManualSleepSheet(context, habitItem.current),
+                        child: _HabitCard(habit: habitItem),
+                      )
+                    : _HabitCard(habit: habitItem),
               );
             }),
             const SizedBox(height: 8),
@@ -178,6 +184,77 @@ class _HabitsScreenState extends State<HabitsScreen> {
     final minute = time.minute.toString().padLeft(2, '0');
     return '$hour:$minute';
   }
+}
+
+void _showManualSleepSheet(BuildContext context, double currentHours) {
+  final strings = context.read<LanguageProvider>().strings;
+  double value = currentHours > 0 ? currentHours : 7;
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    ),
+    builder: (context) {
+      return StatefulBuilder(
+        builder: (context, setState) {
+          return Padding(
+            padding: EdgeInsets.only(
+              left: 20,
+              right: 20,
+              top: 20,
+              bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(strings.manualSleepTitle, style: Theme.of(context).textTheme.titleMedium),
+                const SizedBox(height: 6),
+                Text(
+                  strings.manualSleepDesc,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textMuted),
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    IconButton.filledTonal(
+                      onPressed: () => setState(() => value = (value - 0.5).clamp(0, 16)),
+                      icon: const Icon(Icons.remove),
+                    ),
+                    SizedBox(
+                      width: 100,
+                      child: Text(
+                        '${value.toStringAsFixed(1)} ${strings.vi ? "giờ" : "hrs"}',
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.headlineSmall,
+                      ),
+                    ),
+                    IconButton.filledTonal(
+                      onPressed: () => setState(() => value = (value + 0.5).clamp(0, 16)),
+                      icon: const Icon(Icons.add),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: () {
+                      context.read<HabitProvider>().setManualSleepHours(value);
+                      Navigator.pop(context);
+                    },
+                    child: Text(strings.save),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      );
+    },
+  );
 }
 
 class _CompletionBadge extends StatelessWidget {

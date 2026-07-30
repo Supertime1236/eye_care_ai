@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter/cupertino.dart';
 
 import 'app_colors.dart';
 
@@ -93,8 +94,20 @@ class AppTheme {
         ),
       ),
       dividerTheme: const DividerThemeData(color: AppColors.border),
+      pageTransitionsTheme: _pageTransitionsTheme,
     );
   }
+
+  // Animation chuyển màn hình dùng chung: mượt hơn kiểu mặc định của
+  // Android (vốn hơi "giật" khi push/pop) trên cả Android lẫn iOS, đồng thời
+  // vẫn tôn trọng "reduce motion" của hệ điều hành người dùng.
+  static const PageTransitionsTheme _pageTransitionsTheme = PageTransitionsTheme(
+    builders: {
+      TargetPlatform.android: FadeForwardsPageTransitionsBuilder(),
+      TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+      TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
+    },
+  );
 
   static ThemeData dark() {
     final heading = GoogleFonts.beVietnamProTextTheme();
@@ -184,6 +197,7 @@ class AppTheme {
         ),
       ),
       dividerTheme: const DividerThemeData(color: AppColors.darkBorder),
+      pageTransitionsTheme: _pageTransitionsTheme,
     );
   }
 }

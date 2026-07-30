@@ -32,6 +32,8 @@ class HabitData {
 class HabitProvider extends ChangeNotifier {
   static const _kHasCustomTargetsKey = 'pref_has_custom_habit_targets';
   static const _kHabitTargetPrefix = 'pref_habit_target_';
+  static const _kManualSleepHoursKey = 'pref_manual_sleep_hours';
+  static const _kManualSleepDateKey = 'pref_manual_sleep_date';
 
   HabitProvider() {
     ready = _loadSavedPreferences();
@@ -67,7 +69,7 @@ class HabitProvider extends ChangeNotifier {
     HabitData(
       id: 'sleep',
       title: 'Sleep',
-      subtitle: 'Last night — accelerometer',
+      subtitle: 'Health Connect or manual entry',
       icon: '😴',
       unit: 'hrs',
       target: 9,
@@ -177,7 +179,15 @@ class HabitProvider extends ChangeNotifier {
 
     _applyHabitValue('reading', results[0] as double?);
     _applyHabitValue('phone', phoneHours);
-    _applyHabitValue('sleep', results[2] as double?);
+    // Health Connect chỉ ĐỌC được dữ liệu ngủ nếu có app khác (Samsung
+    // Health, Google Fit, Fitbit...) đã ghi vào đó — nếu máy không cài Health
+    // Connect hoặc chưa có app nào ghi dữ liệu ngủ, kết quả sẽ luôn là null
+    // (không phải lỗi, chỉ đơn giản là KHÔNG CÓ NGUỒN). Dùng số giờ ngủ nhập
+    // tay hôm nay (nếu có) làm phương án dự phòng để habit này luôn dùng
+    // được thay vì mãi hiện "Chưa có nguồn dữ liệu".
+    double? sleepValue = results[2] as double?;
+    sleepValue ??= await _getManualSleepHoursToday();
+    _applyHabitValue('sleep', sleepValue);
     _applyHabitValue('outdoor', results[3] as double?);
     final breaks = results[4] as int;
     _applyHabitValue('breaks', breaks.toDouble());
@@ -212,6 +222,30 @@ class HabitProvider extends ChangeNotifier {
   void _updateHabitsCompletion() {
     final total = habits.fold<double>(0, (sum, h) => sum + h.progress);
     habitsCompletionPercent = ((total / habits.length) * 100).round();
+  }
+
+  Future<double?> _getManualSleepHoursToday() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedDate = prefs.getString(_kManualSleepDateKey);
+    final today = DateTime.now();
+    final todayKey = '${today.year}-${today.month}-${today.day}';
+    if (savedDate != todayKey) return null;
+    return prefs.getDouble(_kManualSleepHoursKey);
+  }
+
+  // Cho phép người dùng tự nhập số giờ ngủ đêm qua khi Health Connect không
+  // có dữ liệu (chưa cài app, hoặc chưa có app nào ghi dữ liệu ngủ vào đó).
+  // Giá trị chỉ áp dụng cho hôm nay, ngày mai sẽ tự làm mới.
+  Future<void> setManualSleepHours(double hours) async {
+    final prefs = await SharedPreferences.getInstance();
+    final today = DateTime.now();
+    final todayKey = '${today.year}-${today.month}-${today.day}';
+    await prefs.setDouble(_kManualSleepHoursKey, hours);
+    await prefs.setString(_kManualSleepDateKey, todayKey);
+
+    _applyHabitValue('sleep', hours);
+    _updateHabitsCompletion();
+    notifyListeners();
   }
 
   Future<void> recordEyeBreak() async {

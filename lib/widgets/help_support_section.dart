@@ -1,10 +1,31 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../providers/language_provider.dart';
 import 'faq_accordion.dart';
 import 'feedback_form.dart';
 import 'settings_toggle_tile.dart';
+
+const String _kSupportEmail = 'support@eyecareai.app';
+
+Future<void> _openMailto(BuildContext context, {required String subject, String body = ''}) async {
+  final strings = context.read<LanguageProvider>().strings;
+  final uri = Uri.parse(
+    'mailto:$_kSupportEmail?subject=${Uri.encodeComponent(subject)}&body=${Uri.encodeComponent(body)}',
+  );
+  bool opened = false;
+  try {
+    opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+  } catch (_) {
+    opened = false;
+  }
+  if (!opened && context.mounted) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(strings.feedbackNoEmailApp)),
+    );
+  }
+}
 
 class HelpSupportSection extends StatelessWidget {
   const HelpSupportSection({super.key});
@@ -21,25 +42,31 @@ class HelpSupportSection extends StatelessWidget {
         _ContactButton(
           icon: Icons.email_outlined,
           label: strings.emailSupport,
-          onTap: () {
-            // TODO: mở mailto: hoặc chat hỗ trợ trong app.
-          },
+          onTap: () => _openMailto(
+            context,
+            subject: strings.vi ? 'Hỗ trợ EyeCare AI' : 'EyeCare AI Support',
+          ),
         ),
         const SizedBox(height: 8),
         _ContactButton(
           icon: Icons.bug_report_outlined,
           label: strings.reportBug,
-          onTap: () {
-            // TODO: mở form báo lỗi.
-          },
+          onTap: () => _openMailto(
+            context,
+            subject: strings.vi ? 'Báo lỗi EyeCare AI' : 'EyeCare AI Bug Report',
+            body: strings.vi
+                ? 'Mô tả lỗi:\n\n\nCác bước để gặp lại lỗi:\n\n\nThiết bị/phiên bản Android:\n'
+                : 'Describe the bug:\n\n\nSteps to reproduce:\n\n\nDevice/Android version:\n',
+          ),
         ),
         const SizedBox(height: 8),
         _ContactButton(
           icon: Icons.lightbulb_outline_rounded,
           label: strings.requestFeature,
-          onTap: () {
-            // TODO: mở form đề xuất tính năng.
-          },
+          onTap: () => _openMailto(
+            context,
+            subject: strings.vi ? 'Đề xuất tính năng EyeCare AI' : 'EyeCare AI Feature Request',
+          ),
         ),
         SettingsSectionLabel(strings.feedbackTitle),
         const FeedbackForm(),
