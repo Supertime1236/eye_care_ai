@@ -81,6 +81,13 @@ class _AppGateState extends State<_AppGate> {
   void initState() {
     super.initState();
     _surveyCompletedFuture = DeviceDataService.instance.isSurveyCompleted();
+
+    // Phải đợi Activity attach xong (sau frame đầu tiên) mới xin các quyền
+    // hệ thống như báo thức chính xác / miễn trừ tối ưu pin, nếu không
+    // permission_handler sẽ báo lỗi "Permission launcher not found".
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      NotificationService.instance.requestDeferredSystemPermissions();
+    });
   }
 
   @override

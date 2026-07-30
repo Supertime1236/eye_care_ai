@@ -134,6 +134,7 @@ class _EyeBreakScreenState extends State<EyeBreakScreen> with WidgetsBindingObse
       secondsRemaining: _secondsRemaining,
       title: strings.breakNotificationTitle,
       remainingSuffix: strings.breakNotificationRemaining,
+      endAt: _endAt,
     );
   }
 

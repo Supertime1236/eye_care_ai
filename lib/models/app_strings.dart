@@ -87,6 +87,17 @@ class AppStrings {
   String get signOut => vi ? 'Đăng xuất' : 'Sign Out';
   String get version => vi ? 'EyeCare AI v1.0.0' : 'EyeCare AI v1.0.0';
 
+  // Bottom sheet "Quyền sử dụng dữ liệu"
+  String get dataUsagePermissions => vi ? 'Quyền sử dụng dữ liệu' : 'Data usage permissions';
+  String get permUsageTitle => vi ? 'Thời gian sử dụng ứng dụng' : 'App usage time';
+  String get permUsageDesc => vi ? 'Theo dõi thời gian bạn dùng từng ứng dụng' : 'Tracks how long you use each app';
+  String get permLocationTitle => vi ? 'Vị trí GPS' : 'GPS location';
+  String get permLocationDesc => vi ? 'Theo dõi thời gian ngoài trời' : 'Tracks your time spent outdoors';
+  String get permActivityTitle => vi ? 'Phát hiện hoạt động' : 'Activity recognition';
+  String get permActivityDesc => vi ? 'Theo dõi vận động' : 'Tracks your physical activity';
+  String get permGranted => vi ? 'Đã cấp' : 'Granted';
+  String get permNotGranted => vi ? 'Chưa cấp' : 'Not granted';
+
   List<String> get quickPrompts => vi
       ? [
           'Làm sao giảm mỏi mắt?',
@@ -113,7 +124,7 @@ class AppStrings {
   String get eyeBreakStop => vi ? 'Dừng nhắc' : 'Stop reminding';
   String get eyeBreakNextIn => vi ? 'Lần nhắc tiếp theo sau' : 'Next reminder in';
   String get breakNotificationTitle => vi ? 'Đang đếm giờ nghỉ mắt' : 'Eye break countdown';
-  String get breakNotificationRemaining => vi ? 'còn lại' : 'remaining';
+  String get breakNotificationRemaining => vi ? 'Sẽ nhắc lúc' : 'Will remind at';
   String get breakNotificationUntil => vi ? 'Sẽ nhắc lúc' : 'Reminder at';
   String get autoDetectEyeBreakTitle =>
       vi ? 'Tự động ghi nhận khi khoá màn hình' : 'Auto-detect on screen lock';

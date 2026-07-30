@@ -91,6 +91,26 @@ class NotificationService {
 
     await androidPlugin?.requestNotificationsPermission();
 
+    await notifications
+        .resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>()
+        ?.requestPermissions(alert: true, badge: true, sound: true);
+
+    _initialized = true;
+  }
+
+  // Các quyền dưới đây (báo thức chính xác, miễn trừ tối ưu pin) dùng
+  // package permission_handler / plugin cần một Activity ĐÃ ATTACH xong để
+  // hoạt động. Nếu gọi quá sớm (trước runApp/trước khi Activity gắn xong —
+  // ví dụ ngay trong main() trước khi khung hình đầu tiên được vẽ), plugin sẽ
+  // ném lỗi "Permission launcher not found" và không hiện dialog gì cả.
+  //
+  // => Hàm này PHẢI được gọi SAU khi widget tree đã build xong lần đầu, ví
+  // dụ trong initState() của widget gốc kèm addPostFrameCallback, KHÔNG được
+  // gọi trong main() trước runApp().
+  Future<void> requestDeferredSystemPermissions() async {
+    final androidPlugin =
+        notifications.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+
     // requestExactAlarmsPermission() MỞ THẲNG một màn hình Settings của hệ
     // thống (ảnh "Chuông báo và lời nhắc") — nếu gọi lại mỗi lần app khởi
     // động thì người dùng cứ bị đưa tới màn đó liên tục dù đã cấp/từ chối rồi
@@ -98,7 +118,11 @@ class NotificationService {
     final prefs = await SharedPreferences.getInstance();
     const askedKey = 'pref_exact_alarm_permission_asked';
     if (!(prefs.getBool(askedKey) ?? false)) {
-      await androidPlugin?.requestExactAlarmsPermission();
+      try {
+        await androidPlugin?.requestExactAlarmsPermission();
+      } catch (_) {
+        // Bỏ qua nếu Activity chưa sẵn sàng hoặc thiết bị không hỗ trợ.
+      }
       await prefs.setBool(askedKey, true);
     }
 
@@ -116,12 +140,6 @@ class NotificationService {
       }
       await prefs.setBool(batteryAskedKey, true);
     }
-
-    await notifications
-        .resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>()
-        ?.requestPermissions(alert: true, badge: true, sound: true);
-
-    _initialized = true;
   }
 
   NotificationDetails _details({bool insistent = false}) {
@@ -232,11 +250,10 @@ class NotificationService {
     required int secondsRemaining,
     required String title,
     required String remainingSuffix,
+    DateTime? endAt,
   }) async {
     await initialize();
     final clamped = secondsRemaining < 0 ? 0 : secondsRemaining;
-    final minutes = (clamped ~/ 60).toString().padLeft(2, '0');
-    final seconds = (clamped % 60).toString().padLeft(2, '0');
     final details = AndroidNotificationDetails(
       _ongoingChannelId,
       _ongoingChannelName,
@@ -250,10 +267,18 @@ class NotificationService {
       enableVibration: false,
       showWhen: false,
     );
+
+    // Hiện giờ đồng hồ sẽ nhắc (VD "Sẽ nhắc lúc 15:40") thay vì đếm ngược
+    // mm:ss, vì đếm ngược theo phút/giây dễ gây cảm giác "chưa đủ đô" và khó
+    // liếc nhanh trên thanh thông báo hơn một mốc giờ cố định.
+    final at = endAt ?? DateTime.now().add(Duration(seconds: clamped));
+    final hh = at.hour.toString().padLeft(2, '0');
+    final mm = at.minute.toString().padLeft(2, '0');
+
     await notifications.show(
       ongoingNotificationId,
       title,
-      '$minutes:$seconds $remainingSuffix',
+      '$remainingSuffix $hh:$mm',
       NotificationDetails(android: details),
     );
   }

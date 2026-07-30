@@ -97,11 +97,37 @@ class UsageStatsHandler(
      */
     private fun openUsageSettings() {
 
-        val intent = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)
+        // Thử mở thẳng tới đúng app trong danh sách Usage Access trước
+        // (một số máy OEM như Xiaomi/Oppo cần data URI mới hiện đúng app).
+        try {
+            val intent = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)
+            intent.data = android.net.Uri.fromParts("package", context.packageName, null)
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            context.startActivity(intent)
+            return
+        } catch (e: Exception) {
+            // fallthrough
+        }
 
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        // Fallback: mở danh sách chung Usage Access (không kèm package)
+        try {
+            val intent = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            context.startActivity(intent)
+            return
+        } catch (e: Exception) {
+            // fallthrough
+        }
 
-        context.startActivity(intent)
+        // Fallback cuối: mở trang chi tiết app, người dùng tự vào Permissions
+        try {
+            val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+            intent.data = android.net.Uri.fromParts("package", context.packageName, null)
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            context.startActivity(intent)
+        } catch (e: Exception) {
+            // Không còn cách nào khác, bỏ qua
+        }
     }
 
     private fun getAppName(packageName: String): String {

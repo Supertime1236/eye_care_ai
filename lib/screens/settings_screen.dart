@@ -237,7 +237,7 @@ class SettingsScreen extends StatelessWidget {
                 const Divider(height: 1, indent: 56),
                 _MenuItem(
                   icon: '📊',
-                  title: 'Quyền sử dụng dữ liệu',
+                  title: strings.dataUsagePermissions,
                   onTap: () => _showPermissionSettings(context),
                 ),
                 const Divider(height: 1, indent: 56),
@@ -512,6 +512,7 @@ Future<void> _showLanguageDialog(BuildContext context, LanguageProvider language
 
 // THÊM HÀM NÀY VÀO CUỐI FILE
 void _showPermissionSettings(BuildContext context) {
+  final strings = context.read<LanguageProvider>().strings;
   showModalBottomSheet(
     context: context,
     isScrollControlled: true,
@@ -563,7 +564,7 @@ void _showPermissionSettings(BuildContext context) {
                         const SizedBox(height: 20),
 
                         Text(
-                          'Quyền sử dụng dữ liệu',
+                          strings.dataUsagePermissions,
                           style: Theme.of(context).textTheme.headlineSmall,
                         ),
 
@@ -571,10 +572,11 @@ void _showPermissionSettings(BuildContext context) {
 
                         _PermissionTile(
                           icon: '📱',
-                          title: 'Thời gian sử dụng ứng dụng',
-                          description:
-                              'Theo dõi thời gian bạn dùng từng ứng dụng',
+                          title: strings.permUsageTitle,
+                          description: strings.permUsageDesc,
                           isGranted: permissions["usage"] ?? false,
+                          grantedLabel: strings.permGranted,
+                          notGrantedLabel: strings.permNotGranted,
                           onTap: () async {
                             await PermissionHelper.requestUsagePermission();
 
@@ -589,9 +591,11 @@ void _showPermissionSettings(BuildContext context) {
 
                         _PermissionTile(
                           icon: '📍',
-                          title: 'Vị trí GPS',
-                          description: 'Theo dõi thời gian ngoài trời',
+                          title: strings.permLocationTitle,
+                          description: strings.permLocationDesc,
                           isGranted: permissions["location"] ?? false,
+                          grantedLabel: strings.permGranted,
+                          notGrantedLabel: strings.permNotGranted,
                           onTap: () async {
                             await PermissionHelper.requestLocationPermission();
 
@@ -606,9 +610,11 @@ void _showPermissionSettings(BuildContext context) {
 
                         _PermissionTile(
                           icon: '🏃',
-                          title: 'Phát hiện hoạt động',
-                          description: 'Theo dõi vận động',
+                          title: strings.permActivityTitle,
+                          description: strings.permActivityDesc,
                           isGranted: permissions["activity"] ?? false,
+                          grantedLabel: strings.permGranted,
+                          notGrantedLabel: strings.permNotGranted,
                           onTap: () async {
                             await PermissionHelper.requestActivityPermission();
 
@@ -639,6 +645,8 @@ class _PermissionTile extends StatelessWidget {
     required this.description,
     required this.isGranted,
     required this.onTap,
+    required this.grantedLabel,
+    required this.notGrantedLabel,
   });
 
   final String icon;
@@ -646,6 +654,8 @@ class _PermissionTile extends StatelessWidget {
   final String description;
   final bool isGranted;
   final VoidCallback onTap;
+  final String grantedLabel;
+  final String notGrantedLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -694,7 +704,7 @@ class _PermissionTile extends StatelessWidget {
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
-                        isGranted ? 'Đã cấp' : 'Chưa cấp',
+                        isGranted ? grantedLabel : notGrantedLabel,
                         style: TextStyle(
                           fontSize: 11,
                           color: isGranted ? Colors.green : Colors.red,
