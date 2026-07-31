@@ -236,11 +236,9 @@ class SettingsScreen extends StatelessWidget {
                 _ListTileOption(
                   icon: '🔤',
                   title: strings.fontLabel,
-                  subtitle: language.isVietnamese ? strings.fontSubtitleVi : strings.fontSubtitleOther,
-                  valueLabel: (language.isVietnamese ? AppFontChoice.beVietnamPro : font.choice).label(strings.vi),
-                  onTap: language.isVietnamese
-                      ? () => _showFontLockedNote(context, strings)
-                      : () => _showFontDialog(context, font, strings),
+                  subtitle: strings.fontSubtitleOther,
+                  valueLabel: font.effectiveChoice(language.isVietnamese).label(strings.vi),
+                  onTap: () => _showFontDialog(context, font, strings, isVietnamese: language.isVietnamese),
                 ),
               ],
             ),
@@ -612,33 +610,51 @@ Future<void> _showLanguageDialog(BuildContext context, LanguageProvider language
 
 // Hộp thoại chọn font — hiện chữ mẫu thật của từng font (dùng đúng
 // GoogleFonts.xxx() cho preview) để người dùng thấy hình dạng trước khi
-// chọn, thay vì chỉ đọc tên font suông.
-Future<void> _showFontDialog(BuildContext context, FontProvider font, AppStrings strings) async {
+// chọn, thay vì chỉ đọc tên font suông. Khi ngôn ngữ là Tiếng Việt, danh
+// sách CHỈ hiện các font đã kiểm chứng hỗ trợ tiếng Việt — tránh lỗi hiển
+// thị dấu thay vì hiển thị đủ 8 font rồi để người dùng tự chọn nhầm.
+Future<void> _showFontDialog(
+  BuildContext context,
+  FontProvider font,
+  AppStrings strings, {
+  required bool isVietnamese,
+}) async {
+  final options = font.availableFor(isVietnamese);
   final selected = await showDialog<AppFontChoice>(
     context: context,
     builder: (context) {
       return SimpleDialog(
         title: Text(strings.fontLabel),
-        children: AppFontChoice.values.map((f) {
-          final isSelected = font.choice == f;
-          return SimpleDialogOption(
-            onPressed: () => Navigator.pop(context, f),
-            child: Row(
-              children: [
-                if (isSelected)
-                  const Icon(Icons.check, size: 18, color: AppColors.primaryBlue)
-                else
-                  const SizedBox(width: 18),
-                const SizedBox(width: 8),
-                Expanded(child: Text(f.label(false))),
-                Text(
-                  f.previewText,
-                  style: font.getAppBarTitleStyle(false, color: AppColors.textMuted).copyWith(fontSize: 14),
-                ),
-              ],
+        children: [
+          if (isVietnamese)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
+              child: Text(
+                strings.fontLockedToVietnameseNote,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textMuted),
+              ),
             ),
-          );
-        }).toList(),
+          ...options.map((f) {
+            final isSelected = font.effectiveChoice(isVietnamese) == f;
+            return SimpleDialogOption(
+              onPressed: () => Navigator.pop(context, f),
+              child: Row(
+                children: [
+                  if (isSelected)
+                    const Icon(Icons.check, size: 18, color: AppColors.primaryBlue)
+                  else
+                    const SizedBox(width: 18),
+                  const SizedBox(width: 8),
+                  Expanded(child: Text(f.label(false))),
+                  Text(
+                    f.previewText,
+                    style: font.getAppBarTitleStyle(isVietnamese, color: AppColors.textMuted).copyWith(fontSize: 14),
+                  ),
+                ],
+              ),
+            );
+          }),
+        ],
       );
     },
   );
@@ -646,24 +662,6 @@ Future<void> _showFontDialog(BuildContext context, FontProvider font, AppStrings
   if (selected != null) {
     font.setChoice(selected);
   }
-}
-
-// Khi ngôn ngữ đang là Tiếng Việt, khoá lựa chọn font về Be Vietnam Pro để
-// tránh lỗi hiển thị dấu — bấm vào chỉ giải thích lý do thay vì mở picker.
-void _showFontLockedNote(BuildContext context, AppStrings strings) {
-  showDialog(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: Text(strings.fontLabel),
-      content: Text(strings.fontLockedToVietnameseNote),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: Text(strings.confirm),
-        ),
-      ],
-    ),
-  );
 }
 
 // THÊM HÀM NÀY VÀO CUỐI FILE
@@ -798,6 +796,25 @@ void _showPermissionSettings(BuildContext context) {
                           notGrantedLabel: strings.permManage,
                           onTap: () async {
                             await NotificationService.instance.openFullScreenIntentSettings();
+                          },
+                        ),
+
+                        const Divider(),
+
+                        // Nhiều hãng máy (Xiaomi/OPPO/Vivo/Samsung...) tự
+                        // đóng băng app đứng yên trong nền để tiết kiệm pin,
+                        // khiến báo thức nghỉ mắt bị trễ hoặc im lặng dù đã
+                        // cấp đủ các quyền ở trên. Đây là công tắc quan
+                        // trọng nhất để "chạy nền" đáng tin cậy.
+                        _PermissionTile(
+                          icon: '🔋',
+                          title: strings.permBatteryTitle,
+                          description: strings.permBatteryDesc,
+                          isGranted: true,
+                          grantedLabel: strings.permManage,
+                          notGrantedLabel: strings.permManage,
+                          onTap: () async {
+                            await NotificationService.instance.requestIgnoreBatteryOptimizations();
                           },
                         ),
                       ],

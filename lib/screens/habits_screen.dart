@@ -143,7 +143,28 @@ class _HabitsScreenState extends State<HabitsScreen> {
                     ? InkWell(
                         borderRadius: BorderRadius.circular(16),
                         onTap: () => _showManualSleepSheet(context, habitItem.current),
-                        child: _HabitCard(habit: habitItem),
+                        child: Stack(
+                          children: [
+                            _HabitCard(habit: habitItem),
+                            // Sleep không có cảm biến tự động đáng tin cậy
+                            // (phụ thuộc Health Connect + app khác ghi dữ
+                            // liệu) — thêm icon bút chì để người dùng BIẾT
+                            // có thể chạm vào để tự nhập giờ ngủ, thay vì
+                            // tưởng thẻ này bị đứng/lỗi vì không thấy gì đổi.
+                            Positioned(
+                              top: 10,
+                              right: 10,
+                              child: Container(
+                                padding: const EdgeInsets.all(5),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primaryBlue.withValues(alpha: 0.12),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(Icons.edit_rounded, size: 14, color: AppColors.primaryBlue),
+                              ),
+                            ),
+                          ],
+                        ),
                       )
                     : _HabitCard(habit: habitItem),
               );

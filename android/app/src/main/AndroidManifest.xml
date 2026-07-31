@@ -19,6 +19,15 @@
     <!-- Break Reminder: cho phép thông báo hết giờ bật full-screen giống chuông báo thức -->
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT"/>
     <uses-permission android:name="android.permission.VIBRATE"/>
+    <!-- Cần để BroadcastReceiver bên dưới tự đặt lại các báo thức nghỉ mắt
+         sau khi máy khởi động lại (nếu không có, mọi báo thức đã đặt trước
+         đó sẽ mất hẳn sau khi reboot). -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+    <!-- Cho phép app xin người dùng loại trừ khỏi tối ưu pin, để hệ thống
+         không tự ý "đóng băng" tiến trình nền khiến báo thức nghỉ mắt bị
+         trễ/không kêu trên các máy Android quản lý pin gắt (Xiaomi/OPPO/
+         Samsung...). -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"/>
     <application
         android:label="EyeCare AI"
         android:name="${applicationName}"
@@ -50,6 +59,25 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+
+        <!-- BUG ĐÃ SỬA: hai receiver bên dưới BẮT BUỘC phải khai báo thủ
+             công cho package flutter_local_notifications — plugin KHÔNG tự
+             đăng ký giúp. Thiếu chúng là lý do chính khiến "Break Reminder"
+             không kêu khi app đã bị hệ thống dọn khỏi bộ nhớ (không còn chạy
+             nền): AlarmManager vẫn kích hoạt đúng giờ, nhưng không có ai
+             lắng nghe để hiển thị notification, nên coi như im lặng. -->
+        <receiver
+            android:exported="false"
+            android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver" />
+        <receiver
+            android:exported="false"
+            android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED"/>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>
+                <action android:name="android.intent.action.QUICKBOOT_POWERON"/>
+            </intent-filter>
+        </receiver>
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and

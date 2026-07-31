@@ -7,20 +7,30 @@ import 'app_colors.dart';
 class AppTheme {
   AppTheme._();
 
+  // Trộn một chút màu accent vào nền/bề mặt trung tính, để đổi accent color
+  // cũng cảm nhận được ở màu nền/card thay vì chỉ đổi màu nút bấm — giúp
+  // giao diện "đầy màu sắc" hơn thực sự theo đúng lựa chọn của người dùng.
+  // amount thấp (0.03–0.08) để không phá vỡ độ tương phản chữ/nền.
+  static Color _tint(Color base, Color seed, double amount) {
+    return Color.alphaBlend(seed.withValues(alpha: amount), base);
+  }
+
   static ThemeData light({Color? accentSeed, TextTheme? fontTextTheme}) {
     final heading = fontTextTheme ?? GoogleFonts.beVietnamProTextTheme();
     final body = fontTextTheme ?? GoogleFonts.beVietnamProTextTheme();
     final seed = accentSeed ?? AppColors.primaryBlue;
+    final background = _tint(AppColors.background, seed, 0.045);
+    final surface = _tint(AppColors.surface, seed, 0.03);
 
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.light,
-      scaffoldBackgroundColor: AppColors.background,
+      scaffoldBackgroundColor: background,
       colorScheme: ColorScheme.fromSeed(
         seedColor: seed,
         primary: seed,
         secondary: AppColors.primaryTeal,
-        surface: AppColors.surface,
+        surface: surface,
       ),
       textTheme: TextTheme(
         displayLarge: heading.displayLarge?.copyWith(
@@ -78,7 +88,7 @@ class AppTheme {
       appBarTheme: AppBarTheme(
         elevation: 0,
         scrolledUnderElevation: 0,
-        backgroundColor: AppColors.background,
+        backgroundColor: background,
         foregroundColor: AppColors.textPrimary,
         titleTextStyle: heading.titleLarge?.copyWith(
           fontSize: 18,
@@ -88,7 +98,7 @@ class AppTheme {
       ),
       cardTheme: CardThemeData(
         elevation: 0,
-        color: AppColors.surface,
+        color: surface,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
           side: const BorderSide(color: AppColors.border),
@@ -114,17 +124,19 @@ class AppTheme {
     final heading = fontTextTheme ?? GoogleFonts.beVietnamProTextTheme();
     final body = fontTextTheme ?? GoogleFonts.beVietnamProTextTheme();
     final seed = accentSeed ?? AppColors.primaryBlue;
+    final darkBackground = _tint(AppColors.darkBackground, seed, 0.07);
+    final darkSurface = _tint(AppColors.darkSurface, seed, 0.05);
 
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.dark,
-      scaffoldBackgroundColor: AppColors.darkBackground,
+      scaffoldBackgroundColor: darkBackground,
       colorScheme: ColorScheme.fromSeed(
         seedColor: seed,
         brightness: Brightness.dark,
         primary: seed,
         secondary: AppColors.primaryTeal,
-        surface: AppColors.darkSurface,
+        surface: darkSurface,
       ),
       textTheme: TextTheme(
         displayLarge: heading.displayLarge?.copyWith(
@@ -182,7 +194,7 @@ class AppTheme {
       appBarTheme: AppBarTheme(
         elevation: 0,
         scrolledUnderElevation: 0,
-        backgroundColor: AppColors.darkBackground,
+        backgroundColor: darkBackground,
         foregroundColor: Colors.white,
         titleTextStyle: heading.titleLarge?.copyWith(
           fontSize: 18,
@@ -192,7 +204,7 @@ class AppTheme {
       ),
       cardTheme: CardThemeData(
         elevation: 0,
-        color: AppColors.darkSurface,
+        color: darkSurface,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
           side: const BorderSide(color: AppColors.darkBorder),

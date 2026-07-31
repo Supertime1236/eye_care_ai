@@ -53,13 +53,10 @@ class AppStrings {
   String get accentColorLabel => vi ? 'Màu nhấn' : 'Accent color';
   String get accentColorSubtitle => vi ? 'Chọn màu chủ đạo cho toàn app' : 'Pick the app-wide accent color';
   String get fontLabel => vi ? 'Phông chữ' : 'Font';
-  String get fontSubtitleVi => vi
-      ? 'Đang dùng Be Vietnam Pro để hiển thị đúng dấu tiếng Việt'
-      : 'Using Be Vietnam Pro for correct Vietnamese diacritics';
   String get fontSubtitleOther => vi ? 'Chọn phông chữ bạn thích' : 'Pick the font you like';
   String get fontLockedToVietnameseNote => vi
-      ? 'Font bị khoá về Be Vietnam Pro khi ngôn ngữ là Tiếng Việt, để tránh lỗi hiển thị dấu.'
-      : 'Font is locked to Be Vietnam Pro while the app language is Vietnamese, to avoid diacritic rendering issues.';
+      ? 'Chỉ hiện các phông đã kiểm chứng hỗ trợ đầy đủ dấu tiếng Việt, để tránh lỗi hiển thị.'
+      : 'Only fonts verified to fully support Vietnamese diacritics are shown, to avoid rendering issues.';
   String get darkMode => vi ? 'Chế độ tối' : 'Dark Mode';
   String get themeLabel => vi ? 'Giao diện' : 'Theme';
   String get themeSubtitle => vi ? 'Sáng, tối hoặc theo máy' : 'Light, dark, or match device';
@@ -113,6 +110,10 @@ class AppStrings {
       ? 'Bật "Hiển thị toàn màn hình" để thông báo hết giờ nghỉ mắt bung pop-up như báo thức (Android 14+)'
       : 'Enable "Full screen intent" so the break reminder pops up like an alarm (Android 14+)';
   String get permManage => vi ? 'Quản lý' : 'Manage';
+  String get permBatteryTitle => vi ? 'Chạy nền không giới hạn' : 'Unrestricted background run';
+  String get permBatteryDesc => vi
+      ? 'Loại trừ khỏi tối ưu hoá pin để báo thức nghỉ mắt luôn kêu đúng giờ, kể cả khi app không mở'
+      : 'Exclude from battery optimization so break reminders always fire on time, even when the app is closed';
 
   // Nhập tay giờ ngủ (fallback khi Health Connect không có dữ liệu)
   String get manualSleepTitle => vi ? 'Nhập giờ ngủ đêm qua' : 'Log last night\'s sleep';

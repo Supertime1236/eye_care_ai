@@ -259,6 +259,33 @@ class NotificationService {
     }
   }
 
+  // "Chạy nền": nhiều hãng máy Android (Xiaomi, OPPO, Vivo, Samsung...) tự
+  // ý dừng/đóng băng app đứng yên trong nền để tiết kiệm pin, kể cả khi đã
+  // đặt báo thức chính xác đúng cách — đây là nguyên nhân phổ biến khiến
+  // thông báo hết giờ nghỉ mắt bị trễ hoặc không kêu, ĐỘC LẬP với việc thiếu
+  // receiver (đã sửa) hay thiếu quyền full-screen intent. Mở thẳng dialog hệ
+  // thống xin loại trừ app khỏi tối ưu hoá pin để tăng độ tin cậy của báo
+  // thức khi app không mở.
+  Future<void> requestIgnoreBatteryOptimizations() async {
+    if (!Platform.isAndroid) return;
+    try {
+      final intent = AndroidIntent(
+        action: 'android.settings.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS',
+        data: 'package:com.eyecare.eye_care_ai',
+      );
+      await intent.launch();
+    } catch (_) {
+      // Nếu dialog trực tiếp bị chặn (một số ROM tùy biến không hỗ trợ) ->
+      // đưa người dùng vào màn hình danh sách tối ưu hoá pin chung để tự tìm app.
+      try {
+        const fallback = AndroidIntent(
+          action: 'android.settings.IGNORE_BATTERY_OPTIMIZATION_SETTINGS',
+        );
+        await fallback.launch();
+      } catch (_) {}
+    }
+  }
+
   Future<void> cancelBreakAlarm() async {
     await notifications.cancel(_alarmNotificationId);
   }
