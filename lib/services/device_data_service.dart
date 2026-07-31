@@ -218,40 +218,17 @@ class DeviceDataService {
     }
   }
 
-  // ---------------- Outdoor Time: cảm biến ánh sáng (lux) + GPS ----------------
-  // KHÔNG dùng HealthDataType.TIME_IN_DAYLIGHT nữa: enum này không tồn tại
-  // trong package `health: ^13.3.1` (đã kiểm tra toàn bộ source), nên đã bỏ
-  // hoàn toàn phụ thuộc vào Health Connect / HealthKit cho tính năng này.
-  // `health` package chỉ còn được dùng cho Sleep (xem getSleepHours() ở trên).
-  //
-  // Cách xác định "đang ở ngoài trời" mỗi ~2 phút, dựa trên 2 tín hiệu độc
-  // lập rồi kết hợp lại để tăng độ chính xác thực tế:
-  //
-  //  1) Cảm biến ánh sáng (lux) - tín hiệu chính, tức thời, không tốn pin:
-  //     - lux > 10000  -> gần như chắc chắn đang ở ngoài trời (ánh sáng ban
-  //       ngày ngoài trời, kể cả trời râm, thường mạnh hơn nhiều so với đèn
-  //       trong nhà).
-  //     - lux < 1000   -> gần như chắc chắn đang ở trong nhà.
-  //     - 1000 <= lux <= 10000 -> vùng mập mờ (VD: gần cửa sổ, ban công có
-  //       mái che, trời âm u...) -> cần thêm tín hiệu GPS để xác nhận.
-  //
-  //  2) GPS - tín hiệu xác nhận cho vùng mập mờ ở trên:
-  //     - Có fix vị trí với độ chính xác tốt (accuracy <= ~30m, lấy nhanh
-  //       trong vài giây) thường đồng nghĩa ăng-ten GPS "nhìn thấy trời" ->
-  //       hỗ trợ giả thuyết đang ở ngoài trời khi kết hợp với lux ở mức khá.
-  //     - Không lấy được fix / độ chính xác kém (bị nhà/mái che chắn tín
-  //       hiệu vệ tinh) -> nghiêng về trong nhà.
-  //
-  // Quy tắc quyết định cuối cùng cho mỗi mẫu 2 phút:
-  //   lux > 10000                      => NGOÀI TRỜI
-  //   lux < 1000                       => TRONG NHÀ
-  //   1000 <= lux <= 10000 và GPS tốt  => NGOÀI TRỜI (xác nhận)
-  //   1000 <= lux <= 10000 và GPS kém  => TRONG NHÀ
-  //   không đọc được lux               => bỏ qua mẫu (không cộng dồn, không
-  //                                        trừ, để tránh đoán mò khi thiếu
-  //                                        dữ liệu thật)
-  static const _kLuxOutdoorThreshold = 10000; // lux > mức này: chắc chắn ngoài trời
-  static const _kLuxIndoorThreshold = 1000; // lux < mức này: chắc chắn trong nhà
+  // ---------------- Outdoor Time: chỉ dùng GPS ----------------
+  // Trước đây tính năng này kết hợp thêm cảm biến ánh sáng (lux) với GPS để
+  // đoán "đang ở ngoài trời". Theo yêu cầu, đã bỏ hẳn phần cảm biến ánh sáng
+  // cho tính năng NÀY (cảm biến ánh sáng vẫn còn dùng riêng cho tính năng
+  // "cảnh báo dùng điện thoại trong bóng tối" ở phần dưới) — giờ Outdoor Time
+  // CHỈ dựa vào GPS:
+  //   - Có fix vị trí với độ chính xác tốt (accuracy <= ~30m, lấy nhanh
+  //     trong vài giây) -> coi là đang ở ngoài trời (ăng-ten GPS "nhìn thấy
+  //     trời" thường chỉ xảy ra khi không bị mái/tường nhà che chắn).
+  //   - Không lấy được fix / độ chính xác kém / thiếu quyền vị trí -> coi là
+  //     trong nhà, không cộng dồn.
   static const _kGpsGoodAccuracyMeters = 30.0; // độ chính xác GPS coi là "tốt"
 
   Future<double> getOutdoorMinutesToday() async {
@@ -283,40 +260,9 @@ class DeviceDataService {
   // Trả về true (ngoài trời) / false (trong nhà) / null (không đủ dữ liệu
   // cảm biến ánh sáng để kết luận cho mẫu này).
   Future<bool?> _detectOutdoorSample() async {
-    final lux = await _sampleLux();
-    if (lux == null) return null;
-
-    if (lux > _kLuxOutdoorThreshold) return true;
-    if (lux < _kLuxIndoorThreshold) return false;
-
-    // Vùng mập mờ: dùng GPS để xác nhận thêm.
-    final gpsGood = await _hasGoodGpsFix();
-    return gpsGood;
-  }
-
-  // Mở stream cảm biến ánh sáng trong tối đa 3 giây để lấy đúng 1 mẫu lux
-  // rồi đóng ngay — không giữ stream chạy liên tục để đỡ tốn pin.
-  Future<int?> _sampleLux() async {
-    try {
-      final completer = Completer<int?>();
-      late final StreamSubscription<int> sub;
-      sub = Light().lightSensorStream.listen(
-        (lux) {
-          if (!completer.isCompleted) completer.complete(lux);
-        },
-        onError: (_) {
-          if (!completer.isCompleted) completer.complete(null);
-        },
-      );
-      final result = await completer.future.timeout(
-        const Duration(seconds: 3),
-        onTimeout: () => null,
-      );
-      await sub.cancel();
-      return result;
-    } catch (_) {
-      return null;
-    }
+    // Đã bỏ cảm biến ánh sáng (lux) theo yêu cầu — giờ CHỈ dùng GPS: có fix
+    // vị trí độ chính xác tốt -> coi là ngoài trời, ngược lại -> trong nhà.
+    return _hasGoodGpsFix();
   }
 
   // Kiểm tra quyền vị trí đã được cấp hay chưa (không tự xin quyền ở đây —
@@ -628,8 +574,54 @@ class DeviceDataService {
     return streak;
   }
 
+  // ---------------- Cảnh báo dùng điện thoại trong bóng tối ----------------
+  // Dùng lại cảm biến ánh sáng (lux) — lắng nghe liên tục trong khi app ở
+  // foreground: nếu lux ở mức "tối" (giống phòng tắt đèn/ban đêm không đèn)
+  // trong một khoảng thời gian liên tục đủ dài, coi như người dùng đang nhìn
+  // màn hình trong bóng tối và gọi callback `onDarkWarning` MỘT LẦN cho tới
+  // khi ánh sáng trở lại bình thường (tránh spam thông báo liên tục).
+  StreamSubscription<int>? _darkRoomLightSub;
+  DateTime? _darkSince;
+  bool _darkWarningFired = false;
+
+  static const _kDarkLuxThreshold = 10; // lux dưới mức này coi là "tối"
+  static const _kDarkTriggerDuration = Duration(minutes: 2);
+
+  void startDarkRoomMonitoring(Future<void> Function() onDarkWarning) {
+    stopDarkRoomMonitoring();
+    try {
+      _darkRoomLightSub = Light().lightSensorStream.listen(
+        (lux) {
+          if (lux < _kDarkLuxThreshold) {
+            _darkSince ??= DateTime.now();
+            final elapsed = DateTime.now().difference(_darkSince!);
+            if (!_darkWarningFired && elapsed >= _kDarkTriggerDuration) {
+              _darkWarningFired = true;
+              onDarkWarning();
+            }
+          } else {
+            // Đủ sáng trở lại -> reset để lần "tối" tiếp theo lại được cảnh báo.
+            _darkSince = null;
+            _darkWarningFired = false;
+          }
+        },
+        onError: (_) {},
+      );
+    } catch (_) {
+      // Thiết bị không có cảm biến ánh sáng — bỏ qua tính năng này.
+    }
+  }
+
+  void stopDarkRoomMonitoring() {
+    _darkRoomLightSub?.cancel();
+    _darkRoomLightSub = null;
+    _darkSince = null;
+    _darkWarningFired = false;
+  }
+
   void dispose() {
     _accelSub?.cancel();
     _outdoorSampleTimer?.cancel();
+    _darkRoomLightSub?.cancel();
   }
 }

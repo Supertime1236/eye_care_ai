@@ -8,6 +8,7 @@ import '../providers/language_provider.dart';
 import '../providers/profile_provider.dart';
 import '../providers/settings_provider.dart';
 import '../providers/theme_provider.dart';
+import '../services/notification_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/shared_widgets.dart';
 import 'edit_profile_screen.dart';
@@ -622,6 +623,26 @@ void _showPermissionSettings(BuildContext context) {
                                 await PermissionHelper.checkAllPermissions();
 
                             setState(() {});
+                          },
+                        ),
+
+                        const Divider(),
+
+                        // Android 14+ có công tắc riêng "Hiển thị toàn màn
+                        // hình" cho từng app — nếu tắt, thông báo hết-giờ-
+                        // nghỉ-mắt chỉ hiện như thông báo thường thay vì bật
+                        // pop-up toàn màn hình giống báo thức. Luôn hiển thị
+                        // tile này (không kiểm tra trạng thái) vì không có
+                        // API công khai đọc được trạng thái công tắc đó.
+                        _PermissionTile(
+                          icon: '⏰',
+                          title: strings.permFullScreenAlertTitle,
+                          description: strings.permFullScreenAlertDesc,
+                          isGranted: true,
+                          grantedLabel: strings.permManage,
+                          notGrantedLabel: strings.permManage,
+                          onTap: () async {
+                            await NotificationService.instance.openFullScreenIntentSettings();
                           },
                         ),
                       ],

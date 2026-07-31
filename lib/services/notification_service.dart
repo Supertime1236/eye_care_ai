@@ -1,5 +1,7 @@
+import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:android_intent_plus/android_intent.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -235,6 +237,26 @@ class NotificationService {
     final androidPlugin =
         notifications.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
     await androidPlugin?.requestExactAlarmsPermission();
+  }
+
+  // Android 14+ (API 34) THẮT CHẶT thêm: kể cả đã có quyền
+  // USE_FULL_SCREEN_INTENT trong Manifest, thông báo hết-giờ-nghỉ-mắt vẫn có
+  // thể chỉ hiện dạng thông báo thường (không tự bật màn hình / hiện pop-up
+  // toàn màn hình) nếu người dùng chưa bật riêng công tắc "Hiển thị toàn màn
+  // hình" cho app trong Settings — đây là nguyên nhân phổ biến khiến "Break
+  // Reminder" có báo nhưng không thấy pop-up như các app báo thức khác.
+  // Hàm này mở thẳng đúng màn hình cài đặt đó trên máy Android 14+.
+  Future<void> openFullScreenIntentSettings() async {
+    if (!Platform.isAndroid) return;
+    try {
+      final intent = AndroidIntent(
+        action: 'android.settings.MANAGE_APP_USE_FULL_SCREEN_INTENT',
+        data: 'package:com.eyecare.eye_care_ai',
+      );
+      await intent.launch();
+    } catch (_) {
+      // Máy chạy Android < 14 không có màn hình cài đặt này -> bỏ qua.
+    }
   }
 
   Future<void> cancelBreakAlarm() async {

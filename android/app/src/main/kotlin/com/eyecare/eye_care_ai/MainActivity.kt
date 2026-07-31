@@ -26,6 +26,16 @@ class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+
+        // BUG DA SUA: UsageStatsHandler (kenh "eye_care/usage" - dung boi
+        // UsageService.dart cho checkUsagePermission/openUsageSettings/
+        // getTodayUsage/getWeeklyUsage) da ton tai san nhung CHUA BAO GIO
+        // duoc dang ky (register) o day. Vi vay moi loi goi tu Dart toi kenh
+        // nay deu roi vao MissingPluginException - day chinh la ly do nhan
+        // vao "Thoi gian su dung ung dung" trong muc Quyen su dung du lieu
+        // khong he mo man hinh cap quyen.
+        UsageStatsHandler(this).register(flutterEngine.dartExecutor.binaryMessenger)
+
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, channelName).setMethodCallHandler { call, result ->
             when (call.method) {
                 "hasUsageAccess" -> result.success(hasUsageAccessPermission())

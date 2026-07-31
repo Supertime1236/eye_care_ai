@@ -97,6 +97,11 @@ class AppStrings {
   String get permActivityDesc => vi ? 'Theo dõi vận động' : 'Tracks your physical activity';
   String get permGranted => vi ? 'Đã cấp' : 'Granted';
   String get permNotGranted => vi ? 'Chưa cấp' : 'Not granted';
+  String get permFullScreenAlertTitle => vi ? 'Pop-up hết giờ nghỉ mắt' : 'Break reminder pop-up';
+  String get permFullScreenAlertDesc => vi
+      ? 'Bật "Hiển thị toàn màn hình" để thông báo hết giờ nghỉ mắt bung pop-up như báo thức (Android 14+)'
+      : 'Enable "Full screen intent" so the break reminder pops up like an alarm (Android 14+)';
+  String get permManage => vi ? 'Quản lý' : 'Manage';
 
   // Nhập tay giờ ngủ (fallback khi Health Connect không có dữ liệu)
   String get manualSleepTitle => vi ? 'Nhập giờ ngủ đêm qua' : 'Log last night\'s sleep';

@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../config/env.dart';
 
 /// Gọi Google Gemini API trực tiếp để chat AI THẬT, giới hạn nghiêm ngặt
 /// trong chủ đề sức khoẻ mắt bằng system prompt.
@@ -20,7 +21,7 @@ class EyeChatService {
   static final EyeChatService instance = EyeChatService._();
 
   static const _kApiKeyPref = 'pref_gemini_api_key';
-  static const _model = 'gemini-2.0-flash';
+  static const _model = 'gemini-2.5-flash';
   static const _baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models';
 
   static const _systemPrompt = '''
@@ -61,7 +62,7 @@ khoa.
   /// (role 'assistant' -> 'model') ngay trong hàm này.
   /// Ném Exception với mã lỗi ngắn gọn để UI tự dịch sang thông báo phù hợp.
   Future<String> sendMessage({
-    required String apiKey,
+    final String apiKey = Env.geminiApiKey,
     required List<Map<String, String>> history,
   }) async {
     final dio = Dio();

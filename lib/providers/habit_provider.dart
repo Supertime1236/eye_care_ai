@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/device_data_service.dart';
+import '../services/notification_service.dart';
 
 class HabitData {
   HabitData({
@@ -146,6 +147,15 @@ class HabitProvider extends ChangeNotifier {
     final service = DeviceDataService.instance;
     service.startReadingTracking();
     service.startOutdoorTracking();
+    // Cảnh báo dùng điện thoại trong bóng tối: gửi thông báo hệ thống khi
+    // môi trường xung quanh tối liên tục quá lâu trong lúc app đang mở.
+    service.startDarkRoomMonitoring(() async {
+      await NotificationService.instance.showInstantNotification(
+        title: '🌙 Bạn đang dùng điện thoại trong bóng tối',
+        body: 'Ánh sáng yếu khiến mắt phải điều tiết nhiều hơn, dễ gây mỏi mắt. '
+            'Hãy bật đèn hoặc giảm độ sáng màn hình cho phù hợp.',
+      );
+    });
   }
 
   Future<void> refreshHabitsFromDevice() async {
