@@ -79,7 +79,7 @@ class HabitProvider extends ChangeNotifier {
     HabitData(
       id: 'outdoor',
       title: 'Outdoor Time',
-      subtitle: 'GPS & UV sensor',
+      subtitle: 'GPS location',
       icon: '🌿',
       unit: 'min',
       target: 90,

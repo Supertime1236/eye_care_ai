@@ -9,7 +9,6 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
     id("com.google.gms.google-services")
 }
-apply(plugin = "dev.flutter.flutter-gradle-plugin")
 
 // Đọc cấu hình ký release từ android/key.properties (không commit file này lên
 // git — trên CI, workflow sẽ tự tạo file này từ GitHub Secrets trước khi

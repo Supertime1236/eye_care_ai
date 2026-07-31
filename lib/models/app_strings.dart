@@ -184,6 +184,11 @@ class AppStrings {
   String get targetOptionEasy => vi ? 'Dễ dàng' : 'Easy';
   String get targetOptionChallenge => vi ? 'Thử thách' : 'Challenge';
   String get targetOptionCustom => vi ? 'Tùy chỉnh' : 'Custom';
+  String get targetOptionKeepCurrent => vi ? 'Giữ nguyên' : 'Keep as is';
+  String get targetAlreadyMetBanner => vi
+      ? '🎉 Bạn đã đạt chỉ tiêu này rồi! Có thể giữ nguyên mức hiện tại hoặc đặt mục tiêu cao hơn nếu muốn.'
+      : "🎉 You're already meeting this target! Keep it as is, or aim higher if you'd like.";
+  String get surveySummaryContinue => vi ? 'Tiếp tục đặt mục tiêu' : 'Continue to set targets';
   String get targetCurrentLabel => vi ? 'Hiện tại' : 'Current';
   String get targetRecommendedLabel => vi ? 'Khuyến nghị chuẩn' : 'Recommended';
   String get targetYourPlan => vi ? 'Kế hoạch cá nhân của bạn' : 'Your Personalized Plan';
@@ -263,7 +268,7 @@ class AppStrings {
       case 'sleep':
         return vi ? 'Health Connect hoặc nhập tay' : 'Health Connect or manual entry';
       case 'outdoor':
-        return vi ? 'GPS & cảm biến UV' : 'GPS & UV sensor';
+        return vi ? 'Định vị GPS' : 'GPS location';
       case 'breaks':
         return vi ? 'Nhận diện ánh nhìn qua camera trước' : 'Front camera gaze detection';
       default:

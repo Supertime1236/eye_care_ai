@@ -40,6 +40,7 @@ class _HabitsSurveyScreenState extends State<HabitsSurveyScreen> {
   double _breaksPerDay = 4;
 
   SurveyResult? _result;
+  bool _showSummary = true;
   int _targetStepIndex = 0;
   bool _showCustomTargetError = false;
   final Map<String, TargetLevel> _selectedTargetLevels = {};
@@ -101,6 +102,7 @@ class _HabitsSurveyScreenState extends State<HabitsSurveyScreen> {
     final result = evaluateSurvey(answers, vi);
     setState(() {
       _result = result;
+      _showSummary = true;
       _targetStepIndex = 0;
       _showCustomTargetError = false;
       _selectedTargetLevels.clear();
@@ -109,8 +111,17 @@ class _HabitsSurveyScreenState extends State<HabitsSurveyScreen> {
       _customTargetControllers.clear();
       for (final id in _surveyTargetHabitIds) {
         final row = result.rows.firstWhere((row) => row.id == id);
-        _selectedTargetLevels[id] = TargetLevel.recommended;
-        _selectedTargetValues[id] = row.recommendedValue;
+        // Nếu người dùng đã đạt chuẩn cho habit này -> mặc định chọn "Giữ
+        // nguyên" (dùng chính giá trị hiện tại làm target mới) thay vì ép
+        // họ lên mức "Khuyến nghị" như trước đây (gây cảm giác dù đã tốt
+        // vẫn bị yêu cầu cố gắng thêm).
+        if (row.isGood) {
+          _selectedTargetLevels[id] = TargetLevel.keep;
+          _selectedTargetValues[id] = row.currentValue;
+        } else {
+          _selectedTargetLevels[id] = TargetLevel.recommended;
+          _selectedTargetValues[id] = row.recommendedValue;
+        }
       }
     });
   }
@@ -118,6 +129,7 @@ class _HabitsSurveyScreenState extends State<HabitsSurveyScreen> {
   void _retake() {
     setState(() {
       _result = null;
+      _showSummary = true;
       _pageIndex = 0;
       _targetStepIndex = 0;
       _showCustomTargetError = false;
@@ -143,7 +155,11 @@ class _HabitsSurveyScreenState extends State<HabitsSurveyScreen> {
       child: Scaffold(
         appBar: AppBar(
           automaticallyImplyLeading: !widget.mandatory,
-          title: Text(_result == null ? strings.surveyTitle : strings.surveyResultsTitle),
+          title: Text(
+            _result == null
+                ? strings.surveyTitle
+                : (_showSummary ? strings.surveyResultsTitle : strings.targetSelectionTitle),
+          ),
           actions: [
             // Cho phép đổi ngôn ngữ và chế độ sáng/tối ngay trong khảo sát
             // bắt buộc lần đầu — lúc này người dùng chưa vào được trang Settings.
@@ -163,7 +179,9 @@ class _HabitsSurveyScreenState extends State<HabitsSurveyScreen> {
           ],
         ),
         body: SafeArea(
-          child: _result == null ? _buildWizard(context, strings) : _buildResults(context, strings),
+          child: _result == null
+              ? _buildWizard(context, strings)
+              : (_showSummary ? _buildSummary(context, strings) : _buildResults(context, strings)),
         ),
       ),
     );
@@ -312,6 +330,126 @@ class _HabitsSurveyScreenState extends State<HabitsSurveyScreen> {
     );
   }
 
+  // Màn hình tóm tắt kết quả khảo sát: liệt kê TẤT CẢ chỉ số (kể cả
+  // reading_distance không có target trên trang Habits) với trạng thái
+  // Đạt chuẩn / Cần cải thiện, để người dùng thấy ngay mình đang yếu ở đâu
+  // trước khi bước vào wizard chọn mục tiêu.
+  Widget _buildSummary(BuildContext context, AppStrings strings) {
+    final result = _result!;
+    final settings = context.watch<SettingsProvider>();
+    final needsWorkCount = result.rows.where((r) => !r.isGood).length;
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(strings.surveyResultsTitle, style: Theme.of(context).textTheme.headlineMedium),
+          const SizedBox(height: 8),
+          Text(strings.surveyResultsSubtitle, style: Theme.of(context).textTheme.bodyMedium),
+          const SizedBox(height: 8),
+          Text(
+            needsWorkCount == 0
+                ? (strings.vi ? '🎉 Tất cả chỉ số đều đạt chuẩn!' : '🎉 Every metric is on track!')
+                : (strings.vi
+                    ? '⚠️ $needsWorkCount/${result.rows.length} chỉ số cần cải thiện'
+                    : '⚠️ $needsWorkCount of ${result.rows.length} metrics need work'),
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  color: needsWorkCount == 0 ? Colors.green : Colors.orange,
+                  fontWeight: FontWeight.w700,
+                ),
+          ),
+          const SizedBox(height: 16),
+          ...result.rows.map((row) {
+            final title = row.id == 'reading_distance'
+                ? strings.surveyDistanceQuestion
+                : _habitTitle(row.id, strings);
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: SectionCard(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: (row.isGood ? Colors.green : Colors.orange).withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(
+                        row.isGood ? Icons.check_rounded : Icons.priority_high_rounded,
+                        color: row.isGood ? Colors.green : Colors.orange,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(title, style: Theme.of(context).textTheme.titleSmall),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: (row.isGood ? Colors.green : Colors.orange).withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Text(
+                                  row.isGood ? strings.surveyGoodStatus : strings.surveyNeedsWorkStatus,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    color: row.isGood ? Colors.green : Colors.orange,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            '${strings.surveyCurrentLabel}: ${_formatTargetValue(row.currentValue, row.unit, settings.useMetric)} ${_unitLabel(row.unit, settings.useMetric, strings)}'
+                            '  •  ${strings.surveyTargetLabel}: ${row.recommendedLabel}',
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textMuted),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(row.tip, style: Theme.of(context).textTheme.bodySmall),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }),
+          const SizedBox(height: 4),
+          Text(
+            strings.surveyDisclaimer,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textMuted, fontStyle: FontStyle.italic),
+          ),
+          const SizedBox(height: 20),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.habitsAccent,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            onPressed: () => setState(() => _showSummary = false),
+            child: Text(strings.surveySummaryContinue),
+          ),
+          const SizedBox(height: 8),
+          OutlinedButton(
+            onPressed: _retake,
+            child: Text(strings.surveyRetake),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildResults(BuildContext context, AppStrings strings) {
     final result = _result!;
     final settings = context.watch<SettingsProvider>();
@@ -349,6 +487,47 @@ class _HabitsSurveyScreenState extends State<HabitsSurveyScreen> {
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textMuted),
                 ),
                 const SizedBox(height: 20),
+                if (currentRow.isGood) ...[
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.green.withValues(alpha: 0.10),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(Icons.emoji_events_rounded, color: Colors.green, size: 20),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            strings.targetAlreadyMetBanner,
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.green.shade800),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  _TargetChoiceCard(
+                    title: strings.targetOptionKeepCurrent,
+                    description: strings.vi
+                        ? 'Giữ mức bạn đang làm tốt, không thay đổi.'
+                        : "Keep the level you're already doing well at.",
+                    selected: selectedLevel == TargetLevel.keep,
+                    onTap: () {
+                      setState(() {
+                        _selectedTargetLevels[currentHabitId] = TargetLevel.keep;
+                        _selectedTargetValues[currentHabitId] = currentRow.currentValue;
+                        _showCustomTargetError = false;
+                      });
+                    },
+                    value: _formatTargetValue(currentRow.currentValue, currentRow.unit, settings.useMetric),
+                    unit: _unitLabel(currentRow.unit, settings.useMetric, strings),
+                  ),
+                  const SizedBox(height: 12),
+                ],
                 _TargetChoiceCard(
                   title: strings.targetOptionEasy,
                   description: strings.vi
@@ -477,14 +656,19 @@ class _HabitsSurveyScreenState extends State<HabitsSurveyScreen> {
           if (_targetStepIndex < _surveyTargetHabitIds.length - 1)
             Row(
               children: [
-                if (_targetStepIndex > 0)
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => setState(() => _targetStepIndex--),
-                      child: Text(strings.targetBack),
-                    ),
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () {
+                      if (_targetStepIndex > 0) {
+                        setState(() => _targetStepIndex--);
+                      } else {
+                        setState(() => _showSummary = true);
+                      }
+                    },
+                    child: Text(strings.targetBack),
                   ),
-                if (_targetStepIndex > 0) const SizedBox(width: 12),
+                ),
+                const SizedBox(width: 12),
                 Expanded(
                   flex: 2,
                   child: FilledButton(

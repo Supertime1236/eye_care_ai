@@ -1,28 +1,15 @@
 import 'package:dio/dio.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../config/env.dart';
 
-/// Gọi Google Gemini API trực tiếp để chat AI THẬT, giới hạn nghiêm ngặt
-/// trong chủ đề sức khoẻ mắt bằng system prompt.
-///
-/// ⚠️ QUAN TRỌNG VỀ BẢO MẬT: khoá API ở đây do NGƯỜI DÙNG tự nhập và chỉ lưu
-/// cục bộ trên máy họ (SharedPreferences) — hệ số dùng cho MVP. TUYỆT ĐỐI
-/// KHÔNG nhúng cứng khoá API riêng của bạn vào code rồi build APK, vì bất kỳ
-/// ai giải nén APK cũng có thể lấy được khoá và dùng miễn phí bằng tiền của
-/// bạn. Khi lên bản chính thức, nên làm một backend nhỏ (VD: Firebase Cloud
-/// Function) giữ khoá API phía server, app chỉ gọi tới backend đó — service
-/// này chỉ nên dùng để thử nghiệm/demo nội bộ.
-///
-/// Lấy khoá Gemini API MIỄN PHÍ tại: https://aistudio.google.com/apikey
-/// Khoá hợp lệ luôn có dạng "AIzaSy..." — nếu khoá bạn có KHÔNG bắt đầu bằng
-/// tiền tố này, đó không phải khoá Gemini API hợp lệ.
+/// Gọi OpenRouter API để chat AI, giới hạn nghiêm ngặt trong chủ đề sức khoẻ
+/// mắt bằng system prompt. API key lấy từ biến môi trường lúc build
+/// (--dart-define=OPENROUTER_API_KEY=...), không lưu trong SharedPreferences.
 class EyeChatService {
   EyeChatService._();
   static final EyeChatService instance = EyeChatService._();
 
-  static const _kApiKeyPref = 'pref_gemini_api_key';
-  static const _model = 'gemini-2.5-flash';
-  static const _baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models';
+  static const _model = 'google/gemma-3-27b-it:free';
+  static const _baseUrl = 'https://openrouter.ai/api/v1/chat/completions';
 
   static const _systemPrompt = '''
 Bạn là trợ lý AI của ứng dụng EyeCare AI. Bạn CHỈ được trả lời các câu hỏi
@@ -41,77 +28,63 @@ chứng nghiêm trọng hoặc kéo dài, luôn khuyên người dùng đi khám
 khoa.
 ''';
 
-  Future<String?> getSavedApiKey() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_kApiKeyPref);
-  }
-
-  Future<void> saveApiKey(String key) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_kApiKeyPref, key.trim());
-  }
-
-  Future<void> clearApiKey() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_kApiKeyPref);
-  }
-
-  /// Gửi lịch sử hội thoại tới Gemini API, trả về câu trả lời dạng text.
+  /// Gửi lịch sử hội thoại tới OpenRouter, trả về câu trả lời dạng text.
   /// `history` là danh sách {role: 'user'|'assistant', content: '...'} theo
-  /// đúng thứ tự hội thoại — được chuyển sang định dạng `contents` của Gemini
-  /// (role 'assistant' -> 'model') ngay trong hàm này.
-  /// Ném Exception với mã lỗi ngắn gọn để UI tự dịch sang thông báo phù hợp.
+  /// đúng thứ tự hội thoại.
+  /// Ném Exception với mã lỗi ngắn gọn để UI tự dịch sang thông báo phù hợp:
+  /// invalid_api_key | rate_limited | network_error | server_error
   Future<String> sendMessage({
-    final String apiKey = Env.geminiApiKey,
+    final String apiKey = Env.openRouterApiKey,
     required List<Map<String, String>> history,
   }) async {
     final dio = Dio();
     try {
-      final contents = history
-          .map((m) => {
-                'role': m['role'] == 'assistant' ? 'model' : 'user',
-                'parts': [
-                  {'text': m['content'] ?? ''}
-                ],
-              })
-          .toList();
+      final messages = [
+        {'role': 'system', 'content': _systemPrompt},
+        ...history.map(
+          (m) => {
+            'role': m['role'] == 'assistant' ? 'assistant' : 'user',
+            'content': m['content'] ?? '',
+          },
+        ),
+      ];
 
       final response = await dio.post(
-        '$_baseUrl/$_model:generateContent',
-        queryParameters: {'key': apiKey},
-        options: Options(headers: {'content-type': 'application/json'}),
-        data: {
-          'system_instruction': {
-            'parts': [
-              {'text': _systemPrompt}
-            ],
+        _baseUrl,
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $apiKey',
+            'Content-Type': 'application/json',
+            'HTTP-Referer': 'https://eyecare-ai.app',
+            'X-Title': 'EyeCare AI',
           },
-          'contents': contents,
+        ),
+        data: {
+          'model': _model,
+          'messages': messages,
         },
       );
 
-      final candidates = response.data['candidates'] as List<dynamic>?;
-      if (candidates == null || candidates.isEmpty) {
+      final choices = response.data['choices'] as List<dynamic>?;
+      if (choices == null || choices.isEmpty) {
         throw Exception('empty_response');
       }
-      final parts = candidates.first['content']?['parts'] as List<dynamic>?;
-      final text = parts
-          ?.map((p) => p['text'] as String? ?? '')
-          .join('\n')
-          .trim();
+      final text =
+          (choices.first['message']?['content'] as String?)?.trim();
       if (text == null || text.isEmpty) {
         throw Exception('empty_response');
       }
       return text;
     } on DioException catch (e) {
       final status = e.response?.statusCode;
-      if (status == 400 || status == 401 || status == 403) {
+      if (status == 401) {
         throw Exception('invalid_api_key');
       } else if (status == 429) {
         throw Exception('rate_limited');
       } else if (e.type == DioExceptionType.connectionTimeout ||
           e.type == DioExceptionType.connectionError ||
-          e.type == DioExceptionType.receiveTimeout) {
+          e.type == DioExceptionType.receiveTimeout ||
+          e.type == DioExceptionType.sendTimeout) {
         throw Exception('network_error');
       }
       throw Exception('server_error');

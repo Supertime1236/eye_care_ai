@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../models/app_strings.dart';
+
 import '../providers/chat_provider.dart';
 import '../providers/language_provider.dart';
+import '../config/env.dart';
 import '../services/eye_chat_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/shared_widgets.dart';
@@ -43,14 +44,9 @@ class _ChatScreenState extends State<ChatScreen> {
     if (text.trim().isEmpty || provider.isTyping) return;
     final strings = context.read<LanguageProvider>().strings;
 
-    final apiKey = await EyeChatService.instance.getSavedApiKey();
-    if (apiKey == null || apiKey.isEmpty) {
-      if (!mounted) return;
-      final entered = await _promptForApiKey(strings);
-      if (entered == null || entered.isEmpty) {
-        provider.addBotMessage(strings.chatErrorMissingKey);
-        return;
-      }
+    if (Env.openRouterApiKey.isEmpty) {
+      provider.addBotMessage(strings.chatErrorMissingKey);
+      return;
     }
 
     provider.addUserMessage(text);
@@ -59,12 +55,9 @@ class _ChatScreenState extends State<ChatScreen> {
     _controller.clear();
     _scrollToBottom();
 
-    final key = apiKey ?? await EyeChatService.instance.getSavedApiKey();
     String reply;
     try {
-      if (key == null || key.isEmpty) throw Exception('invalid_api_key');
       reply = await EyeChatService.instance.sendMessage(
-        apiKey: key,
         history: provider.toApiHistory(),
       );
     } catch (e) {
@@ -85,50 +78,6 @@ class _ChatScreenState extends State<ChatScreen> {
     provider.addBotMessage(reply);
     provider.setTyping(false);
     _scrollToBottom();
-  }
-
-  // Hộp thoại nhập khoá API Anthropic lần đầu — chỉ hỏi khi chưa có khoá nào
-  // được lưu. Xem services/eye_chat_service.dart để biết vì sao khoá được
-  // người dùng tự nhập thay vì nhúng cứng trong app.
-  Future<String?> _promptForApiKey(AppStrings strings) async {
-    final controller = TextEditingController();
-    return showDialog<String>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(strings.chatApiKeySetupTitle),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(strings.chatApiKeySetupBody),
-            const SizedBox(height: 12),
-            TextField(
-              controller: controller,
-              obscureText: true,
-              decoration: InputDecoration(
-                hintText: strings.chatApiKeyHint,
-                border: const OutlineInputBorder(),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, null),
-            child: Text(strings.chatApiKeyCancel),
-          ),
-          FilledButton(
-            onPressed: () async {
-              final value = controller.text.trim();
-              if (value.isEmpty) return;
-              await EyeChatService.instance.saveApiKey(value);
-              if (context.mounted) Navigator.pop(context, value);
-            },
-            child: Text(strings.chatApiKeySave),
-          ),
-        ],
-      ),
-    );
   }
 
   @override
@@ -189,12 +138,7 @@ class _ChatScreenState extends State<ChatScreen> {
                     ),
                   ],
                 ),
-                const Spacer(),
-                IconButton(
-                  tooltip: strings.chatApiKeyChange,
-                  icon: const Icon(Icons.settings_outlined, size: 20),
-                  onPressed: () => _promptForApiKey(strings),
-                ),
+                const SizedBox.shrink(),
               ],
             ),
           ),

@@ -80,6 +80,11 @@ class EyeHealthStandards {
       TargetLevel.recommended => 0.5,
       TargetLevel.challenge => 0.75,
       TargetLevel.custom => 0,
+      // "Giữ nguyên": chỉ dùng khi current đã đạt chuẩn — giá trị thật sự
+      // được gán trực tiếp bằng currentRow.currentValue ở nơi gọi
+      // (_HabitsSurveyScreenState), factor này không được dùng tới nhưng
+      // vẫn cần có case để switch không thiếu nhánh.
+      TargetLevel.keep => 0,
     };
     return current + delta * factor;
   }
@@ -116,7 +121,7 @@ class SurveyAnswers {
   final double breaksPerDay;
 }
 
-enum TargetLevel { easy, recommended, challenge, custom }
+enum TargetLevel { easy, recommended, challenge, custom, keep }
 
 // Một dòng so sánh: chỉ số hiện tại của người dùng vs. chuẩn khuyến nghị.
 class ComparisonRow {
