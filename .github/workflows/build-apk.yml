@@ -100,3 +100,11 @@ jobs:
           body: "APK build tự động từ commit ${{ github.sha }}"
           prerelease: true
           files: release/eye_care_ai-${{ steps.version.outputs.version }}-build${{ github.run_number }}.apk
+      - name: Verify OpenRouter Secret
+        run: |
+          if [ -z "${{ secrets.OPENROUTER_API_KEY }}" ]; then
+            echo "❌ OPENROUTER_API_KEY is EMPTY"
+            exit 1
+          else
+            echo "✅ OPENROUTER_API_KEY loaded"
+          fi
