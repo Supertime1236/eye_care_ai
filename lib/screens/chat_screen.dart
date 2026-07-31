@@ -43,6 +43,8 @@ class _ChatScreenState extends State<ChatScreen> {
     if (text.trim().isEmpty || provider.isTyping) return;
     final strings = context.read<LanguageProvider>().strings;
 
+    print("OPENROUTER KEY = ${Env.openRouterApiKey}");
+    print("KEY LENGTH = ${Env.openRouterApiKey.length}");
     if (Env.openRouterApiKey.isEmpty) {
       provider.addBotMessage(strings.chatErrorMissingKey);
       return;

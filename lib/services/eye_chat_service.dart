@@ -18,7 +18,7 @@ class EyeChatService {
       'https://openrouter.ai/api/v1/chat/completions';
 
   /// Bạn có thể đổi model tại đây
-  static const String _model = 'deepseek/deepseek-chat-v3.1:free';
+  static const String _model = 'google/gemma-4-26b-a4b-it:free';
   // Ví dụ:
   // google/gemma-3-27b-it:free
   // meta-llama/llama-3.3-70b-instruct:free
