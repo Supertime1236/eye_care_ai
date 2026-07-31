@@ -1,93 +1,175 @@
 import 'package:dio/dio.dart';
 import '../config/env.dart';
 
-/// Gọi OpenRouter API để chat AI, giới hạn nghiêm ngặt trong chủ đề sức khoẻ
-/// mắt bằng system prompt. API key lấy từ biến môi trường lúc build
-/// (--dart-define=OPENROUTER_API_KEY=...), không lưu trong SharedPreferences.
+/// OpenRouter AI Service
+///
+/// API Key lấy từ:
+/// flutter run --dart-define=OPENROUTER_API_KEY=sk-or-v1-xxxxx
+///
+/// hoặc GitHub Actions.
+///
+/// Không hardcode API key vào source code.
 class EyeChatService {
   EyeChatService._();
+
   static final EyeChatService instance = EyeChatService._();
 
-  static const _model = 'google/gemma-3-27b-it:free';
-  static const _baseUrl = 'https://openrouter.ai/api/v1/chat/completions';
+  static const String _baseUrl =
+      'https://openrouter.ai/api/v1/chat/completions';
 
-  static const _systemPrompt = '''
-Bạn là trợ lý AI của ứng dụng EyeCare AI. Bạn CHỈ được trả lời các câu hỏi
-liên quan đến: sức khoẻ mắt, thị lực, thói quen dùng màn hình, quy tắc
-20-20-20, ánh sáng phòng, giấc ngủ ảnh hưởng tới mắt, dinh dưỡng cho mắt, và
-các bài tập/mẹo bảo vệ mắt.
+  /// Bạn có thể đổi model tại đây
+  static const String _model = 'deepseek/deepseek-chat-v3.1:free';
+  // Ví dụ:
+  // google/gemma-3-27b-it:free
+  // meta-llama/llama-3.3-70b-instruct:free
+  // mistralai/mistral-small-3.2-24b-instruct:free
 
-Nếu người dùng hỏi về chủ đề KHÔNG liên quan tới mắt (bài tập về nhà, lập
-trình, tin tức, tâm sự cá nhân không liên quan, v.v.), hãy lịch sự từ chối và
-nhắc rằng bạn chỉ hỗ trợ các câu hỏi về sức khoẻ mắt, rồi gợi ý quay lại chủ
-đề đó.
+  static const String _systemPrompt = '''
+Bạn là trợ lý AI của ứng dụng EyeCare AI.
 
-Trả lời ngắn gọn, dễ hiểu, giọng thân thiện, phù hợp với người dùng phổ thông
-kể cả thanh thiếu niên. KHÔNG đưa ra chẩn đoán y khoa chắc chắn — nếu triệu
-chứng nghiêm trọng hoặc kéo dài, luôn khuyên người dùng đi khám bác sĩ nhãn
-khoa.
+Bạn CHỈ được trả lời các câu hỏi liên quan đến:
+
+- sức khỏe mắt
+- thị lực
+- cận thị
+- viễn thị
+- loạn thị
+- mỏi mắt
+- quy tắc 20-20-20
+- ánh sáng khi học/làm việc
+- thời gian dùng màn hình
+- dinh dưỡng cho mắt
+- bài tập thư giãn mắt
+- giấc ngủ ảnh hưởng đến mắt
+- phòng tránh bệnh về mắt
+
+Nếu người dùng hỏi về chủ đề khác như:
+
+- lập trình
+- toán
+- game
+- phim
+- tin tức
+- tâm sự
+- chính trị
+- tài chính
+
+thì hãy lịch sự từ chối và nói rằng bạn chỉ hỗ trợ về sức khỏe mắt.
+
+Không chẩn đoán bệnh.
+
+Nếu triệu chứng nghiêm trọng hoặc kéo dài hãy khuyên người dùng đến bác sĩ chuyên khoa mắt.
+
+Trả lời ngắn gọn, dễ hiểu, thân thiện.
 ''';
 
-  /// Gửi lịch sử hội thoại tới OpenRouter, trả về câu trả lời dạng text.
-  /// `history` là danh sách {role: 'user'|'assistant', content: '...'} theo
-  /// đúng thứ tự hội thoại.
-  /// Ném Exception với mã lỗi ngắn gọn để UI tự dịch sang thông báo phù hợp:
-  /// invalid_api_key | rate_limited | network_error | server_error
   Future<String> sendMessage({
-    final String apiKey = Env.openRouterApiKey,
     required List<Map<String, String>> history,
   }) async {
-    final dio = Dio();
+    final apiKey = Env.openRouterApiKey;
+
+    if (apiKey.isEmpty) {
+      throw Exception("missing_api_key");
+    }
+
+    final dio = Dio(
+      BaseOptions(
+        connectTimeout: const Duration(seconds: 30),
+        receiveTimeout: const Duration(seconds: 60),
+        sendTimeout: const Duration(seconds: 60),
+      ),
+    );
+
     try {
-      final messages = [
-        {'role': 'system', 'content': _systemPrompt},
-        ...history.map(
-          (m) => {
-            'role': m['role'] == 'assistant' ? 'assistant' : 'user',
-            'content': m['content'] ?? '',
-          },
-        ),
+      final messages = <Map<String, dynamic>>[
+        {
+          "role": "system",
+          "content": _systemPrompt,
+        },
       ];
+
+      for (final item in history) {
+        messages.add({
+          "role": item["role"] == "assistant"
+              ? "assistant"
+              : "user",
+          "content": item["content"] ?? "",
+        });
+      }
 
       final response = await dio.post(
         _baseUrl,
         options: Options(
           headers: {
-            'Authorization': 'Bearer $apiKey',
-            'Content-Type': 'application/json',
-            'HTTP-Referer': 'https://eyecare-ai.app',
-            'X-Title': 'EyeCare AI',
+            "Authorization": "Bearer $apiKey",
+            "Content-Type": "application/json",
+
+            // Thay bằng repo hoặc website của bạn
+            "HTTP-Referer":
+                "https://github.com/Supertime1236/eye_care_ai",
+
+            "X-Title": "EyeCare AI",
           },
         ),
         data: {
-          'model': _model,
-          'messages': messages,
+          "model": _model,
+          "messages": messages,
         },
       );
 
-      final choices = response.data['choices'] as List<dynamic>?;
+      final choices = response.data["choices"];
+
       if (choices == null || choices.isEmpty) {
-        throw Exception('empty_response');
+        throw Exception("empty_response");
       }
-      final text =
-          (choices.first['message']?['content'] as String?)?.trim();
-      if (text == null || text.isEmpty) {
-        throw Exception('empty_response');
+
+      final content = choices[0]["message"]["content"];
+
+      if (content == null) {
+        throw Exception("empty_response");
       }
-      return text;
+
+      if (content is String) {
+        return content.trim();
+      }
+
+      // Một số model trả về dạng List
+      if (content is List) {
+        return content
+            .map((e) => e["text"] ?? "")
+            .join("\n")
+            .trim();
+      }
+
+      return content.toString();
     } on DioException catch (e) {
       final status = e.response?.statusCode;
-      if (status == 401) {
-        throw Exception('invalid_api_key');
-      } else if (status == 429) {
-        throw Exception('rate_limited');
-      } else if (e.type == DioExceptionType.connectionTimeout ||
+
+      switch (status) {
+        case 401:
+        case 403:
+          throw Exception("invalid_api_key");
+
+        case 429:
+          throw Exception("rate_limited");
+
+        case 400:
+          throw Exception("bad_request");
+
+        case 500:
+        case 502:
+        case 503:
+          throw Exception("server_error");
+      }
+
+      if (e.type == DioExceptionType.connectionTimeout ||
           e.type == DioExceptionType.connectionError ||
           e.type == DioExceptionType.receiveTimeout ||
           e.type == DioExceptionType.sendTimeout) {
-        throw Exception('network_error');
+        throw Exception("network_error");
       }
-      throw Exception('server_error');
+
+      throw Exception("server_error");
     }
   }
 }
