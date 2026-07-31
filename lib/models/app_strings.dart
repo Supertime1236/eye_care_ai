@@ -49,6 +49,17 @@ class AppStrings {
 
   // Phần này bao gồm các nhãn cho màn hình cài đặt và lựa chọn người dùng.
   String get preferences => vi ? 'Tùy chọn' : 'Preferences';
+  String get appearanceSection => vi ? 'Giao diện & màu sắc' : 'Appearance & color';
+  String get accentColorLabel => vi ? 'Màu nhấn' : 'Accent color';
+  String get accentColorSubtitle => vi ? 'Chọn màu chủ đạo cho toàn app' : 'Pick the app-wide accent color';
+  String get fontLabel => vi ? 'Phông chữ' : 'Font';
+  String get fontSubtitleVi => vi
+      ? 'Đang dùng Be Vietnam Pro để hiển thị đúng dấu tiếng Việt'
+      : 'Using Be Vietnam Pro for correct Vietnamese diacritics';
+  String get fontSubtitleOther => vi ? 'Chọn phông chữ bạn thích' : 'Pick the font you like';
+  String get fontLockedToVietnameseNote => vi
+      ? 'Font bị khoá về Be Vietnam Pro khi ngôn ngữ là Tiếng Việt, để tránh lỗi hiển thị dấu.'
+      : 'Font is locked to Be Vietnam Pro while the app language is Vietnamese, to avoid diacritic rendering issues.';
   String get darkMode => vi ? 'Chế độ tối' : 'Dark Mode';
   String get themeLabel => vi ? 'Giao diện' : 'Theme';
   String get themeSubtitle => vi ? 'Sáng, tối hoặc theo máy' : 'Light, dark, or match device';

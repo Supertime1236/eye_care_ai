@@ -7,17 +7,18 @@ import 'app_colors.dart';
 class AppTheme {
   AppTheme._();
 
-  static ThemeData light() {
-    final heading = GoogleFonts.beVietnamProTextTheme();
-    final body = GoogleFonts.beVietnamProTextTheme();
+  static ThemeData light({Color? accentSeed, TextTheme? fontTextTheme}) {
+    final heading = fontTextTheme ?? GoogleFonts.beVietnamProTextTheme();
+    final body = fontTextTheme ?? GoogleFonts.beVietnamProTextTheme();
+    final seed = accentSeed ?? AppColors.primaryBlue;
 
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.light,
       scaffoldBackgroundColor: AppColors.background,
       colorScheme: ColorScheme.fromSeed(
-        seedColor: AppColors.primaryBlue,
-        primary: AppColors.primaryBlue,
+        seedColor: seed,
+        primary: seed,
         secondary: AppColors.primaryTeal,
         surface: AppColors.surface,
       ),
@@ -79,7 +80,7 @@ class AppTheme {
         scrolledUnderElevation: 0,
         backgroundColor: AppColors.background,
         foregroundColor: AppColors.textPrimary,
-        titleTextStyle: GoogleFonts.beVietnamPro(
+        titleTextStyle: heading.titleLarge?.copyWith(
           fontSize: 18,
           fontWeight: FontWeight.w700,
           color: AppColors.textPrimary,
@@ -109,18 +110,19 @@ class AppTheme {
     },
   );
 
-  static ThemeData dark() {
-    final heading = GoogleFonts.beVietnamProTextTheme();
-    final body = GoogleFonts.beVietnamProTextTheme();
+  static ThemeData dark({Color? accentSeed, TextTheme? fontTextTheme}) {
+    final heading = fontTextTheme ?? GoogleFonts.beVietnamProTextTheme();
+    final body = fontTextTheme ?? GoogleFonts.beVietnamProTextTheme();
+    final seed = accentSeed ?? AppColors.primaryBlue;
 
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.dark,
       scaffoldBackgroundColor: AppColors.darkBackground,
       colorScheme: ColorScheme.fromSeed(
-        seedColor: AppColors.primaryBlue,
+        seedColor: seed,
         brightness: Brightness.dark,
-        primary: AppColors.primaryBlue,
+        primary: seed,
         secondary: AppColors.primaryTeal,
         surface: AppColors.darkSurface,
       ),
@@ -182,7 +184,7 @@ class AppTheme {
         scrolledUnderElevation: 0,
         backgroundColor: AppColors.darkBackground,
         foregroundColor: Colors.white,
-        titleTextStyle: GoogleFonts.beVietnamPro(
+        titleTextStyle: heading.titleLarge?.copyWith(
           fontSize: 18,
           fontWeight: FontWeight.w700,
           color: Colors.white,

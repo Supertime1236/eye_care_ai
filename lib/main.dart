@@ -2,8 +2,10 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'providers/accent_color_provider.dart';
 import 'providers/auth_provider.dart';
 import 'providers/chat_provider.dart';
+import 'providers/font_provider.dart';
 import 'providers/habit_provider.dart';
 import 'providers/language_provider.dart';
 import 'providers/profile_provider.dart';
@@ -28,6 +30,8 @@ Future<void> main() async {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
+        ChangeNotifierProvider(create: (_) => FontProvider()),
+        ChangeNotifierProvider(create: (_) => AccentColorProvider()),
         ChangeNotifierProvider(create: (_) => LanguageProvider()),
         ChangeNotifierProvider(create: (_) => ReminderProvider()),
         ChangeNotifierProvider(create: (_) => SettingsProvider()),
@@ -51,12 +55,16 @@ class EyeCareApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = context.watch<ThemeProvider>();
+    final font = context.watch<FontProvider>();
+    final accent = context.watch<AccentColorProvider>();
+    final isVietnamese = context.watch<LanguageProvider>().isVietnamese;
+    final fontTextTheme = font.getTextTheme(isVietnamese);
 
     return MaterialApp(
       title: 'EyeCare AI',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.light(),
-      darkTheme: AppTheme.dark(),
+      theme: AppTheme.light(accentSeed: accent.seedColor, fontTextTheme: fontTextTheme),
+      darkTheme: AppTheme.dark(accentSeed: accent.seedColor, fontTextTheme: fontTextTheme),
       themeMode: theme.themeMode,
       home: const _AppGate(),
     );

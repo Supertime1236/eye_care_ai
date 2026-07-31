@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-
 import '../providers/chat_provider.dart';
 import '../providers/language_provider.dart';
 import '../config/env.dart';
@@ -138,6 +137,7 @@ class _ChatScreenState extends State<ChatScreen> {
                     ),
                   ],
                 ),
+                const Spacer(),
                 const SizedBox.shrink(),
               ],
             ),

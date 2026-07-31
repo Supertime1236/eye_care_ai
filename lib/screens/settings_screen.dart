@@ -3,7 +3,9 @@ import 'package:provider/provider.dart';
 import '../utils/permission_helper.dart';
 
 import '../models/app_strings.dart';
+import '../providers/accent_color_provider.dart';
 import '../providers/auth_provider.dart';
+import '../providers/font_provider.dart';
 import '../providers/language_provider.dart';
 import '../providers/profile_provider.dart';
 import '../providers/settings_provider.dart';
@@ -35,6 +37,8 @@ class SettingsScreen extends StatelessWidget {
     final language = context.watch<LanguageProvider>();
     final settings = context.watch<SettingsProvider>();
     final profile = context.watch<ProfileProvider>();
+    final accent = context.watch<AccentColorProvider>();
+    final font = context.watch<FontProvider>();
     final strings = language.strings;
     final isDark = theme.isDarkMode;
 
@@ -200,6 +204,48 @@ class SettingsScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 20),
+          // Giao diện & màu sắc: đổi màu nhấn toàn app + chọn phông chữ, để
+          // trải nghiệm đa dạng/đầy màu sắc hơn thay vì chỉ có 1 theme cố định.
+          Text(strings.appearanceSection, style: Theme.of(context).textTheme.titleSmall),
+          const SizedBox(height: 10),
+          SectionCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(strings.accentColorLabel, style: Theme.of(context).textTheme.titleSmall),
+                const SizedBox(height: 4),
+                Text(
+                  strings.accentColorSubtitle,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textMuted),
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 14,
+                  runSpacing: 10,
+                  children: AppAccentColor.values.map((c) {
+                    final selected = accent.choice == c;
+                    return _AccentColorSwatch(
+                      color: c.seed,
+                      selected: selected,
+                      label: c.label(strings.vi),
+                      onTap: () => accent.setChoice(c),
+                    );
+                  }).toList(),
+                ),
+                const Divider(height: 32),
+                _ListTileOption(
+                  icon: '🔤',
+                  title: strings.fontLabel,
+                  subtitle: language.isVietnamese ? strings.fontSubtitleVi : strings.fontSubtitleOther,
+                  valueLabel: (language.isVietnamese ? AppFontChoice.beVietnamPro : font.choice).label(strings.vi),
+                  onTap: language.isVietnamese
+                      ? () => _showFontLockedNote(context, strings)
+                      : () => _showFontDialog(context, font, strings),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
           Text(strings.more, style: Theme.of(context).textTheme.titleSmall),
           const SizedBox(height: 10),
           SectionCard(
@@ -312,6 +358,59 @@ class _ToggleTile extends StatelessWidget {
   }
 }
 
+
+// Vòng tròn màu để chọn accent color — có animation nhún nhẹ + viền check
+// khi được chọn, giúp giao diện Settings cảm giác sống động/mượt hơn.
+class _AccentColorSwatch extends StatelessWidget {
+  const _AccentColorSwatch({
+    required this.color,
+    required this.selected,
+    required this.label,
+    required this.onTap,
+  });
+
+  final Color color;
+  final bool selected;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(30),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeOut,
+            width: selected ? 44 : 36,
+            height: selected ? 44 : 36,
+            decoration: BoxDecoration(
+              color: color,
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: selected ? Colors.white : Colors.transparent,
+                width: 2,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: color.withValues(alpha: selected ? 0.4 : 0),
+                  blurRadius: 10,
+                  spreadRadius: 1,
+                ),
+              ],
+            ),
+            child: selected ? const Icon(Icons.check_rounded, color: Colors.white, size: 20) : null,
+          ),
+          const SizedBox(height: 4),
+          Text(label, style: Theme.of(context).textTheme.bodySmall),
+        ],
+      ),
+    );
+  }
+}
 
 class _MenuItem extends StatelessWidget {
   const _MenuItem({
@@ -509,6 +608,62 @@ Future<void> _showLanguageDialog(BuildContext context, LanguageProvider language
   if (selected != null) {
     language.toggleVietnamese(selected);
   }
+}
+
+// Hộp thoại chọn font — hiện chữ mẫu thật của từng font (dùng đúng
+// GoogleFonts.xxx() cho preview) để người dùng thấy hình dạng trước khi
+// chọn, thay vì chỉ đọc tên font suông.
+Future<void> _showFontDialog(BuildContext context, FontProvider font, AppStrings strings) async {
+  final selected = await showDialog<AppFontChoice>(
+    context: context,
+    builder: (context) {
+      return SimpleDialog(
+        title: Text(strings.fontLabel),
+        children: AppFontChoice.values.map((f) {
+          final isSelected = font.choice == f;
+          return SimpleDialogOption(
+            onPressed: () => Navigator.pop(context, f),
+            child: Row(
+              children: [
+                if (isSelected)
+                  const Icon(Icons.check, size: 18, color: AppColors.primaryBlue)
+                else
+                  const SizedBox(width: 18),
+                const SizedBox(width: 8),
+                Expanded(child: Text(f.label(false))),
+                Text(
+                  f.previewText,
+                  style: font.getAppBarTitleStyle(false, color: AppColors.textMuted).copyWith(fontSize: 14),
+                ),
+              ],
+            ),
+          );
+        }).toList(),
+      );
+    },
+  );
+
+  if (selected != null) {
+    font.setChoice(selected);
+  }
+}
+
+// Khi ngôn ngữ đang là Tiếng Việt, khoá lựa chọn font về Be Vietnam Pro để
+// tránh lỗi hiển thị dấu — bấm vào chỉ giải thích lý do thay vì mở picker.
+void _showFontLockedNote(BuildContext context, AppStrings strings) {
+  showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: Text(strings.fontLabel),
+      content: Text(strings.fontLockedToVietnameseNote),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(strings.confirm),
+        ),
+      ],
+    ),
+  );
 }
 
 // THÊM HÀM NÀY VÀO CUỐI FILE
