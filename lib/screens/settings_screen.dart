@@ -731,6 +731,8 @@ void _showPermissionSettings(BuildContext context) {
                           isGranted: permissions["usage"] ?? false,
                           grantedLabel: strings.permGranted,
                           notGrantedLabel: strings.permNotGranted,
+                          helpLabel: strings.permGuideButton,
+                          onHelp: () => _showUsagePermissionGuide(context, strings),
                           onTap: () async {
                             await PermissionHelper.requestUsagePermission();
 
@@ -830,6 +832,95 @@ void _showPermissionSettings(BuildContext context) {
   );
 }
 
+// Hướng dẫn cấp quyền "Truy cập dữ liệu sử dụng" theo từng hãng máy
+void _showUsagePermissionGuide(BuildContext context, AppStrings strings) {
+  final brands = <_GuideBrand>[
+    _GuideBrand(strings.permGuideXiaomiTitle, strings.permGuideXiaomiSteps),
+    _GuideBrand(strings.permGuideSamsungTitle, strings.permGuideSamsungSteps),
+    _GuideBrand(strings.permGuideOppoTitle, strings.permGuideOppoSteps),
+    _GuideBrand(strings.permGuideStockTitle, strings.permGuideStockSteps),
+    _GuideBrand(strings.permGuideIosTitle, strings.permGuideIosSteps),
+  ];
+
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    ),
+    builder: (context) {
+      return DefaultTabController(
+        length: brands.length,
+        child: DraggableScrollableSheet(
+          initialChildSize: 0.75,
+          minChildSize: 0.5,
+          maxChildSize: 0.95,
+          expand: false,
+          builder: (context, scrollController) {
+            return Column(
+              children: [
+                const SizedBox(height: 12),
+                Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Text(
+                    strings.permGuideTitle,
+                    style: Theme.of(context).textTheme.headlineSmall,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Text(
+                    strings.permGuideIntro,
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TabBar(
+                  isScrollable: true,
+                  tabAlignment: TabAlignment.start,
+                  tabs: brands
+                      .map((b) => Tab(text: b.title))
+                      .toList(),
+                ),
+                Expanded(
+                  child: TabBarView(
+                    children: brands.map((b) {
+                      return SingleChildScrollView(
+                        controller: scrollController,
+                        padding: const EdgeInsets.all(20),
+                        child: Text(
+                          b.steps,
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+      );
+    },
+  );
+}
+
+class _GuideBrand {
+  const _GuideBrand(this.title, this.steps);
+  final String title;
+  final String steps;
+}
+
 // THÊM WIDGET _PermissionTile
 class _PermissionTile extends StatelessWidget {
   const _PermissionTile({
@@ -840,6 +931,8 @@ class _PermissionTile extends StatelessWidget {
     required this.onTap,
     required this.grantedLabel,
     required this.notGrantedLabel,
+    this.onHelp,
+    this.helpLabel,
   });
 
   final String icon;
@@ -849,6 +942,8 @@ class _PermissionTile extends StatelessWidget {
   final VoidCallback onTap;
   final String grantedLabel;
   final String notGrantedLabel;
+  final VoidCallback? onHelp;
+  final String? helpLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -912,6 +1007,29 @@ class _PermissionTile extends StatelessWidget {
                   description,
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
+                if (!isGranted && onHelp != null) ...[
+                  const SizedBox(height: 6),
+                  InkWell(
+                    onTap: onHelp,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.help_outline,
+                            size: 14, color: Theme.of(context).colorScheme.primary),
+                        const SizedBox(width: 4),
+                        Text(
+                          helpLabel ?? '',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Theme.of(context).colorScheme.primary,
+                            fontWeight: FontWeight.w600,
+                            decoration: TextDecoration.underline,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ],
             ),
           ),

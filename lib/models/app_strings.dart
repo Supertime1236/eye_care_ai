@@ -110,6 +110,32 @@ class AppStrings {
       ? 'Bật "Hiển thị toàn màn hình" để thông báo hết giờ nghỉ mắt bung pop-up như báo thức (Android 14+)'
       : 'Enable "Full screen intent" so the break reminder pops up like an alarm (Android 14+)';
   String get permManage => vi ? 'Quản lý' : 'Manage';
+  // Hướng dẫn cấp quyền theo từng hãng máy
+  String get permGuideButton => vi ? 'Không thấy công tắc? Xem hướng dẫn' : 'Can\'t find the switch? See guide';
+  String get permGuideTitle => vi ? 'Hướng dẫn cấp quyền theo máy' : 'Grant permission by device';
+  String get permGuideIntro => vi
+      ? 'Chọn hãng máy bạn đang dùng để xem các bước bật quyền "Truy cập dữ liệu sử dụng".'
+      : 'Choose your device brand to see the steps to enable "Usage Access".';
+  String get permGuideXiaomiTitle => vi ? 'Xiaomi / Redmi (MIUI, HyperOS)' : 'Xiaomi / Redmi (MIUI, HyperOS)';
+  String get permGuideXiaomiSteps => vi
+      ? '1. Mở Cài đặt > Ứng dụng > Quản lý ứng dụng\n2. Tìm EyeCare AI, chọn "Quyền khác" (hoặc "Quyền bổ sung")\n3. Bật "Quyền truy cập dữ liệu sử dụng"\n4. Nếu không thấy, vào Cài đặt > Bảo mật > Quyền riêng tư > Quyền đặc biệt > Truy cập dữ liệu sử dụng, rồi bật cho EyeCare AI\n5. Nên tắt thêm tối ưu hoá pin (MIUI Optimization) cho app để không bị thu hồi quyền'
+      : '1. Open Settings > Apps > Manage apps\n2. Find EyeCare AI, tap "Other permissions"\n3. Enable "Usage data access"\n4. If not found, go to Settings > Privacy > Special permissions > Usage access, then enable it for EyeCare AI\n5. Also disable battery optimization for the app so the permission isn\'t revoked';
+  String get permGuideSamsungTitle => vi ? 'Samsung (One UI)' : 'Samsung (One UI)';
+  String get permGuideSamsungSteps => vi
+      ? '1. Mở Cài đặt > Ứng dụng\n2. Nhấn biểu tượng ⋮ (góc trên phải) > Truy cập đặc biệt\n3. Chọn "Truy cập dữ liệu sử dụng" (Usage access)\n4. Tìm EyeCare AI và bật công tắc\n5. Vào Cài đặt pin > Giới hạn sinh hoạt nền, đưa EyeCare AI vào danh sách "Không giới hạn" để tránh bị tắt quyền'
+      : '1. Open Settings > Apps\n2. Tap ⋮ (top right) > Special access\n3. Select "Usage access"\n4. Find EyeCare AI and turn on the switch\n5. In Battery settings, add EyeCare AI to "Unrestricted" background usage to avoid the permission being revoked';
+  String get permGuideOppoTitle => vi ? 'Oppo / Vivo / Realme (ColorOS, FuntouchOS)' : 'Oppo / Vivo / Realme (ColorOS, FuntouchOS)';
+  String get permGuideOppoSteps => vi
+      ? '1. Mở Cài đặt > Quyền riêng tư (Privacy) > Quyền truy cập đặc biệt\n2. Chọn "Truy cập dữ liệu sử dụng" và bật cho EyeCare AI\n3. Vào Cài đặt pin > Quản lý pin ứng dụng, chọn EyeCare AI > "Cho phép chạy nền"\n4. Với Vivo: vào i Manager > Quyền ứng dụng > Quyền hệ thống > Truy cập dữ liệu sử dụng'
+      : '1. Open Settings > Privacy > Special app access\n2. Select "Usage access" and enable it for EyeCare AI\n3. In Battery > App battery management, choose EyeCare AI > "Allow background activity"\n4. On Vivo: go to i Manager > App permissions > System permissions > Usage access';
+  String get permGuideStockTitle => vi ? 'Android gốc / Pixel / Khác' : 'Stock Android / Pixel / Other';
+  String get permGuideStockSteps => vi
+      ? '1. Mở Cài đặt > Ứng dụng > Xem tất cả ứng dụng\n2. Nhấn biểu tượng ⋮ > Truy cập đặc biệt (Special access)\n3. Chọn "Truy cập dữ liệu sử dụng" (Usage access)\n4. Tìm EyeCare AI và bật công tắc'
+      : '1. Open Settings > Apps > See all apps\n2. Tap ⋮ > Special access\n3. Select "Usage access"\n4. Find EyeCare AI and turn on the switch';
+  String get permGuideIosTitle => vi ? 'iOS (iPhone)' : 'iOS (iPhone)';
+  String get permGuideIosSteps => vi
+      ? 'iOS không cho ứng dụng bên thứ ba truy cập trực tiếp dữ liệu "Thời gian sử dụng" (Screen Time) như Android.\n\nĐể theo dõi thời gian dùng máy, bạn có thể:\n1. Vào Cài đặt > Thời gian sử dụng (Screen Time) để xem số liệu do Apple cung cấp\n2. EyeCare AI sẽ dùng các quyền khác (thông báo, vị trí...) để nhắc bạn nghỉ mắt đúng giờ'
+      : 'iOS does not allow third-party apps to directly access "Screen Time" usage data like Android does.\n\nTo track device usage, you can:\n1. Go to Settings > Screen Time to see the figures Apple provides\n2. EyeCare AI will use other permissions (notifications, location...) to remind you to rest your eyes on time';
   String get permBatteryTitle => vi ? 'Chạy nền không giới hạn' : 'Unrestricted background run';
   String get permBatteryDesc => vi
       ? 'Loại trừ khỏi tối ưu hoá pin để báo thức nghỉ mắt luôn kêu đúng giờ, kể cả khi app không mở'
