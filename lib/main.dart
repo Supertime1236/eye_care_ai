@@ -1,3 +1,4 @@
+import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -26,6 +27,9 @@ Future<void> main() async {
   // đặt đúng chỗ — xem hướng dẫn Firebase mình gửi kèm.
   await Firebase.initializeApp();
   await NotificationService.instance.initialize();
+  // Bắt buộc gọi 1 lần trước khi dùng AndroidAlarmManager.periodic() —
+  // cho phép báo thức nhắc nghỉ mắt LẶP LẠI kể cả khi app đã bị tắt hẳn.
+  await AndroidAlarmManager.initialize();
   runApp(
     MultiProvider(
       providers: [

@@ -59,10 +59,7 @@ class _EyeBreakScreenState extends State<EyeBreakScreen> with WidgetsBindingObse
     // vì chờ tick tiếp theo của Timer (Timer có thể đã bị hệ điều hành tạm
     // dừng trong lúc app ở nền).
     if (state == AppLifecycleState.resumed && _endAt != null) {
-      _recomputeFromEndAt();
-      if (_secondsRemaining > 0) {
-        _updateOngoingNotification();
-      }
+      _syncWithRealNextFireTime();
     } else if (state == AppLifecycleState.paused && _endAt != null) {
       // Timer.periodic sẽ ngừng tick khi app xuống nền -> đổi thông báo ghim
       // sang giờ hẹn CỐ ĐỊNH thay vì để lại con số mm:ss "đứng hình" gây hiểu
@@ -91,6 +88,23 @@ class _EyeBreakScreenState extends State<EyeBreakScreen> with WidgetsBindingObse
     }
   }
 
+  // Vòng lặp báo thức thật chạy ở isolate nền (breakReminderAlarmCallback)
+  // có thể đã bắn thêm 1 hoặc nhiều chu kỳ trong lúc app ở nền/đóng — nếu
+  // chỉ tính từ `_endAt` cũ (chốt lúc Start lần đầu) thì UI trong app sẽ
+  // hiển thị SAI, lệch hẳn với báo thức thật đang chạy. Đọc lại mốc giờ kế
+  // tiếp THẬT mà background isolate vừa lưu để đồng bộ đúng.
+  Future<void> _syncWithRealNextFireTime() async {
+    final realNext = await NotificationService.instance.getNextRepeatingFireAt();
+    if (!mounted) return;
+    if (realNext != null) {
+      _endAt = realNext;
+    }
+    _recomputeFromEndAt();
+    if (_secondsRemaining > 0) {
+      _updateOngoingNotification();
+    }
+  }
+
   Future<void> _loadSavedReminder() async {
     final reminder = context.read<ReminderProvider>();
     final endAt = await DeviceDataService.instance.loadBreakReminderEnd();
@@ -102,7 +116,7 @@ class _EyeBreakScreenState extends State<EyeBreakScreen> with WidgetsBindingObse
       if (secondsLeft > 0) {
         reminder.toggleEyeBreakReminder(true);
         _secondsRemaining = secondsLeft;
-        _scheduleAlarmFor(endAt);
+        _scheduleRepeatingAlarm(interval);
         _startCountdown(reminder);
         _updateOngoingNotification();
       } else {
@@ -120,7 +134,7 @@ class _EyeBreakScreenState extends State<EyeBreakScreen> with WidgetsBindingObse
     _secondsRemaining = reminder.reminderMinutes * 60;
     reminder.toggleEyeBreakReminder(true);
     _saveReminderEnd(reminder.reminderMinutes, endAt);
-    _scheduleAlarmFor(endAt);
+    _scheduleRepeatingAlarm(reminder.reminderMinutes);
     _startCountdown(reminder);
     _updateOngoingNotification();
     setState(() {});
@@ -138,14 +152,19 @@ class _EyeBreakScreenState extends State<EyeBreakScreen> with WidgetsBindingObse
     );
   }
 
-  // Lên lịch thông báo hệ thống cho đúng thời điểm hết giờ — sẽ tự bắn kể cả
-  // khi app đang ở nền hoặc đã bị đóng, không phụ thuộc vào Timer trong bộ nhớ.
-  void _scheduleAlarmFor(DateTime endAt) {
+  // Lên lịch báo thức LẶP LẠI mỗi `intervalMinutes` phút — hệ điều hành tự
+  // bắn (và tự lặp lại) kể cả khi app đang ở nền hoặc đã bị đóng hẳn, không
+  // phụ thuộc vào Timer trong bộ nhớ. Đây là NGUỒN DUY NHẤT bắn thông báo
+  // hết-giờ-nghỉ-mắt thật sự — cứ thế lặp lại cho tới khi người dùng vào app
+  // và bấm "Tắt" (xem _stopReminder), không cần app phải luôn mở.
+  void _scheduleRepeatingAlarm(int intervalMinutes) {
     final strings = context.read<LanguageProvider>().strings;
-    NotificationService.instance.scheduleBreakAlarm(
-      endAt,
+    NotificationService.instance.scheduleRepeatingBreakAlarm(
+      intervalMinutes: intervalMinutes,
       title: strings.eyeBreakTimeUp,
       body: strings.eyeBreakLookAway,
+      ongoingTitle: strings.breakNotificationTitle,
+      ongoingRemainingSuffix: strings.breakNotificationUntil,
     );
   }
 
@@ -163,16 +182,13 @@ class _EyeBreakScreenState extends State<EyeBreakScreen> with WidgetsBindingObse
         if (remaining <= 0) {
           _breakPromptShowing = true;
           _countdownTimer?.cancel();
-          // App đang mở nên thông báo đã lên lịch có thể chưa kịp bắn đúng
-          // giây — bắn thêm một thông báo tức thì để chắc chắn người dùng
-          // thấy ngay, đồng thời huỷ bản đã lên lịch để tránh trùng lặp.
-          NotificationService.instance.cancelBreakAlarm();
-          NotificationService.instance.cancelOngoingCountdown();
-          NotificationService.instance.showInstantNotification(
-            title: context.read<LanguageProvider>().strings.eyeBreakTimeUp,
-            body: context.read<LanguageProvider>().strings.eyeBreakLookAway,
-            insistent: true,
-          );
+          // KHÔNG tự bắn thêm thông báo tay ở đây nữa: báo thức LẶP LẠI
+          // (scheduleRepeatingBreakAlarm) đã là nguồn duy nhất bắn thông
+          // báo hết-giờ-nghỉ-mắt, chạy độc lập trong isolate nền của hệ
+          // điều hành — kể cả khi Timer này đang chạy vì app đang mở. Tự
+          // bắn thêm ở đây từng gây trùng thông báo/rung 2 lần liền nhau.
+          // Màn hình "confirm break" ở đây chỉ để GHI NHẬN lần nghỉ vào
+          // Habits khi người dùng đang mở app đúng lúc hết giờ.
         }
       });
       if (_secondsRemaining > 0) {
@@ -186,8 +202,10 @@ class _EyeBreakScreenState extends State<EyeBreakScreen> with WidgetsBindingObse
     _endAt = null;
     reminder.toggleEyeBreakReminder(false);
     DeviceDataService.instance.clearBreakReminderEnd();
-    NotificationService.instance.cancelBreakAlarm();
-    NotificationService.instance.cancelOngoingCountdown();
+    // Đây là cách DUY NHẤT vòng lặp nhắc nghỉ mắt dừng lại — huỷ báo thức
+    // LẶP LẠI đã đăng ký với hệ điều hành, nếu không nó sẽ tiếp tục tự bắn
+    // mỗi `intervalMinutes` phút vô thời hạn kể cả khi app đã đóng.
+    NotificationService.instance.cancelRepeatingBreakAlarm();
     setState(() {
       _secondsRemaining = 0;
       _breakPromptShowing = false;
@@ -196,7 +214,6 @@ class _EyeBreakScreenState extends State<EyeBreakScreen> with WidgetsBindingObse
 
   Future<void> _confirmBreakTaken(ReminderProvider reminder) async {
     await context.read<HabitProvider>().recordEyeBreak();
-    NotificationService.instance.cancelBreakAlarm();
     if (!mounted) return;
     setState(() => _breakPromptShowing = false);
     // Tự động bắt đầu chu kỳ đếm ngược tiếp theo.
@@ -208,7 +225,6 @@ class _EyeBreakScreenState extends State<EyeBreakScreen> with WidgetsBindingObse
   }
 
   void _dismissPrompt(ReminderProvider reminder) {
-    NotificationService.instance.cancelBreakAlarm();
     setState(() => _breakPromptShowing = false);
     _startReminder(reminder);
   }

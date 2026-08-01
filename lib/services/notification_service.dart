@@ -1,8 +1,10 @@
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
 import 'package:android_intent_plus/android_intent.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -52,6 +54,17 @@ class NotificationService {
   // dù không phải vậy. Đây là nguyên nhân thật của lỗi "không nhắc nghỉ mắt"
   // đã gặp — để false để dùng âm thanh mặc định của hệ thống, luôn hoạt động.
   static const bool _useCustomSound = false;
+
+  // --- Báo thức LẶP LẠI cho break reminder ---
+  // ID này thuộc "không gian" của android_alarm_manager_plus (khác hẳn ID
+  // notification ở trên) — dùng để bật/huỷ đúng báo thức lặp khi cần.
+  static const int _repeatingAlarmId = 5001;
+  static const String _kRepeatIntervalMinutesKey = 'pref_break_repeat_interval_minutes';
+  static const String _kRepeatTitleKey = 'pref_break_repeat_title';
+  static const String _kRepeatBodyKey = 'pref_break_repeat_body';
+  static const String _kOngoingTitleKey = 'pref_break_ongoing_title';
+  static const String _kOngoingSuffixKey = 'pref_break_ongoing_suffix';
+  static const String _kNextFireAtKey = 'pref_break_next_fire_at_millis';
 
   bool _initialized = false;
 
@@ -249,7 +262,77 @@ class NotificationService {
     );
   }
 
-  // Kiểm tra người dùng đã cấp quyền "Báo thức & lời nhắc chính xác" chưa —
+  // --- Nhắc nghỉ mắt LẶP LẠI vô hạn ---
+  // Khác với scheduleBreakAlarm() ở trên (chỉ bắn ĐÚNG 1 LẦN), hàm này dùng
+  // android_alarm_manager_plus để hệ điều hành tự lặp lại việc bắn thông báo
+  // mỗi `intervalMinutes` phút — kể cả khi app đã bị tắt hẳn (không chỉ thu
+  // nhỏ), vì android_alarm_manager_plus chạy callback trong MỘT ISOLATE NỀN
+  // riêng do chính Android khởi động lại mỗi lần báo thức tới hạn, không phụ
+  // thuộc vào tiến trình Flutter chính còn sống hay không. Cứ thế lặp lại
+  // đến khi cancelRepeatingBreakAlarm() được gọi (khi người dùng vào app và
+  // tắt Break Reminder).
+  //
+  // title/body/tiêu đề thông báo ghim được LƯU VÀO SharedPreferences vì
+  // callback nền (breakReminderAlarmCallback) chạy trong isolate riêng,
+  // không có BuildContext/Provider để lấy chuỗi đa ngôn ngữ — phải đọc lại
+  // chuỗi đã lưu sẵn từ lần cuối cùng gọi hàm này (tức là lúc người dùng bấm
+  // Start, khi vẫn còn context).
+  Future<void> scheduleRepeatingBreakAlarm({
+    required int intervalMinutes,
+    required String title,
+    required String body,
+    required String ongoingTitle,
+    required String ongoingRemainingSuffix,
+  }) async {
+    await initialize();
+    await AndroidAlarmManager.initialize();
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_kRepeatIntervalMinutesKey, intervalMinutes);
+    await prefs.setString(_kRepeatTitleKey, title);
+    await prefs.setString(_kRepeatBodyKey, body);
+    await prefs.setString(_kOngoingTitleKey, ongoingTitle);
+    await prefs.setString(_kOngoingSuffixKey, ongoingRemainingSuffix);
+
+    final nextFireAt = DateTime.now().add(Duration(minutes: intervalMinutes));
+    await prefs.setInt(_kNextFireAtKey, nextFireAt.millisecondsSinceEpoch);
+
+    await AndroidAlarmManager.periodic(
+      Duration(minutes: intervalMinutes),
+      _repeatingAlarmId,
+      breakReminderAlarmCallback,
+      exact: true,
+      wakeup: true,
+      rescheduleOnReboot: true,
+      allowWhileIdle: true,
+    );
+
+    // Cập nhật ngay thông báo ghim với mốc giờ nhắc kế tiếp.
+    await showStaticOngoingUntil(
+      endAt: nextFireAt,
+      title: ongoingTitle,
+      untilPrefix: ongoingRemainingSuffix,
+    );
+  }
+
+  Future<void> cancelRepeatingBreakAlarm() async {
+    await AndroidAlarmManager.cancel(_repeatingAlarmId);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_kNextFireAtKey);
+    await cancelOngoingCountdown();
+  }
+
+  // Mốc giờ nhắc kế tiếp hiện đang được lưu (đọc lại để đồng bộ UI đếm ngược
+  // trong app với vòng lặp báo thức nền thật, tránh 2 nguồn thời gian lệch
+  // nhau giữa Timer trong app và báo thức của hệ điều hành).
+  Future<DateTime?> getNextRepeatingFireAt() async {
+    final prefs = await SharedPreferences.getInstance();
+    final millis = prefs.getInt(_kNextFireAtKey);
+    if (millis == null) return null;
+    return DateTime.fromMillisecondsSinceEpoch(millis);
+  }
+
+
   // dùng để UI hiện gợi ý bật quyền này nếu bị tắt (khác với lúc mới cài,
   // requestExactAlarmsPermission() chỉ tự hỏi đúng 1 lần).
   Future<bool> canScheduleExactAlarms() async {
@@ -399,4 +482,44 @@ class NotificationService {
       const NotificationDetails(android: details),
     );
   }
+}
+
+// Callback CHẠY TRONG ISOLATE NỀN RIÊNG do Android tự khởi động khi báo thức
+// lặp tới hạn — không phải trong tiến trình Flutter chính, nên vẫn chạy được
+// kể cả khi app đã bị tắt hẳn (không chỉ thu nhỏ). Vì vậy:
+// - Không được dùng BuildContext/Provider/AppStrings ở đây (không tồn tại).
+// - Phải đọc lại toàn bộ chuỗi title/body đã lưu sẵn trong
+//   scheduleRepeatingBreakAlarm() bằng SharedPreferences.
+// `@pragma('vm:entry-point')` BẮT BUỘC phải có — nếu thiếu, trình biên dịch
+// release có thể tree-shake mất hàm này và báo thức nền sẽ không bao giờ
+// chạy dù không có lỗi nào hiện ra lúc build.
+@pragma('vm:entry-point')
+void breakReminderAlarmCallback() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  final service = NotificationService.instance;
+  await service.initialize();
+
+  final prefs = await SharedPreferences.getInstance();
+  final title = prefs.getString(NotificationService._kRepeatTitleKey) ?? 'Eye break time!';
+  final body = prefs.getString(NotificationService._kRepeatBodyKey) ?? 'Look 20 feet away for 20 seconds.';
+  final ongoingTitle = prefs.getString(NotificationService._kOngoingTitleKey) ?? title;
+  final ongoingSuffix = prefs.getString(NotificationService._kOngoingSuffixKey) ?? 'Next reminder at';
+  final intervalMinutes = prefs.getInt(NotificationService._kRepeatIntervalMinutesKey) ?? 20;
+
+  // Bắn thông báo hết-giờ-nghỉ-mắt thật sự (kêu + rung liên tục).
+  await service.showInstantNotification(title: title, body: body, insistent: true);
+
+  // android_alarm_manager_plus TỰ ĐỘNG lặp lại báo thức này mỗi
+  // intervalMinutes phút (đã đặt periodic ở scheduleRepeatingBreakAlarm) —
+  // ở đây chỉ cần cập nhật LẠI mốc giờ nhắc kế tiếp trên thông báo ghim để
+  // người dùng kéo thanh thông báo ra vẫn thấy đúng giờ sắp tới, không bị
+  // "đứng hình" ở giờ cũ đã qua.
+  final nextFireAt = DateTime.now().add(Duration(minutes: intervalMinutes));
+  await prefs.setInt(NotificationService._kNextFireAtKey, nextFireAt.millisecondsSinceEpoch);
+  await service.showStaticOngoingUntil(
+    endAt: nextFireAt,
+    title: ongoingTitle,
+    untilPrefix: ongoingSuffix,
+  );
 }
