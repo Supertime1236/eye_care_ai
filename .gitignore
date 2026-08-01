@@ -46,3 +46,4 @@ app.*.map.json
 # Keystore & signing secrets — KHÔNG BAO GIỜ commit lên git
 *.jks
 key.properties
+local.properties
