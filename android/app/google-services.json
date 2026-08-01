@@ -14,11 +14,11 @@
       },
       "oauth_client": [
         {
-          "client_id": "794355212425-3naijhl72pih8kc4sfhev0vj7nc23igt.apps.googleusercontent.com",
+          "client_id": "794355212425-gmp2c02vmjm17a4m2ekqjliig6umkkve.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
             "package_name": "com.eyecare.eye_care_ai",
-            "certificate_hash": "70af51d04947c8e1ad0454782d829fcc1077d0e2"
+            "certificate_hash": "a8049acaaca9029c80bf206915f7ef666d1c9de2"
           }
         },
         {
