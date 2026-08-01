@@ -88,11 +88,11 @@ class _EyeBreakScreenState extends State<EyeBreakScreen> with WidgetsBindingObse
     }
   }
 
-  // Vòng lặp báo thức thật chạy ở isolate nền (breakReminderAlarmCallback)
+  // Báo thức lặp thật (chạy hoàn toàn native, xem notification_service.dart)
   // có thể đã bắn thêm 1 hoặc nhiều chu kỳ trong lúc app ở nền/đóng — nếu
   // chỉ tính từ `_endAt` cũ (chốt lúc Start lần đầu) thì UI trong app sẽ
-  // hiển thị SAI, lệch hẳn với báo thức thật đang chạy. Đọc lại mốc giờ kế
-  // tiếp THẬT mà background isolate vừa lưu để đồng bộ đúng.
+  // hiển thị SAI, lệch hẳn với báo thức thật đang chạy. Tính lại mốc giờ kế
+  // tiếp THẬT (dựa trên mốc bắt đầu + interval) để đồng bộ đúng.
   Future<void> _syncWithRealNextFireTime() async {
     final realNext = await NotificationService.instance.getNextRepeatingFireAt();
     if (!mounted) return;

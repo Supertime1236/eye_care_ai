@@ -39,7 +39,6 @@ dependencies:
   provider: ^6.1.2
   
   flutter_local_notifications: ^19.4.0
-  android_alarm_manager_plus: ^4.0.6 # cho phép lặp lại báo thức nhắc nghỉ mắt mỗi N phút kể cả khi app đã tắt hẳn
   timezone: ^0.10.1
   dio: ^5.9.0
   package_info_plus: ^9.0.0
