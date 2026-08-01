@@ -3,9 +3,9 @@ import 'package:flutter/foundation.dart';
 class ChatMessage {
   ChatMessage({required this.text, required this.isUser, this.isTyping = false});
 
-  final String text;
+  String text;
   final bool isUser;
-  final bool isTyping;
+  bool isTyping;
 }
 
 class ChatProvider extends ChangeNotifier {
@@ -25,6 +25,17 @@ class ChatProvider extends ChangeNotifier {
 
   void addBotMessage(String text) {
     messages.add(ChatMessage(text: text, isUser: false));
+    notifyListeners();
+  }
+
+  // Nối thêm 1 mẩu chữ vào tin nhắn CUỐI CÙNG (dùng khi đang stream phản
+  // hồi AI dần dần) — sửa TRỰC TIẾP trên object ChatMessage cuối thay vì
+  // tạo tin nhắn mới mỗi lần, để không bị "nháy" danh sách liên tục.
+  void appendToLastMessage(String delta) {
+    if (messages.isEmpty) return;
+    final last = messages.last;
+    last.text += delta;
+    last.isTyping = false;
     notifyListeners();
   }
 

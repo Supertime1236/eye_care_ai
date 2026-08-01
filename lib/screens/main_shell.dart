@@ -109,7 +109,18 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      body: SafeArea(child: _screens[_currentIndex]),
+      // BUG ĐÃ SỬA: trước đây dùng `_screens[_currentIndex]` — chỉ 1 widget
+      // được gắn vào cây tại một thời điểm, nên mỗi lần rời tab "Nghỉ mắt"
+      // rồi quay lại, EyeBreakScreen bị HUỶ rồi TẠO LẠI TỪ ĐẦU, initState()
+      // chạy lại và tự đặt thêm 1 báo thức hệ thống MỚI chồng lên báo thức
+      // cũ (AlarmManager không phải lúc nào cũng huỷ sạch báo thức cũ khi
+      // đăng ký lại) -> nhiều báo thức chạy song song, lệch giờ nhau -> báo
+      // "nghỉ mắt" liên tục dù chưa hết thời gian đặt ban đầu. IndexedStack
+      // giữ TẤT CẢ 6 màn hình luôn tồn tại trong cây, chỉ ẩn/hiện qua lại,
+      // nên initState() của mỗi màn hình chỉ chạy đúng 1 lần khi mở app.
+      body: SafeArea(
+        child: IndexedStack(index: _currentIndex, children: _screens),
+      ),
       bottomNavigationBar: Material(
         color: Theme.of(context).scaffoldBackgroundColor,
         child: Container(

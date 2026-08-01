@@ -21,6 +21,26 @@ class _ChatScreenState extends State<ChatScreen> {
   final _scrollController = ScrollController();
 
   @override
+  void initState() {
+    super.initState();
+    // BUG ĐÃ SỬA: trước đây đoạn "chào hỏi lần đầu" này nằm ngay trong
+    // build() (gọi provider.addMessage() -> notifyListeners() giữa lúc
+    // framework đang xây widget tree) -> ném lỗi "setState() or
+    // markNeedsBuild() called during build" (đã thấy trong log trước đây).
+    // Dời sang initState() + addPostFrameCallback để an toàn, chạy ĐÚNG 1
+    // LẦN sau khi frame đầu tiên vẽ xong.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final provider = context.read<ChatProvider>();
+      if (!provider.greeted) {
+        final strings = context.read<LanguageProvider>().strings;
+        provider.addMessage(ChatMessage(text: strings.chatGreeting, isUser: false));
+        provider.markGreeted();
+      }
+    });
+  }
+
+  @override
   void dispose() {
     _controller.dispose();
     _scrollController.dispose();
@@ -44,8 +64,9 @@ class _ChatScreenState extends State<ChatScreen> {
     if (text.trim().isEmpty || provider.isTyping) return;
     final strings = context.read<LanguageProvider>().strings;
 
-    print("OPENROUTER KEY = ${Env.openRouterApiKey}");
-    print("KEY LENGTH = ${Env.openRouterApiKey.length}");
+    // BUG BẢO MẬT ĐÃ SỬA: trước đây có 2 dòng print() in thẳng API key ra
+    // logcat (ai đọc log qua USB/`adb logcat` đều thấy được key thật) — đã
+    // xoá bỏ, không có lý do gì để log giá trị này kể cả lúc debug.
     if (Env.openRouterApiKey.isEmpty) {
       provider.addBotMessage(strings.chatErrorMissingKey);
       return;
@@ -57,27 +78,44 @@ class _ChatScreenState extends State<ChatScreen> {
     _controller.clear();
     _scrollToBottom();
 
-    String reply;
+    // STREAMING: nối từng mẩu chữ vào bong bóng chat ngay khi model sinh ra,
+    // thay vì đợi trả lời xong hết mới hiện 1 lần -> cảm giác nhanh hơn hẳn.
+    var receivedAnyChunk = false;
     try {
-      reply = await EyeChatService.instance.sendMessage(
+      await for (final delta in EyeChatService.instance.sendMessageStream(
         history: provider.toApiHistory(),
-      );
+      )) {
+        receivedAnyChunk = true;
+        provider.appendToLastMessage(delta);
+        _scrollToBottom();
+      }
     } catch (e) {
       final message = e.toString();
+      final String errorText;
       if (message.contains('invalid_api_key')) {
-        reply = strings.chatErrorInvalidKey;
+        errorText = strings.chatErrorInvalidKey;
       } else if (message.contains('rate_limited')) {
-        reply = strings.chatErrorRateLimited;
+        errorText = strings.chatErrorRateLimited;
       } else if (message.contains('network_error')) {
-        reply = strings.chatErrorNetwork;
+        errorText = strings.chatErrorNetwork;
       } else {
-        reply = strings.chatErrorGeneric;
+        errorText = strings.chatErrorGeneric;
       }
+      if (!mounted) return;
+      if (receivedAnyChunk) {
+        // Đã hiện được vài chữ rồi mới lỗi giữa chừng (mất mạng...) -> nối
+        // thêm câu báo lỗi vào cuối thay vì xoá mất phần đã trả lời.
+        provider.appendToLastMessage('\n\n⚠️ $errorText');
+      } else {
+        provider.messages.removeLast();
+        provider.addBotMessage(errorText);
+      }
+      provider.setTyping(false);
+      _scrollToBottom();
+      return;
     }
 
     if (!mounted) return;
-    provider.messages.removeLast();
-    provider.addBotMessage(reply);
     provider.setTyping(false);
     _scrollToBottom();
   }
@@ -87,11 +125,6 @@ class _ChatScreenState extends State<ChatScreen> {
     final provider = context.watch<ChatProvider>();
     final language = context.watch<LanguageProvider>();
     final strings = language.strings;
-
-    if (!provider.greeted) {
-      provider.addMessage(ChatMessage(text: strings.chatGreeting, isUser: false));
-      provider.markGreeted();
-    }
 
     final quickPrompts = strings.chatQuickPrompts;
 
