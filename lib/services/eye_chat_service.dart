@@ -26,7 +26,7 @@ class EyeChatService {
   // vào hàng đợi lỗi trước khi trả lời, gây chậm bất thường. Đổi sang model
   // free THẬT và NHỎ HƠN (phản hồi nhanh hơn nhiều so với model 27B/70B) —
   // đủ dùng cho các câu hỏi ngắn về sức khỏe mắt.
-  static const String _model = 'google/gemma-3-12b-it:free';
+  static const String _model = 'google/gemma-4-31b-it:free';
   // Ví dụ khác:
   // meta-llama/llama-3.1-8b-instruct:free  (nhỏ, rất nhanh)
   // google/gemma-3-27b-it:free             (lớn hơn, trả lời chất lượng hơn nhưng chậm hơn)
