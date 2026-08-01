@@ -6,6 +6,7 @@ import '../providers/language_provider.dart';
 import '../config/env.dart';
 import '../services/eye_chat_service.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_theme.dart';
 import '../widgets/shared_widgets.dart';
 
 class ChatScreen extends StatefulWidget {
@@ -106,7 +107,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   width: 40,
                   height: 40,
                   decoration: BoxDecoration(
-                    gradient: AppColors.gradientPrimary,
+                    gradient: AppTheme.gradientFor(Theme.of(context).colorScheme.primary),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: const Center(

@@ -59,12 +59,12 @@ class SettingsScreen extends StatelessWidget {
                 children: [
                   CircleAvatar(
                     radius: 28,
-                    backgroundColor: AppColors.primaryBlue.withValues(alpha: 0.12),
+                    backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.12),
                     backgroundImage: profile.avatarUrl != null ? NetworkImage(profile.avatarUrl!) : null,
                     child: profile.avatarUrl == null
                         ? Text(
                             profile.name.isNotEmpty ? profile.name[0].toUpperCase() : '👤',
-                            style: const TextStyle(fontSize: 20, color: AppColors.primaryBlue),
+                            style: TextStyle(fontSize: 20, color: Theme.of(context).colorScheme.primary),
                           )
                         : null,
                   ),
@@ -346,8 +346,8 @@ class _ToggleTile extends StatelessWidget {
             Switch.adaptive(
               value: value,
               onChanged: onChanged,
-              activeTrackColor: AppColors.primaryBlue.withValues(alpha: 0.5),
-              activeThumbColor: AppColors.primaryBlue,
+              activeTrackColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.5),
+              activeThumbColor: Theme.of(context).colorScheme.primary,
             ),
           ],
         ),
@@ -472,10 +472,10 @@ class _SelectableOption extends StatelessWidget {
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
         decoration: BoxDecoration(
-          color: selected ? AppColors.primaryBlue.withValues(alpha: 0.12) : null,
+          color: selected ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.12) : null,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
-            color: selected ? AppColors.primaryBlue : AppColors.border,
+            color: selected ? Theme.of(context).colorScheme.primary : AppColors.border,
           ),
         ),
         child: Row(
@@ -484,14 +484,14 @@ class _SelectableOption extends StatelessWidget {
               child: Text(
                 label,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: selected ? AppColors.primaryBlue : null,
+                      color: selected ? Theme.of(context).colorScheme.primary : null,
                     ),
               ),
             ),
             if (selected)
               Icon(
                 Icons.check_circle,
-                color: AppColors.primaryBlue,
+                color: Theme.of(context).colorScheme.primary,
                 size: 18,
               ),
           ],
@@ -565,7 +565,7 @@ Future<void> _showThemeDialog(BuildContext context, ThemeProvider theme, AppStri
             child: Row(
               children: [
                 if (theme.preference == pref)
-                  const Icon(Icons.check, size: 18, color: AppColors.primaryBlue)
+                  Icon(Icons.check, size: 18, color: Theme.of(context).colorScheme.primary)
                 else
                   const SizedBox(width: 18),
                 const SizedBox(width: 8),
@@ -641,7 +641,7 @@ Future<void> _showFontDialog(
               child: Row(
                 children: [
                   if (isSelected)
-                    const Icon(Icons.check, size: 18, color: AppColors.primaryBlue)
+                    Icon(Icons.check, size: 18, color: Theme.of(context).colorScheme.primary)
                   else
                     const SizedBox(width: 18),
                   const SizedBox(width: 8),

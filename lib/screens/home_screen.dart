@@ -7,6 +7,7 @@ import '../providers/language_provider.dart';
 import '../providers/profile_provider.dart';
 import '../services/device_data_service.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_theme.dart';
 import '../widgets/shared_widgets.dart';
 import 'habits_survey_screen.dart';
 
@@ -42,14 +43,15 @@ class HomeScreen extends StatelessWidget {
               ),
               Builder(builder: (context) {
                 final profile = context.watch<ProfileProvider>();
+                final accent = Theme.of(context).colorScheme.primary;
                 return CircleAvatar(
                   radius: 22,
-                  backgroundColor: AppColors.primaryBlue.withValues(alpha: 0.1),
+                  backgroundColor: accent.withValues(alpha: 0.1),
                   backgroundImage: profile.avatarUrl != null ? NetworkImage(profile.avatarUrl!) : null,
                   child: profile.avatarUrl == null
                       ? Text(
                           profile.name.isNotEmpty ? profile.name[0].toUpperCase() : '👤',
-                          style: const TextStyle(fontSize: 18, color: AppColors.primaryBlue),
+                          style: TextStyle(fontSize: 18, color: accent),
                         )
                       : null,
                 );
@@ -71,7 +73,7 @@ class HomeScreen extends StatelessWidget {
                     width: 44,
                     height: 44,
                     decoration: BoxDecoration(
-                      gradient: AppColors.gradientPrimary,
+                      gradient: AppTheme.gradientFor(Theme.of(context).colorScheme.primary),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     alignment: Alignment.center,
@@ -200,15 +202,16 @@ class _ScoreCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final strings = context.watch<LanguageProvider>().strings;
+    final accent = Theme.of(context).colorScheme.primary;
 
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: AppColors.gradientScore,
+        gradient: AppTheme.gradientFor(accent),
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primaryBlue.withValues(alpha: 0.3),
+            color: accent.withValues(alpha: 0.3),
             blurRadius: 20,
             offset: const Offset(0, 8),
           ),
@@ -429,6 +432,8 @@ class _WeeklyOverviewChartState extends State<_WeeklyOverviewChart> {
 
   BarChartGroupData _bar(int x, double? y, {bool isToday = false}) {
     final value = y ?? 4.0; // chưa có dữ liệu -> cột rất thấp thay vì bịa số
+    final accent = Theme.of(context).colorScheme.primary;
+    final accentEnd = AppTheme.gradientFor(accent).colors.last;
     return BarChartGroupData(
       x: x,
       barRods: [
@@ -442,10 +447,10 @@ class _WeeklyOverviewChartState extends State<_WeeklyOverviewChart> {
             colors: y == null
                 ? [AppColors.border, AppColors.border]
                 : isToday
-                    ? [AppColors.primaryBlue, AppColors.primaryTeal]
+                    ? [accent, accentEnd]
                     : [
-                        AppColors.primaryBlue.withValues(alpha: 0.4),
-                        AppColors.primaryTeal.withValues(alpha: 0.4),
+                        accent.withValues(alpha: 0.4),
+                        accentEnd.withValues(alpha: 0.4),
                       ],
           ),
         ),

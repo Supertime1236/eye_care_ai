@@ -83,10 +83,10 @@ class _UsagePieChartState extends State<UsagePieChart> {
           children: [
             Text(
               _formatDuration(widget.totalTime),
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
-                color: AppColors.primaryBlue,
+                color: Theme.of(context).colorScheme.primary,
               ),
             ),
             const SizedBox(height: 2),
@@ -161,15 +161,15 @@ class _UsagePieChartState extends State<UsagePieChart> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
-                  color: AppColors.primaryBlue.withValues(alpha: 0.12),
+                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
                   '${(usage.totalTime.inSeconds / widget.totalTime.inSeconds * 100).toStringAsFixed(1)}%',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.primaryBlue,
+                    color: Theme.of(context).colorScheme.primary,
                   ),
                 ),
               ),

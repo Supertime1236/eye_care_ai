@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../providers/language_provider.dart';
 import '../services/auth_service.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_theme.dart';
 import '../widgets/shared_widgets.dart';
 import 'main_shell.dart';
 import 'register_screen.dart';
@@ -130,8 +131,8 @@ class _LoginScreenState extends State<LoginScreen> {
                   Container(
                     width: 72,
                     height: 72,
-                    decoration: const BoxDecoration(
-                      gradient: AppColors.gradientPrimary,
+                    decoration: BoxDecoration(
+                      gradient: AppTheme.gradientFor(Theme.of(context).colorScheme.primary),
                       shape: BoxShape.circle,
                     ),
                     alignment: Alignment.center,
@@ -177,7 +178,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(height: 8),
                   FilledButton(
                     style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.primaryBlue,
+                      backgroundColor: Theme.of(context).colorScheme.primary,
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),

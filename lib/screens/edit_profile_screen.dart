@@ -94,12 +94,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               children: [
                 CircleAvatar(
                   radius: 44,
-                  backgroundColor: AppColors.primaryBlue.withValues(alpha: 0.12),
+                  backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.12),
                   backgroundImage: profile.avatarUrl != null ? NetworkImage(profile.avatarUrl!) : null,
                   child: profile.avatarUrl == null
                       ? Text(
                           profile.name.isNotEmpty ? profile.name[0].toUpperCase() : '?',
-                          style: const TextStyle(fontSize: 32, color: AppColors.primaryBlue),
+                          style: TextStyle(fontSize: 32, color: Theme.of(context).colorScheme.primary),
                         )
                       : null,
                 ),
@@ -142,7 +142,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   width: double.infinity,
                   child: FilledButton(
                     style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.primaryBlue,
+                      backgroundColor: Theme.of(context).colorScheme.primary,
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),

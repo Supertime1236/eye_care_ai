@@ -15,6 +15,28 @@ class AppTheme {
     return Color.alphaBlend(seed.withValues(alpha: amount), base);
   }
 
+  // Gradient 2 điểm dừng SINH RA TỪ accent seed hiện tại của người dùng
+  // (thay vì cố định primaryBlue -> primaryTeal như trước) — dùng cho mọi
+  // nút bấm/thẻ có gradient trong app (nút gửi chat, thẻ chào mừng ở Home,
+  // thẻ điểm số...) để những chỗ này thực sự đổi theo accent màu đã chọn.
+  // Điểm dừng thứ 2 được tính bằng cách XOAY HUE nhẹ (+24°) và tăng độ bão
+  // hoà/độ sáng một chút so với seed — cho cảm giác gradient "chuyển sắc"
+  // tự nhiên với BẤT KỲ màu accent nào, không chỉ riêng xanh dương/xanh
+  // ngọc như cặp màu cố định trước đây.
+  static LinearGradient gradientFor(Color seed, {double hueShift = 24}) {
+    final hsl = HSLColor.fromColor(seed);
+    final shifted = hsl
+        .withHue((hsl.hue + hueShift) % 360)
+        .withSaturation((hsl.saturation + 0.08).clamp(0.0, 1.0))
+        .withLightness((hsl.lightness + 0.06).clamp(0.0, 1.0))
+        .toColor();
+    return LinearGradient(
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+      colors: [seed, shifted],
+    );
+  }
+
   static ThemeData light({Color? accentSeed, TextTheme? fontTextTheme}) {
     final heading = fontTextTheme ?? GoogleFonts.beVietnamProTextTheme();
     final body = fontTextTheme ?? GoogleFonts.beVietnamProTextTheme();

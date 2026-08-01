@@ -298,7 +298,7 @@ class _TypingDotsState extends State<TypingDots>
               width: 8,
               height: 8,
               decoration: BoxDecoration(
-                color: AppColors.primaryBlue.withValues(alpha: opacity),
+                color: Theme.of(context).colorScheme.primary.withValues(alpha: opacity),
                 shape: BoxShape.circle,
               ),
             );

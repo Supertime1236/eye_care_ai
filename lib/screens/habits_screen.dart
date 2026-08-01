@@ -5,6 +5,7 @@ import '../models/app_strings.dart';
 import '../providers/habit_provider.dart';
 import '../providers/language_provider.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_theme.dart';
 import '../widgets/shared_widgets.dart';
 
 // HabitsScreen hiển thị tiến trình các thói quen tốt cho mắt trong ngày.
@@ -155,10 +156,10 @@ class _HabitsScreenState extends State<HabitsScreen> {
                             child: Container(
                               padding: const EdgeInsets.all(5),
                               decoration: BoxDecoration(
-                                color: AppColors.primaryBlue.withValues(alpha: 0.12),
+                                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.12),
                                 shape: BoxShape.circle,
                               ),
-                              child: const Icon(Icons.edit_rounded, size: 14, color: AppColors.primaryBlue),
+                              child: Icon(Icons.edit_rounded, size: 14, color: Theme.of(context).colorScheme.primary),
                             ),
                           ),
                         ],
@@ -329,7 +330,7 @@ class _CompletionBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        gradient: AppColors.gradientPrimary,
+        gradient: AppTheme.gradientFor(Theme.of(context).colorScheme.primary),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
