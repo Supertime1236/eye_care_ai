@@ -137,36 +137,77 @@ class _HabitsScreenState extends State<HabitsScreen> {
             ),
             const SizedBox(height: 16),
             ...habit.habits.map((habitItem) {
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: habitItem.id == 'sleep'
-                    ? InkWell(
-                        borderRadius: BorderRadius.circular(16),
-                        onTap: () => _showManualSleepSheet(context, habitItem.current),
-                        child: Stack(
-                          children: [
-                            _HabitCard(habit: habitItem),
-                            // Sleep không có cảm biến tự động đáng tin cậy
-                            // (phụ thuộc Health Connect + app khác ghi dữ
-                            // liệu) — thêm icon bút chì để người dùng BIẾT
-                            // có thể chạm vào để tự nhập giờ ngủ, thay vì
-                            // tưởng thẻ này bị đứng/lỗi vì không thấy gì đổi.
-                            Positioned(
-                              top: 10,
-                              right: 10,
+              Widget card = habitItem.id == 'sleep'
+                  ? InkWell(
+                      borderRadius: BorderRadius.circular(16),
+                      onTap: () => _showManualSleepSheet(context, habitItem.current),
+                      child: Stack(
+                        children: [
+                          _HabitCard(habit: habitItem),
+                          // Sleep không có cảm biến tự động đáng tin cậy
+                          // (phụ thuộc Health Connect + app khác ghi dữ
+                          // liệu) — thêm icon bút chì để người dùng BIẾT
+                          // có thể chạm vào để tự nhập giờ ngủ, thay vì
+                          // tưởng thẻ này bị đứng/lỗi vì không thấy gì đổi.
+                          Positioned(
+                            top: 10,
+                            right: 10,
+                            child: Container(
+                              padding: const EdgeInsets.all(5),
+                              decoration: BoxDecoration(
+                                color: AppColors.primaryBlue.withValues(alpha: 0.12),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.edit_rounded, size: 14, color: AppColors.primaryBlue),
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : _HabitCard(habit: habitItem);
+
+              // Thói quen chưa có tính năng thật đứng sau (ví dụ "Eye Test
+              // Count") -> làm mờ card + khoá mọi tương tác (kể cả nút đổi
+              // mục tiêu bên dưới không áp dụng vào đây), tránh người dùng
+              // tưởng app bị lỗi khi số liệu luôn đứng yên ở 0.
+              if (habitItem.isComingSoon) {
+                card = IgnorePointer(
+                  child: Opacity(
+                    opacity: 0.45,
+                    child: Stack(
+                      children: [
+                        card,
+                        Positioned.fill(
+                          child: Align(
+                            alignment: Alignment.bottomCenter,
+                            child: Padding(
+                              padding: const EdgeInsets.only(bottom: 8),
                               child: Container(
-                                padding: const EdgeInsets.all(5),
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                 decoration: BoxDecoration(
-                                  color: AppColors.primaryBlue.withValues(alpha: 0.12),
-                                  shape: BoxShape.circle,
+                                  color: Colors.black.withValues(alpha: 0.65),
+                                  borderRadius: BorderRadius.circular(20),
                                 ),
-                                child: const Icon(Icons.edit_rounded, size: 14, color: AppColors.primaryBlue),
+                                child: Text(
+                                  strings.featureInDevelopment,
+                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                ),
                               ),
                             ),
-                          ],
+                          ),
                         ),
-                      )
-                    : _HabitCard(habit: habitItem),
+                      ],
+                    ),
+                  ),
+                );
+              }
+
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: card,
               );
             }),
             const SizedBox(height: 8),
@@ -491,7 +532,10 @@ class _ChangeTargetSheetState extends State<_ChangeTargetSheet> {
             style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textMuted),
           ),
           const SizedBox(height: 16),
-          ...widget.habitProvider.habits.map((h) {
+          // Loại habit đang phát triển (ví dụ 'reading'/Eye Test Count) ra
+          // khỏi danh sách đổi mục tiêu — chưa có tính năng thật thì cho
+          // đổi target cũng vô nghĩa.
+          ...widget.habitProvider.habits.where((h) => !h.isComingSoon).map((h) {
             final step = _stepFor(h.unit);
             final value = _localTargets[h.id] ?? h.target;
             return Padding(

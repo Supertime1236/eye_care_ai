@@ -28,6 +28,14 @@
          trễ/không kêu trên các máy Android quản lý pin gắt (Xiaomi/OPPO/
          Samsung...). -->
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"/>
+    <!-- BUG ĐÃ SỬA: android_alarm_manager_plus KHÔNG tự khai báo Service/
+         Receiver của nó trong manifest (file manifest gốc của plugin trống
+         rỗng) — app phải tự khai báo thủ công 3 thành phần bên dưới, nếu
+         không mọi lệnh gọi AndroidAlarmManager.periodic()/oneShot() sẽ crash
+         với lỗi "Component class ... RebootBroadcastReceiver does not exist",
+         khiến báo thức nghỉ mắt lặp lại không bao giờ được đặt (im lặng,
+         không có thông báo nào hiện ra nữa). -->
+    <uses-permission android:name="android.permission.WAKE_LOCK"/>
     <application
         android:label="EyeCare AI"
         android:name="${applicationName}"
@@ -76,6 +84,24 @@
                 <action android:name="android.intent.action.BOOT_COMPLETED"/>
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>
                 <action android:name="android.intent.action.QUICKBOOT_POWERON"/>
+            </intent-filter>
+        </receiver>
+
+        <!-- Bắt buộc cho android_alarm_manager_plus (dùng để lặp lại báo thức
+             nhắc nghỉ mắt kể cả khi app đã bị tắt hẳn khỏi bộ nhớ). -->
+        <service
+            android:name="dev.fluttercommunity.plus.androidalarmmanager.AlarmService"
+            android:exported="false"
+            android:permission="android.permission.BIND_JOB_SERVICE" />
+        <receiver
+            android:name="dev.fluttercommunity.plus.androidalarmmanager.AlarmBroadcastReceiver"
+            android:exported="false" />
+        <receiver
+            android:name="dev.fluttercommunity.plus.androidalarmmanager.RebootBroadcastReceiver"
+            android:enabled="false"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED"/>
             </intent-filter>
         </receiver>
     </application>

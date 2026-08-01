@@ -30,17 +30,24 @@ class ProfileProvider extends ChangeNotifier {
 
   /// Gọi lại mỗi khi AuthProvider đổi user (đăng nhập/đăng xuất/đổi tên).
   void syncFromUser(User? user) {
-    if (user == null) {
-      _name = '';
-      _email = '';
-      _avatarUrl = null;
+    try {
+      if (user == null) {
+        _name = '';
+        _email = '';
+        _avatarUrl = null;
+        notifyListeners();
+        return;
+      }
+      _name = user.displayName ?? user.email?.split('@').first ?? '';
+      _email = user.email ?? '';
+      _avatarUrl = user.photoURL;
       notifyListeners();
-      return;
+    } catch (e, st) {
+      // QUAN TRỌNG: nếu hàm này throw, nó sẽ chặn luôn các listener khác của
+      // AuthProvider (vd _AppGate) không được gọi tới, khiến app đứng yên ở
+      // LoginScreen dù đã đăng nhập thành công. Bắt lỗi tại đây để cô lập.
+      debugPrint('⚠️ ProfileProvider.syncFromUser lỗi: $e\n$st');
     }
-    _name = user.displayName ?? user.email?.split('@').first ?? '';
-    _email = user.email ?? '';
-    _avatarUrl = user.photoURL;
-    notifyListeners();
   }
 
   /// Đồng bộ ngay lập tức từ FirebaseAuth.currentUser — dùng ngay sau một

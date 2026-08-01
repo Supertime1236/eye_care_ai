@@ -30,6 +30,21 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  // BUG ĐÃ SỬA: trước đây màn hình này chỉ đăng nhập xong rồi NGỒI CHỜ
+  // _AppGate (main.dart) tự watch AuthProvider và rebuild sang MainShell.
+  // Trên thực tế đã xác nhận qua debug log: AuthProvider.notifyListeners()
+  // chạy đúng, dữ liệu user đúng, nhưng _AppGate không luôn luôn rebuild kịp
+  // (khiến người dùng thấy đăng nhập xong màn hình vẫn đứng yên ở đây).
+  // -> Giờ chuyển hướng THẲNG sang MainShell ngay khi đăng nhập thành công,
+  // không phụ thuộc vào việc widget cha có tự rebuild hay không.
+  void _goToMainShell() {
+    if (!mounted) return;
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const MainShell()),
+      (route) => false,
+    );
+  }
+
   Future<void> _signIn(bool vi) async {
     if (!_formKey.currentState!.validate()) return;
     setState(() {
@@ -41,6 +56,8 @@ class _LoginScreenState extends State<LoginScreen> {
         email: _emailController.text.trim(),
         password: _passwordController.text,
       );
+      _goToMainShell();
+      return;
     } on FirebaseAuthException catch (e) {
       setState(() => _error = AuthService.errorMessage(e, vi));
     } finally {
@@ -58,7 +75,10 @@ class _LoginScreenState extends State<LoginScreen> {
       if (user == null && mounted) {
         // Người dùng tự đóng hộp thoại chọn tài khoản Google -> không phải lỗi.
         setState(() => _isLoading = false);
+        return;
       }
+      _goToMainShell();
+      return;
     } on FirebaseAuthException catch (e) {
       setState(() => _error = AuthService.errorMessage(e, vi));
     } catch (e) {

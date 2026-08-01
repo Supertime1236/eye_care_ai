@@ -9,8 +9,10 @@ import '../services/auth_service.dart';
 class AuthProvider extends ChangeNotifier {
   AuthProvider() {
     _sub = AuthService.instance.authStateChanges.listen((user) {
+      debugPrint('🔑 AuthProvider: stream fired, user=${user?.uid}, was=${_user?.uid}');
       _user = user;
       notifyListeners();
+      debugPrint('🔑 AuthProvider: notifyListeners() called, isLoggedIn=$isLoggedIn');
     });
   }
 

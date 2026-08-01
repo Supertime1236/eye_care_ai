@@ -7,7 +7,7 @@ import 'faq_accordion.dart';
 import 'feedback_form.dart';
 import 'settings_toggle_tile.dart';
 
-const String _kSupportEmail = 'support@eyecareai.app';
+const String _kSupportEmail = 'eyecareai.app@gmail.com';
 
 Future<void> _openMailto(BuildContext context, {required String subject, String body = ''}) async {
   final strings = context.read<LanguageProvider>().strings;

@@ -240,6 +240,7 @@ class AppStrings {
   String get retakeTest => vi ? 'Kiểm tra lại' : 'Retake Test';
 
   String get dailyHabits => vi ? 'Thói quen hàng ngày' : 'Daily Habits';
+  String get featureInDevelopment => vi ? 'Tính năng này đang được phát triển' : 'This feature is under development';
   String get trackRoutines => vi ? 'Theo dõi thói quen thân thiện với mắt' : 'Track your eye-friendly routines';
   String get todaysProgress => vi ? 'Tiến trình hôm nay' : 'Today\'s Progress';
   String get target => vi ? 'Mục tiêu' : 'Target';
@@ -255,7 +256,7 @@ class AppStrings {
   String habitTitle(String id) {
     switch (id) {
       case 'reading':
-        return vi ? 'Thời gian đọc sách' : 'Reading Time';
+        return vi ? 'Số lần test mắt' : 'Eye Test Count';
       case 'phone':
         return vi ? 'Sử dụng điện thoại' : 'Phone Usage';
       case 'sleep':
@@ -274,7 +275,7 @@ class AppStrings {
   String habitSubtitle(String id) {
     switch (id) {
       case 'reading':
-        return vi ? 'Ánh sáng môi trường & gia tốc kế' : 'Ambient light & accelerometer';
+        return featureInDevelopment;
       case 'phone':
         return vi ? 'Thời gian màn hình (hệ điều hành)' : 'Screen-on time (OS)';
       case 'sleep':
@@ -530,8 +531,8 @@ class AppStrings {
   String get submitFeedback => vi ? 'Gửi qua Email' : 'Send via Email';
   String get feedbackThanks => vi ? 'Cảm ơn bạn đã phản hồi!' : 'Thanks for your feedback!';
   String get feedbackNoEmailApp => vi
-      ? 'Không tìm thấy ứng dụng email trên máy. Vui lòng gửi góp ý tới support@eyecareai.app'
-      : 'No email app found on this device. Please send feedback to support@eyecareai.app';
+      ? 'Không tìm thấy ứng dụng email trên máy. Vui lòng gửi góp ý tới eyecareai.app@gmail.com'
+      : 'No email app found on this device. Please send feedback to eyecareai.app@gmail.com';
   String get aboutTitle => vi ? 'Giới thiệu' : 'About';
 
   // Sign out / change password flows

@@ -188,13 +188,28 @@ class DeviceDataService {
     }
   }
 
+  // Chỉ xin quyền Health Connect MỘT LẦN trong suốt vòng đời app — trước đây
+  // getSleepHours() gọi requestAuthorization() mỗi lần refreshHabitsFromDevice()
+  // chạy (tức mỗi vài giây do timer poll ở MainShell), khiến log
+  // "Permission launcher not found" bị spam liên tục và tốn tài nguyên hỏi
+  // quyền lặp lại vô ích dù đã được cấp/từ chối từ trước.
+  bool? _sleepPermissionGranted;
+
   // ---------------- Sleep: HealthKit (iOS) / Health Connect (Android) ----------------
   Future<double?> getSleepHours() async {
     try {
       final health = Health();
       final types = [HealthDataType.SLEEP_ASLEEP];
-      final granted = await health.requestAuthorization(types);
-      if (!granted) return null;
+
+      if (_sleepPermissionGranted == null) {
+        final alreadyGranted = await health.hasPermissions(types) ?? false;
+        _sleepPermissionGranted = alreadyGranted || await health.requestAuthorization(types);
+      }
+      // Lưu ý: nếu người dùng từ chối lúc đầu rồi sau đó tự vào Cài đặt hệ
+      // thống cấp quyền Health Connect thủ công, app cần được khởi động lại
+      // mới nhận biết được (đổi lấy việc không phải spam hỏi quyền mỗi vài
+      // giây — đánh đổi hợp lý).
+      if (_sleepPermissionGranted != true) return null;
 
       final now = DateTime.now();
       final yesterday = now.subtract(const Duration(hours: 20));

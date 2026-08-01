@@ -15,6 +15,7 @@ class HabitData {
     this.current = 0,
     required this.color,
     this.isLive = false,
+    this.isComingSoon = false,
   });
 
   final String id;
@@ -26,6 +27,10 @@ class HabitData {
   double current;
   final int color;
   bool isLive;
+  // Thói quen chưa thật sự đo được (chưa có tính năng đứng sau) — hiển thị
+  // mờ đi trên UI và khoá tương tác, tránh người dùng tưởng nhầm là app lỗi
+  // khi số liệu luôn đứng yên ở 0.
+  final bool isComingSoon;
 
   double get progress => target == 0 ? 0 : (current / target).clamp(0.0, 1.0);
 }
@@ -51,12 +56,13 @@ class HabitProvider extends ChangeNotifier {
   final List<HabitData> habits = [
     HabitData(
       id: 'reading',
-      title: 'Reading Time',
-      subtitle: 'Ambient light & accelerometer',
-      icon: '📖',
-      unit: 'min',
-      target: 60,
+      title: 'Eye Test Count',
+      subtitle: 'Coming soon',
+      icon: '🧪',
+      unit: 'times',
+      target: 1,
       color: 0xFF3B82F6,
+      isComingSoon: true,
     ),
     HabitData(
       id: 'phone',
@@ -145,7 +151,9 @@ class HabitProvider extends ChangeNotifier {
 
   void startHabitTracking() {
     final service = DeviceDataService.instance;
-    service.startReadingTracking();
+    // Không còn cần theo dõi "Reading Time" bằng cảm biến nữa — thẻ này đã
+    // đổi thành "Eye Test Count" (đang phát triển, xem HabitData(id: 'reading')
+    // ở trên), không có nguồn dữ liệu thật để bật lên.
     service.startOutdoorTracking();
     // Cảnh báo dùng điện thoại trong bóng tối: gửi thông báo hệ thống khi
     // môi trường xung quanh tối liên tục quá lâu trong lúc app đang mở.
@@ -176,18 +184,19 @@ class HabitProvider extends ChangeNotifier {
     // thay vì mỗi màn hình tự query native riêng, vốn là lý do 2 nơi từng
     // hiện số giờ khác nhau (query ở 2 thời điểm khác nhau).
     final results = await Future.wait([
-      service.getReadingMinutesToday().timeout(const Duration(seconds: 6), onTimeout: () => 0),
       service.getAppUsageBreakdownToday().timeout(const Duration(seconds: 6), onTimeout: () => <AppUsageBreakdownEntry>[]),
       service.getSleepHours().timeout(const Duration(seconds: 6), onTimeout: () => null),
       service.getOutdoorMinutesToday().timeout(const Duration(seconds: 6), onTimeout: () => 0),
       service.getEyeBreaksToday().timeout(const Duration(seconds: 6), onTimeout: () => 0),
     ]);
 
-    appUsageBreakdown = results[1] as List<AppUsageBreakdownEntry>;
+    appUsageBreakdown = results[0] as List<AppUsageBreakdownEntry>;
     final totalUsageSeconds = appUsageBreakdown.fold<int>(0, (sum, e) => sum + e.usage.inSeconds);
     final phoneHours = appUsageBreakdown.isEmpty ? null : totalUsageSeconds / 3600.0;
 
-    _applyHabitValue('reading', results[0] as double?);
+    // 'reading' giờ là "Eye Test Count" — tính năng đang phát triển, chưa có
+    // nguồn dữ liệu thật nên không gọi getReadingMinutesToday()/áp giá trị
+    // nữa, giữ nguyên current = 0 do UI đã làm mờ + khoá thẻ này.
     _applyHabitValue('phone', phoneHours);
     // Health Connect chỉ ĐỌC được dữ liệu ngủ nếu có app khác (Samsung
     // Health, Google Fit, Fitbit...) đã ghi vào đó — nếu máy không cài Health
@@ -195,11 +204,11 @@ class HabitProvider extends ChangeNotifier {
     // (không phải lỗi, chỉ đơn giản là KHÔNG CÓ NGUỒN). Dùng số giờ ngủ nhập
     // tay hôm nay (nếu có) làm phương án dự phòng để habit này luôn dùng
     // được thay vì mãi hiện "Chưa có nguồn dữ liệu".
-    double? sleepValue = results[2] as double?;
+    double? sleepValue = results[1] as double?;
     sleepValue ??= await _getManualSleepHoursToday();
     _applyHabitValue('sleep', sleepValue);
-    _applyHabitValue('outdoor', results[3] as double?);
-    final breaks = results[4] as int;
+    _applyHabitValue('outdoor', results[2] as double?);
+    final breaks = results[3] as int;
     _applyHabitValue('breaks', breaks.toDouble());
     eyeBreaksTakenToday = breaks;
 

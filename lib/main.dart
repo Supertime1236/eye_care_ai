@@ -23,12 +23,8 @@ import 'theme/app_theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // Cần google-services.json (Android) / GoogleService-Info.plist (iOS) đã
-  // đặt đúng chỗ — xem hướng dẫn Firebase mình gửi kèm.
   await Firebase.initializeApp();
   await NotificationService.instance.initialize();
-  // Bắt buộc gọi 1 lần trước khi dùng AndroidAlarmManager.periodic() —
-  // cho phép báo thức nhắc nghỉ mắt LẶP LẠI kể cả khi app đã bị tắt hẳn.
   await AndroidAlarmManager.initialize();
   runApp(
     MultiProvider(
@@ -75,10 +71,6 @@ class EyeCareApp extends StatelessWidget {
   }
 }
 
-// _AppGate quyết định màn hình đầu tiên người dùng thấy:
-// - Nếu chưa từng hoàn thành khảo sát sức khỏe mắt -> bắt buộc làm khảo sát
-//   trước (không cho bỏ qua, xem HabitsSurveyScreen(mandatory: true)).
-// - Nếu đã làm rồi -> vào thẳng MainShell như bình thường.
 class _AppGate extends StatefulWidget {
   const _AppGate();
 
@@ -88,18 +80,43 @@ class _AppGate extends StatefulWidget {
 
 class _AppGateState extends State<_AppGate> {
   late final Future<bool> _surveyCompletedFuture;
+  AuthProvider? _authProvider;
 
   @override
   void initState() {
     super.initState();
     _surveyCompletedFuture = DeviceDataService.instance.isSurveyCompleted();
-
-    // Phải đợi Activity attach xong (sau frame đầu tiên) mới xin các quyền
-    // hệ thống như báo thức chính xác / miễn trừ tối ưu pin, nếu không
-    // permission_handler sẽ báo lỗi "Permission launcher not found".
     WidgetsBinding.instance.addPostFrameCallback((_) {
       NotificationService.instance.requestDeferredSystemPermissions();
     });
+  }
+
+  // BUG ĐÃ SỬA: dùng context.watch<AuthProvider>() bên trong builder của
+  // FutureBuilder không đảm bảo rebuild _AppGate mỗi lần AuthProvider đổi
+  // trạng thái (đã xác nhận qua debug log: notifyListeners() chạy đúng
+  // nhưng widget không build lại) — có thể do context của FutureBuilder
+  // không được Provider gắn subscription đúng cách trong 1 số trường hợp.
+  // Giải pháp chắc chắn: tự addListener() trực tiếp vào AuthProvider và gọi
+  // setState() thủ công, không phụ thuộc vào cơ chế watch/InheritedWidget.
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final auth = context.read<AuthProvider>();
+    if (!identical(_authProvider, auth)) {
+      _authProvider?.removeListener(_onAuthChanged);
+      _authProvider = auth;
+      _authProvider!.addListener(_onAuthChanged);
+    }
+  }
+
+  void _onAuthChanged() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    _authProvider?.removeListener(_onAuthChanged);
+    super.dispose();
   }
 
   @override
@@ -111,17 +128,12 @@ class _AppGateState extends State<_AppGate> {
           return const Scaffold(body: Center(child: CircularProgressIndicator()));
         }
         if (snapshot.data == true) {
-          // KHÔNG gọi trực tiếp trong builder: setSurveyCompleted() gọi
-          // notifyListeners() bên trong, mà builder này đang chạy giữa lúc
-          // framework build widget tree -> gây lỗi "setState() or
-          // markNeedsBuild() called during build". Dời sang sau khung hình
-          // hiện tại bằng addPostFrameCallback để an toàn.
           WidgetsBinding.instance.addPostFrameCallback((_) {
             context.read<HabitProvider>().setSurveyCompleted(true);
           });
-          // Sau khảo sát: cần đăng nhập mới vào được app chính.
-          final auth = context.watch<AuthProvider>();
-          return auth.isLoggedIn ? const MainShell() : const LoginScreen();
+          final isLoggedIn = context.read<AuthProvider>().isLoggedIn;
+          debugPrint('🚪 _AppGate build: isLoggedIn=$isLoggedIn');
+          return isLoggedIn ? const MainShell() : const LoginScreen();
         }
         return const HabitsSurveyScreen(mandatory: true);
       },

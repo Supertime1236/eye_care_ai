@@ -6,7 +6,7 @@ import '../providers/language_provider.dart';
 import '../theme/app_colors.dart';
 
 // Địa chỉ email nhận feedback — đổi thành email hỗ trợ thật của bạn.
-const String _kSupportEmail = 'support@eyecareai.app';
+const String _kSupportEmail = 'eyecareai.app@gmail.com';
 
 class FeedbackForm extends StatefulWidget {
   const FeedbackForm({super.key});
