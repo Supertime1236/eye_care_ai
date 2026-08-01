@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:android_intent_plus/android_intent.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -42,6 +43,15 @@ class NotificationService {
 
   // Đổi tên này nếu bạn đặt tên file âm thanh khác trong thư mục res/raw.
   static const String _customSoundResourceName = 'eye_break_alert';
+  // QUAN TRỌNG: đặt true CHỈ SAU KHI bạn đã thật sự thêm file
+  // android/app/src/main/res/raw/eye_break_alert.mp3 (hoặc .wav/.ogg) vào
+  // project. Nếu để true mà file không tồn tại, Android sẽ ném
+  // PlatformException(invalid_sound, ...) ở CẢ 3 chế độ lên lịch báo thức
+  // trong scheduleBreakAlarm() -> báo thức không bao giờ được đặt thành
+  // công, và vì lỗi trước đây bị nuốt im lặng nên trông y hệt "bị OEM chặn"
+  // dù không phải vậy. Đây là nguyên nhân thật của lỗi "không nhắc nghỉ mắt"
+  // đã gặp — để false để dùng âm thanh mặc định của hệ thống, luôn hoạt động.
+  static const bool _useCustomSound = false;
 
   bool _initialized = false;
 
@@ -73,7 +83,7 @@ class NotificationService {
       importance: Importance.max,
       playSound: true,
       enableVibration: true,
-      sound: RawResourceAndroidNotificationSound(_customSoundResourceName),
+      sound: _useCustomSound ? RawResourceAndroidNotificationSound(_customSoundResourceName) : null,
       audioAttributesUsage: AudioAttributesUsage.alarm,
     );
     await androidPlugin?.createNotificationChannel(channel);
@@ -154,7 +164,7 @@ class NotificationService {
         priority: Priority.high,
         category: AndroidNotificationCategory.alarm,
         fullScreenIntent: true,
-        sound: RawResourceAndroidNotificationSound(_customSoundResourceName),
+        sound: _useCustomSound ? RawResourceAndroidNotificationSound(_customSoundResourceName) : null,
         audioAttributesUsage: AudioAttributesUsage.alarm,
         vibrationPattern: Int64List.fromList([0, 800, 400, 800]),
         // FLAG_INSISTENT (4): lặp lại âm thanh + rung liên tục cho đến khi
@@ -201,6 +211,12 @@ class NotificationService {
     //    chặn riêng chế độ này).
     // 3. inexactAllowWhileIdle: phương án cuối, không cần quyền đặc biệt,
     //    đảm bảo vẫn có thông báo dù có thể trễ vài phút.
+    //
+    // TRƯỚC ĐÂY: nếu CẢ 3 chế độ đều ném lỗi (ví dụ do OEM chặn quyền báo
+    // thức), lỗi bị `catch (_) {}` nuốt im lặng — báo thức coi như KHÔNG BAO
+    // GIỜ được đặt, nhưng không ai biết vì sao. Giờ log rõ lỗi từng chế độ,
+    // và verify lại bằng pendingNotificationRequests() sau khi "thành công"
+    // để biết chắc hệ điều hành có thực sự nhận báo thức hay không.
     for (final mode in [
       AndroidScheduleMode.alarmClock,
       AndroidScheduleMode.exactAllowWhileIdle,
@@ -215,11 +231,22 @@ class NotificationService {
           _details(insistent: true),
           androidScheduleMode: mode,
         );
-        return;
-      } catch (_) {
-        // Thử chế độ kế tiếp trong danh sách.
+        final pending = await notifications.pendingNotificationRequests();
+        final registered = pending.any((p) => p.id == _alarmNotificationId);
+        debugPrint(
+          '[NotificationService] scheduleBreakAlarm mode=$mode at=$scheduledDate '
+          'registeredWithOS=$registered',
+        );
+        if (registered) return;
+      } catch (e, st) {
+        debugPrint('[NotificationService] scheduleBreakAlarm mode=$mode FAILED: $e\n$st');
       }
     }
+    debugPrint(
+      '[NotificationService] scheduleBreakAlarm: ALL modes failed for $scheduledDate — '
+      'no alarm was registered with the OS. This is almost always an OEM restriction '
+      '(MIUI Autostart / battery optimization), not a plugin bug.',
+    );
   }
 
   // Kiểm tra người dùng đã cấp quyền "Báo thức & lời nhắc chính xác" chưa —

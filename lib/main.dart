@@ -107,7 +107,14 @@ class _AppGateState extends State<_AppGate> {
           return const Scaffold(body: Center(child: CircularProgressIndicator()));
         }
         if (snapshot.data == true) {
-          context.read<HabitProvider>().setSurveyCompleted(true);
+          // KHÔNG gọi trực tiếp trong builder: setSurveyCompleted() gọi
+          // notifyListeners() bên trong, mà builder này đang chạy giữa lúc
+          // framework build widget tree -> gây lỗi "setState() or
+          // markNeedsBuild() called during build". Dời sang sau khung hình
+          // hiện tại bằng addPostFrameCallback để an toàn.
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            context.read<HabitProvider>().setSurveyCompleted(true);
+          });
           // Sau khảo sát: cần đăng nhập mới vào được app chính.
           final auth = context.watch<AuthProvider>();
           return auth.isLoggedIn ? const MainShell() : const LoginScreen();
