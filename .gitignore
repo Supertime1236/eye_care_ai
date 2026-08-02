@@ -12,6 +12,10 @@
 .swiftpm/
 migrate_working_dir/
 
+# Agent skills
+*/.agents/
+.agents/
+
 # IntelliJ related
 *.iml
 *.ipr
@@ -31,6 +35,7 @@ migrate_working_dir/
 .pub-cache/
 .pub/
 /build/
+*/build/
 /coverage/
 
 # Symbolication related
@@ -43,10 +48,12 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
 # Keystore & signing secrets — KHÔNG BAO GIỜ commit lên git
 *.jks
 key.properties
 local.properties
+release-keystore-base64.txt
 
 # CLAUDE.md is a NO to git
 CLAUDE.md
