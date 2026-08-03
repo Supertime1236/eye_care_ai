@@ -21,7 +21,7 @@ class EyeChatService {
       'https://integrate.api.nvidia.com/v1/chat/completions';
 
   /// NVIDIA NIM: Google Gemma 4 31B it  — 40 RPM, trả lời nhanh.
-  static const String _model = 'google/gemma-4-31b-it';
+  static const String _model = 'nvidia/nemotron-3-ultra-550b-a55b';
 
   static const String _systemPrompt = '''
 Bạn là trợ lý AI của ứng dụng EyeCare AI.
