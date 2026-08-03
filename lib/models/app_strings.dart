@@ -356,6 +356,10 @@ class AppStrings {
   String get chatApiKeySave => vi ? 'Lưu & bắt đầu' : 'Save & start';
   String get chatApiKeyCancel => vi ? 'Để sau' : 'Later';
   String get chatApiKeyChange => vi ? 'Đổi khoá API' : 'Change API key';
+  String get chatDisabledTitle => vi ? 'AI Chat đang bảo trì' : 'AI Chat Under Maintenance';
+  String get chatDisabledSubtitle => vi
+      ? 'Tính năng chat AI sẽ quay lại với mô hình tự host trong thời gian tới.'
+      : 'AI chat will return with a self-hosted model soon.';
   String get chatErrorMissingKey =>
       vi ? 'Chưa thiết lập khoá API. Nhấn vào biểu tượng ⚙️ ở trên để thêm khoá.' : 'No API key set. Tap the ⚙️ icon above to add one.';
   String get chatErrorInvalidKey =>
