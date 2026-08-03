@@ -3,39 +3,25 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 import '../config/env.dart';
 
-/// OpenRouter AI Service
+/// NVIDIA NIM AI Service
 ///
 /// API Key lấy từ:
-/// flutter run --dart-define=OPENROUTER_API_KEY=sk-or-v1-xxxxx
+/// flutter run --dart-define=NIM_API_KEY=nvapi-xxxxx
 ///
 /// hoặc GitHub Actions.
 ///
 /// Không hardcode API key vào source code.
+/// Rate limits: 40 RPM, không giới hạn daily.
 class EyeChatService {
   EyeChatService._();
 
   static final EyeChatService instance = EyeChatService._();
 
   static const String _baseUrl =
-      'https://openrouter.ai/api/v1/chat/completions';
+      'https://integrate.api.nvidia.com/v1/chat/completions';
 
-  /// Bạn có thể đổi model tại đây.
-  // BUG ĐÃ SỬA: model cũ "google/gemma-4-26b-a4b-it:free" KHÔNG PHẢI tên
-  // model thật của Google (Gemma chỉ có tới bản 3, không có "gemma-4" hay
-  // size "26b-a4b") — rất có thể OpenRouter phải dò/định tuyến lại hoặc rơi
-  // vào hàng đợi lỗi trước khi trả lời, gây chậm bất thường. Đổi sang model
-  // free THẬT và NHỎ HƠN (phản hồi nhanh hơn nhiều so với model 27B/70B) —
-  // đủ dùng cho các câu hỏi ngắn về sức khỏe mắt.
-  static const String _model = 'google/gemma-4-31b-it:free';
-  // Ví dụ khác:
-  // meta-llama/llama-3.1-8b-instruct:free  (nhỏ, rất nhanh)
-  // google/gemma-3-27b-it:free             (lớn hơn, trả lời chất lượng hơn nhưng chậm hơn)
-  //
-  // LƯU Ý VỀ TỐC ĐỘ: model ":free" trên OpenRouter dùng chung hạ tầng miễn
-  // phí, bị xếp hàng ưu tiên THẤP NHẤT — luôn chậm hơn đáng kể so với model
-  // trả phí (dù model trả phí rẻ như "google/gemini-2.0-flash-001" chỉ
-  // khoảng vài nghìn đồng/1000 câu hỏi). Nếu vẫn thấy chậm sau khi đổi model
-  // + bật streaming (bên dưới), cân nhắc chuyển sang model trả phí.
+  /// NVIDIA NIM: Google Gemma 4 31B it  — 40 RPM, trả lời nhanh.
+  static const String _model = 'google/gemma-4-31b-it';
 
   static const String _systemPrompt = '''
 Bạn là trợ lý AI của ứng dụng EyeCare AI.
@@ -86,7 +72,7 @@ Trả lời ngắn gọn, dễ hiểu, thân thiện.
   Stream<String> sendMessageStream({
     required List<Map<String, String>> history,
   }) async* {
-    final apiKey = Env.openRouterApiKey;
+    final apiKey = Env.nimApiKey;
     if (apiKey.isEmpty) {
       throw Exception("missing_api_key");
     }
@@ -117,8 +103,6 @@ Trả lời ngắn gọn, dễ hiểu, thân thiện.
             "Authorization": "Bearer $apiKey",
             "Content-Type": "application/json",
             "Accept": "text/event-stream",
-            "HTTP-Referer": "https://github.com/Supertime1236/eye_care_ai",
-            "X-Title": "EyeCare AI",
           },
         ),
         data: {
@@ -132,7 +116,7 @@ Trả lời ngắn gọn, dễ hiểu, thân thiện.
       var buffer = '';
       await for (final chunk in stream) {
         buffer += utf8.decode(chunk, allowMalformed: true);
-        // OpenRouter gửi theo chuẩn SSE: mỗi sự kiện là 1 dòng bắt đầu bằng
+        // NVIDIA NIM gửi theo chuẩn SSE: mỗi sự kiện là 1 dòng bắt đầu bằng
         // "data: ", các sự kiện cách nhau bởi dòng trống. Model có thể trả
         // về nhiều dòng trong 1 lần đọc socket hoặc cắt giữa dòng -> phải
         // tách theo "\n" và giữ lại phần dòng cuối chưa hoàn chỉnh trong
@@ -184,7 +168,7 @@ Trả lời ngắn gọn, dễ hiểu, thân thiện.
   Future<String> sendMessage({
     required List<Map<String, String>> history,
   }) async {
-    final apiKey = Env.openRouterApiKey;
+    final apiKey = Env.nimApiKey;
 
     if (apiKey.isEmpty) {
       throw Exception("missing_api_key");
@@ -221,12 +205,6 @@ Trả lời ngắn gọn, dễ hiểu, thân thiện.
           headers: {
             "Authorization": "Bearer $apiKey",
             "Content-Type": "application/json",
-
-            // Thay bằng repo hoặc website của bạn
-            "HTTP-Referer":
-                "https://github.com/Supertime1236/eye_care_ai",
-
-            "X-Title": "EyeCare AI",
           },
         ),
         data: {

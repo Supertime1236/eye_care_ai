@@ -67,7 +67,7 @@ class _ChatScreenState extends State<ChatScreen> {
     // BUG BẢO MẬT ĐÃ SỬA: trước đây có 2 dòng print() in thẳng API key ra
     // logcat (ai đọc log qua USB/`adb logcat` đều thấy được key thật) — đã
     // xoá bỏ, không có lý do gì để log giá trị này kể cả lúc debug.
-    if (Env.openRouterApiKey.isEmpty) {
+    if (Env.nimApiKey.isEmpty) {
       provider.addBotMessage(strings.chatErrorMissingKey);
       return;
     }
