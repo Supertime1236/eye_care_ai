@@ -57,3 +57,9 @@ release-keystore-base64.txt
 
 # CLAUDE.md is a NO to git
 CLAUDE.md
+
+# Gradle build cache
+android/.gradle/
+
+# Local plan file
+PLAN.md
