@@ -34,13 +34,16 @@ jobs:
           (cd android && chmod +x gradlew && ./gradlew --stop) || true
 
       - name: Setup release signing
-        if: env.KEYSTORE_BASE64 != ''
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "Skipping — no keystore secret"
+            exit 0
+          fi
           echo "$KEYSTORE_BASE64" | base64 --decode > android/app/release-keystore.jks
           printf "storeFile=release-keystore.jks\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n" \
             "$KEYSTORE_PASSWORD" "$KEY_ALIAS" "$KEY_PASSWORD" > android/key.properties
