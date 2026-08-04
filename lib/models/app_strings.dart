@@ -521,6 +521,7 @@ class AppStrings {
       vi ? 'Yêu cầu xác minh qua email khi đăng nhập' : 'Email verification required at login';
   String get twoFactorAuthOffDesc =>
       vi ? 'Thêm bước xác minh email khi đăng nhập' : 'Adds an email verification step at login';
+  String get loginRequired => vi ? 'Cần đăng nhập' : 'Login required';
   String get exportMyData => vi ? 'Xuất dữ liệu của tôi' : 'Export My Data';
   String get exportMyDataDone =>
       vi ? 'Dữ liệu của bạn đã sẵn sàng để tải xuống.' : 'Your data export is ready.';

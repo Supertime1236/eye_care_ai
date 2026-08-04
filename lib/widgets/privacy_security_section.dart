@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../dialogs/delete_account_dialog.dart';
+import '../providers/auth_provider.dart';
 import '../providers/language_provider.dart';
 import '../providers/settings_more_provider.dart';
 import '../screens/change_password_screen.dart';
@@ -14,6 +15,8 @@ class PrivacySecuritySection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final settings = context.watch<SettingsMoreProvider>();
+    final auth = context.watch<AuthProvider>();
+    final isLoggedIn = auth.isLoggedIn;
     final strings = context.watch<LanguageProvider>().strings;
 
     return Column(
@@ -31,22 +34,24 @@ class PrivacySecuritySection extends StatelessWidget {
           title: strings.cloudBackupTitle,
           description: strings.cloudBackupDesc,
           value: settings.cloudBackup,
-          onChanged: settings.setCloudBackup,
+          onChanged: isLoggedIn ? settings.setCloudBackup : null,
         ),
         const Divider(height: 1),
         SettingsToggleTile(
           title: strings.personalizedAiTitle,
           description: strings.personalizedAiDesc,
           value: settings.personalizedAI,
-          onChanged: settings.setPersonalizedAI,
+          onChanged: isLoggedIn ? settings.setPersonalizedAI : null,
         ),
         SettingsSectionLabel(strings.sectionSecurity),
         SettingsNavTile(
           title: strings.changePasswordTitle,
           icon: Icons.lock_outline_rounded,
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const ChangePasswordScreen()),
-          ),
+          onTap: isLoggedIn
+              ? () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const ChangePasswordScreen()),
+                  )
+              : null,
         ),
         const Divider(height: 1),
         SwitchListTile(
@@ -54,11 +59,13 @@ class PrivacySecuritySection extends StatelessWidget {
           secondary: const Icon(Icons.fingerprint_rounded, size: 20),
           title: Text(strings.biometricLoginTitle, style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 15)),
           subtitle: Text(
-            settings.biometricSupported ? strings.biometricSupportedDesc : strings.biometricUnsupportedDesc,
+            isLoggedIn
+                ? (settings.biometricSupported ? strings.biometricSupportedDesc : strings.biometricUnsupportedDesc)
+                : strings.loginRequired,
             style: const TextStyle(color: AppColors.textSecondary, fontSize: 12.5),
           ),
           value: settings.biometricLogin,
-          onChanged: settings.biometricSupported ? settings.setBiometricLogin : null,
+          onChanged: isLoggedIn && settings.biometricSupported ? settings.setBiometricLogin : null,
         ),
         const Divider(height: 1),
         SwitchListTile(
@@ -66,11 +73,13 @@ class PrivacySecuritySection extends StatelessWidget {
           secondary: const Icon(Icons.verified_user_outlined, size: 20),
           title: Text(strings.twoFactorAuthTitle, style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 15)),
           subtitle: Text(
-            settings.twoFactorAuth ? strings.twoFactorAuthOnDesc : strings.twoFactorAuthOffDesc,
+            isLoggedIn
+                ? (settings.twoFactorAuth ? strings.twoFactorAuthOnDesc : strings.twoFactorAuthOffDesc)
+                : strings.loginRequired,
             style: const TextStyle(color: AppColors.textSecondary, fontSize: 12.5),
           ),
           value: settings.twoFactorAuth,
-          onChanged: settings.setTwoFactorAuth,
+          onChanged: isLoggedIn ? settings.setTwoFactorAuth : null,
         ),
         SettingsSectionLabel(strings.sectionDataManagement),
         const _DataManagementButtons(),
