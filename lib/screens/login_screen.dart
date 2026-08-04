@@ -207,7 +207,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     onPressed: _isLoading ? null : () => _signInWithGoogle(strings.vi),
                     icon: const GoogleGBadge(size: 20),
                     label: Text(strings.continueWithGoogle),
-                    style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14)),
+                    style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
                   ),
                   const SizedBox(height: 24),
                   TextButton(

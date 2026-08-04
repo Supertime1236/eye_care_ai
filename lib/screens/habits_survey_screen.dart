@@ -302,13 +302,18 @@ class _HabitsSurveyScreenState extends State<HabitsSurveyScreen> {
               if (_pageIndex > 0)
                 Expanded(
                   child: OutlinedButton(
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
                     onPressed: _goBack,
                     child: Text(strings.vi ? 'Quay lại' : 'Back'),
                   ),
                 ),
               if (_pageIndex > 0) const SizedBox(width: 12),
               Expanded(
-                flex: 2,
                 child: FilledButton(
                   style: FilledButton.styleFrom(
                     backgroundColor: AppColors.habitsAccent,
@@ -431,19 +436,29 @@ class _HabitsSurveyScreenState extends State<HabitsSurveyScreen> {
             style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textMuted, fontStyle: FontStyle.italic),
           ),
           const SizedBox(height: 20),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.habitsAccent,
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.habitsAccent,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              onPressed: () => setState(() => _showSummary = false),
+              child: Text(strings.surveySummaryContinue),
             ),
-            onPressed: () => setState(() => _showSummary = false),
-            child: Text(strings.surveySummaryContinue),
           ),
           const SizedBox(height: 8),
-          OutlinedButton(
-            onPressed: _retake,
-            child: Text(strings.surveyRetake),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton(
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              onPressed: _retake,
+              child: Text(strings.surveyRetake),
+            ),
           ),
         ],
       ),
@@ -658,6 +673,12 @@ class _HabitsSurveyScreenState extends State<HabitsSurveyScreen> {
               children: [
                 Expanded(
                   child: OutlinedButton(
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
                     onPressed: () {
                       if (_targetStepIndex > 0) {
                         setState(() => _targetStepIndex--);
@@ -766,9 +787,16 @@ class _HabitsSurveyScreenState extends State<HabitsSurveyScreen> {
                   child: Text(strings.targetApplyButton),
                 ),
                 const SizedBox(height: 8),
-                OutlinedButton(
-                  onPressed: _retake,
-                  child: Text(strings.surveyRetake),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton(
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    onPressed: _retake,
+                    child: Text(strings.surveyRetake),
+                  ),
                 ),
               ],
             ),
