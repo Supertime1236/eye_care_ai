@@ -17,6 +17,7 @@ import '../services/device_data_service.dart';
 /// để tránh xung đột, và được đăng ký thêm trong main.dart.
 class SettingsMoreProvider extends ChangeNotifier {
   // ---- Privacy toggles ----
+  static const _kDataCollectionKey = 'data_collection_enabled';
   bool _dataCollection = true;
   bool _cloudBackup = true;
   bool _personalizedAI = false;
@@ -25,8 +26,19 @@ class SettingsMoreProvider extends ChangeNotifier {
   bool get cloudBackup => _cloudBackup;
   bool get personalizedAI => _personalizedAI;
 
+  /// Load persisted toggle values from SharedPreferences. Call once at app start.
+  Future<void> init() async {
+    final prefs = await SharedPreferences.getInstance();
+    _dataCollection = prefs.getBool(_kDataCollectionKey) ?? true;
+    notifyListeners();
+  }
+
   void setDataCollection(bool v) {
     _dataCollection = v;
+    // Persist and sync with AnalyticsService
+    SharedPreferences.getInstance().then((prefs) {
+      prefs.setBool(_kDataCollectionKey, v);
+    });
     notifyListeners();
   }
 

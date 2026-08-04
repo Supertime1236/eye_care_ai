@@ -23,7 +23,7 @@ class EyeHealthStandards {
       case AgeGroup.teen:
         return 90;
       case AgeGroup.adult:
-        return 60;
+        return 90;
     }
   }
 

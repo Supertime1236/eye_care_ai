@@ -604,6 +604,7 @@ class DeviceDataService {
 
   void startDarkRoomMonitoring(Future<void> Function() onDarkWarning) {
     stopDarkRoomMonitoring();
+    if (!Platform.isAndroid) return; // light sensor not available on iOS
     try {
       _darkRoomLightSub = Light().lightSensorStream.listen(
         (lux) {

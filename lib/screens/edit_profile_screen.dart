@@ -175,6 +175,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           style: OutlinedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 14),
                             side: const BorderSide(color: AppColors.error),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                           ),
                         )
                       : OutlinedButton.icon(
@@ -187,7 +188,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                 )
                               : const GoogleGBadge(size: 18),
                           label: Text(strings.vi ? 'Đăng nhập bằng Gmail' : 'Sign in with Gmail'),
-                          style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14)),
+                          style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
                         ),
                 ),
               ],

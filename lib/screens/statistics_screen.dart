@@ -489,6 +489,9 @@ class _AppUsageBreakdownCardState extends State<_AppUsageBreakdownCard> {
                       ),
                       const SizedBox(height: 8),
                       OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
                         onPressed: () => DeviceDataService.instance.openUsageAccessSettings(),
                         child: Text(strings.grantUsageAccess),
                       ),

@@ -1,6 +1,6 @@
 class Env {
-  static const openRouterApiKey = String.fromEnvironment(
-    'OPENROUTER_API_KEY',
+  static const nimApiKey = String.fromEnvironment(
+    'NIM_API_KEY',
     defaultValue: '',
   );
 }

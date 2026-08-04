@@ -356,6 +356,10 @@ class AppStrings {
   String get chatApiKeySave => vi ? 'Lưu & bắt đầu' : 'Save & start';
   String get chatApiKeyCancel => vi ? 'Để sau' : 'Later';
   String get chatApiKeyChange => vi ? 'Đổi khoá API' : 'Change API key';
+  String get chatDisabledTitle => vi ? 'AI Chat đang bảo trì' : 'AI Chat Under Maintenance';
+  String get chatDisabledSubtitle => vi
+      ? 'Tính năng chat AI sẽ quay lại trong thời gian tới.'
+      : 'AI chat will return soon.';
   String get chatErrorMissingKey =>
       vi ? 'Chưa thiết lập khoá API. Nhấn vào biểu tượng ⚙️ ở trên để thêm khoá.' : 'No API key set. Tap the ⚙️ icon above to add one.';
   String get chatErrorInvalidKey =>
@@ -517,6 +521,33 @@ class AppStrings {
       vi ? 'Yêu cầu xác minh qua email khi đăng nhập' : 'Email verification required at login';
   String get twoFactorAuthOffDesc =>
       vi ? 'Thêm bước xác minh email khi đăng nhập' : 'Adds an email verification step at login';
+  String get loginRequired => vi ? 'Cần đăng nhập' : 'Login required';
+
+  // ---- Consent screen ----
+  String get consentTitle => vi ? 'Quyền riêng tư & Đồng ý' : 'Privacy & Consent';
+  String get consentSubtitle => vi
+      ? 'Trước khi bắt đầu, vui lòng xem cách chúng tôi xử lý dữ liệu của bạn.'
+      : 'Before you begin, please review how we handle your data.';
+  String get consentCollectTitle => vi ? 'Dữ liệu thu thập' : 'What We Collect';
+  String get consentCollectBody => vi
+      ? 'Thời gian sử dụng, thời gian ngoài trời, giấc ngủ, nghỉ mắt (cảm biến thiết bị).\nCâu trả lời khảo sát của bạn (nhóm tuổi, thói quen).\nTin nhắn chat AI (khi tính năng được bật lại).'
+      : 'Screen time, outdoor minutes, sleep, eye breaks (device sensors).\nYour survey answers (age group, habits).\nAI chat messages (when re-enabled).';
+  String get consentUseTitle => vi ? 'Mục đích sử dụng' : 'How We Use It';
+  String get consentUseBody => vi
+      ? 'Tính điểm sức khỏe mắt.\nĐưa ra gợi ý cá nhân hóa.\nCải thiện AI (ẩn danh, khi bật).'
+      : 'Calculate your Eye Health Score.\nProvide personalized recommendations.\nImprove AI suggestions (anonymous, when enabled).';
+  String get consentRightsTitle => vi ? 'Quyền của bạn' : 'Your Rights';
+  String get consentRightsBody => vi
+      ? 'Dữ liệu lưu cục bộ trên thiết bị.\nKhông bao giờ bán cho bên thứ ba.\nCó thể xóa mọi dữ liệu bất kỳ lúc nào trong Cài đặt.'
+      : 'Data stored locally on your device.\nNever sold to third parties.\nYou can delete all data anytime in Settings.';
+  String get consentAccept => vi ? 'Chấp nhận & Tiếp tục' : 'Accept & Continue';
+  String get consentDecline => vi ? 'Từ chối' : 'Decline';
+  String get consentWithdraw => vi ? 'Rút đồng ý' : 'Withdraw Consent';
+  String get consentWithdrawDesc => vi
+      ? 'Rút đồng ý sẽ xóa tất cả dữ liệu và đặt lại ứng dụng.'
+      : 'Withdrawing consent will delete all data and reset the app.';
+
+  // ---- Export ----
   String get exportMyData => vi ? 'Xuất dữ liệu của tôi' : 'Export My Data';
   String get exportMyDataDone =>
       vi ? 'Dữ liệu của bạn đã sẵn sàng để tải xuống.' : 'Your data export is ready.';

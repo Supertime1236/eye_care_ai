@@ -71,7 +71,7 @@ class SettingsNavTile extends StatelessWidget {
   });
 
   final String title;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
   final String? trailingText;
   final IconData? icon;
 
