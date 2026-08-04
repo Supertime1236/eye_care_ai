@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/language_provider.dart';
+import '../providers/theme_provider.dart';
 import '../services/analytics_service.dart';
 import '../theme/app_colors.dart';
 
@@ -14,11 +15,31 @@ class ConsentScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final strings = context.watch<LanguageProvider>().strings;
+    final language = context.watch<LanguageProvider>();
+    final theme = context.watch<ThemeProvider>();
+    final strings = language.strings;
 
     return PopScope(
       canPop: false,
       child: Scaffold(
+        appBar: AppBar(
+          automaticallyImplyLeading: false,
+          actions: [
+            TextButton(
+              onPressed: () => language.toggleVietnamese(!language.isVietnamese),
+              child: Text(
+                strings.vi ? 'EN' : 'VI',
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+            ),
+            IconButton(
+              icon: Icon(theme.isDarkMode ? Icons.light_mode_outlined : Icons.dark_mode_outlined),
+              tooltip: strings.vi ? 'Đổi giao diện' : 'Toggle theme',
+              onPressed: () => theme.toggleDarkMode(!theme.isDarkMode),
+            ),
+            const SizedBox(width: 4),
+          ],
+        ),
         body: SafeArea(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
