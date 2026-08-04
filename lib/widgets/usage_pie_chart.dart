@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../models/app_usage.dart';
-import '../theme/app_colors.dart';
 
 class UsagePieChart extends StatefulWidget {
   final List<AppUsage> usages;

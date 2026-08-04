@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
+
 import '../utils/permission_helper.dart';
 
 import '../models/app_strings.dart';
@@ -42,267 +44,323 @@ class SettingsScreen extends StatelessWidget {
     final strings = language.strings;
     final isDark = theme.isDarkMode;
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(strings.settings, style: Theme.of(context).textTheme.headlineMedium),
-          const SizedBox(height: 16),
-          SectionCard(
-            child: InkWell(
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const EditProfileScreen()),
-              ),
-              borderRadius: BorderRadius.circular(16),
-              child: Row(
-                children: [
-                  CircleAvatar(
-                    radius: 28,
-                    backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.12),
-                    backgroundImage: profile.avatarUrl != null ? NetworkImage(profile.avatarUrl!) : null,
-                    child: profile.avatarUrl == null
-                        ? Text(
-                            profile.name.isNotEmpty ? profile.name[0].toUpperCase() : '👤',
-                            style: TextStyle(fontSize: 20, color: Theme.of(context).colorScheme.primary),
-                          )
-                        : null,
+    return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        automaticallyImplyLeading: false,
+        leading: IconButton(
+          onPressed: () => Navigator.of(context).maybePop(),
+          icon: const Icon(Icons.arrow_back_rounded),
+          tooltip: language.isVietnamese ? 'Quay lại' : 'Back',
+        ),
+        title: Text(strings.settings),
+      ),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 8),
+              SectionCard(
+                child: InkWell(
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const EditProfileScreen()),
                   ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          profile.name.isEmpty ? '—' : profile.name,
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                        Text(
-                          profile.email,
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                      ],
-                    ),
-                  ),
-                  Icon(Icons.edit_outlined, color: AppColors.textMuted, size: 20),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 20),
-          Text(strings.notifications, style: Theme.of(context).textTheme.titleSmall),
-          const SizedBox(height: 10),
-          // Phần thông báo: bật/tắt các loại nhắc nhở khác nhau.
-          // Mỗi dòng gọi _ToggleTile với dữ liệu và callback riêng.
-          _ToggleTile(
-            icon: '☕',
-            title: strings.breakReminders,
-            subtitle: strings.breakRemindersSubtitle,
-            value: settings.notifyBreaks,
-            onChanged: (v) => settings.setNotification('breaks', v),
-          ),
-          _ToggleTile(
-            icon: '👁️',
-            title: strings.eyeTestReminders,
-            subtitle: strings.eyeTestRemindersSubtitle,
-            value: settings.notifyTests,
-            onChanged: (v) => settings.setNotification('tests', v),
-          ),
-          _ToggleTile(
-            icon: '✅',
-            title: strings.habitTracking,
-            subtitle: strings.habitTrackingSubtitle,
-            value: settings.notifyHabits,
-            onChanged: (v) => settings.setNotification('habits', v),
-          ),
-          _ToggleTile(
-            icon: '💡',
-            title: strings.aiTips,
-            subtitle: strings.aiTipsSubtitle,
-            value: settings.notifyTips,
-            onChanged: (v) => settings.setNotification('tips', v),
-          ),
-          const SizedBox(height: 20),
-          // Phần tùy chọn chính: chế độ tối, đơn vị đo lường, định dạng giờ, ngôn ngữ.
-          // Các lựa chọn này thay đổi bố cục hiển thị của ứng dụng.
-          Text(strings.preferences, style: Theme.of(context).textTheme.titleSmall),
-          const SizedBox(height: 10),
-          SectionCard(
-            padding: EdgeInsets.zero,
-            child: Column(
-              children: [
-                _ListTileOption(
-                  icon: isDark ? '🌙' : '☀️',
-                  title: strings.themeLabel,
-                  subtitle: strings.themeSubtitle,
-                  valueLabel: strings.themePreferenceLabel(theme.preference),
-                  onTap: () => _showThemeDialog(context, theme, strings),
-                ),
-                const Divider(height: 1, indent: 56),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                  borderRadius: BorderRadius.circular(16),
                   child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      CircleAvatar(
+                        radius: 28,
+                        backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.12),
+                        backgroundImage: profile.avatarUrl != null ? NetworkImage(profile.avatarUrl!) : null,
+                        child: profile.avatarUrl == null
+                            ? Text(
+                                profile.name.isNotEmpty ? profile.name[0].toUpperCase() : '👤',
+                                style: TextStyle(fontSize: 20, color: Theme.of(context).colorScheme.primary),
+                              )
+                            : null,
+                      ),
+                      const SizedBox(width: 14),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // Cột bên trái: lựa chọn đơn vị đo lường.
-                            // Chọn Metric hoặc Imperial để thay đổi cách hiển thị đơn vị.
-                            Text(strings.measurementUnits, style: Theme.of(context).textTheme.titleSmall),
-                            const SizedBox(height: 8),
-                            _SelectableOption(
-                              label: strings.metricMeters,
-                              selected: settings.useMetric,
-                              onTap: () => settings.toggleMetric(true),
+                            Text(
+                              profile.name.isEmpty ? '—' : profile.name,
+                              style: Theme.of(context).textTheme.titleMedium,
                             ),
-                            const SizedBox(height: 8),
-                            _SelectableOption(
-                              label: strings.imperialFeet,
-                              selected: !settings.useMetric,
-                              onTap: () => settings.toggleMetric(false),
+                            Text(
+                              profile.email,
+                              style: Theme.of(context).textTheme.bodySmall,
                             ),
                           ],
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Cột bên phải: lựa chọn định dạng ngày/giờ.
-                            // Phần này thay đổi định dạng hiển thị giờ trong toàn bộ app.
-                            Text(strings.dateTime, style: Theme.of(context).textTheme.titleSmall),
-                            const SizedBox(height: 8),
-                            _SelectableOption(
-                              label: strings.hour12,
-                              selected: !settings.is24Hour,
-                              onTap: () => settings.toggleTimeFormat(false),
-                            ),
-                            const SizedBox(height: 8),
-                            _SelectableOption(
-                              label: strings.hour24,
-                              selected: settings.is24Hour,
-                              onTap: () => settings.toggleTimeFormat(true),
-                            ),
-                          ],
-                        ),
-                      ),
+                      Icon(Icons.edit_outlined, color: AppColors.textMuted, size: 20),
                     ],
                   ),
                 ),
-                const Divider(height: 1, indent: 56),
-                _ListTileOption(
-                  icon: '🌐',
-                  title: strings.language,
-                  subtitle: strings.languageSubtitle,
-                  valueLabel: language.isVietnamese ? strings.vietnamese : strings.english,
-                  onTap: () => _showLanguageDialog(context, language, strings),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 20),
-          // Giao diện & màu sắc: đổi màu nhấn toàn app + chọn phông chữ, để
-          // trải nghiệm đa dạng/đầy màu sắc hơn thay vì chỉ có 1 theme cố định.
-          Text(strings.appearanceSection, style: Theme.of(context).textTheme.titleSmall),
-          const SizedBox(height: 10),
-          SectionCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(strings.accentColorLabel, style: Theme.of(context).textTheme.titleSmall),
-                const SizedBox(height: 4),
-                Text(
-                  strings.accentColorSubtitle,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textMuted),
-                ),
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 14,
-                  runSpacing: 10,
-                  children: AppAccentColor.values.map((c) {
-                    final selected = accent.choice == c;
-                    return _AccentColorSwatch(
-                      color: c.seed,
-                      selected: selected,
-                      label: c.label(strings.vi),
-                      onTap: () => accent.setChoice(c),
-                    );
-                  }).toList(),
-                ),
-                const Divider(height: 32),
-                _ListTileOption(
-                  icon: '🔤',
-                  title: strings.fontLabel,
-                  subtitle: strings.fontSubtitleOther,
-                  valueLabel: font.effectiveChoice(language.isVietnamese).label(strings.vi),
-                  onTap: () => _showFontDialog(context, font, strings, isVietnamese: language.isVietnamese),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 20),
-          Text(strings.more, style: Theme.of(context).textTheme.titleSmall),
-          const SizedBox(height: 10),
-          SectionCard(
-            padding: EdgeInsets.zero,
-            child: Column(
-              children: [
-                _MenuItem(
-                  icon: '🔒',
-                  title: strings.privacySecurity,
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const SettingsMorePage(initialSection: SettingsMoreSection.privacy),
+              ),
+              const SizedBox(height: 20),
+              Text(strings.notifications, style: Theme.of(context).textTheme.titleSmall),
+              const SizedBox(height: 10),
+              // Phần thông báo: bật/tắt các loại nhắc nhở khác nhau.
+              // Mỗi dòng gọi _ToggleTile với dữ liệu và callback riêng.
+              _ToggleTile(
+                icon: '☕',
+                title: strings.breakReminders,
+                subtitle: strings.breakRemindersSubtitle,
+                value: settings.notifyBreaks,
+                onChanged: (v) => settings.setNotification('breaks', v),
+              ),
+              _ToggleTile(
+                icon: '👁️',
+                title: strings.eyeTestReminders,
+                subtitle: strings.eyeTestRemindersSubtitle,
+                value: settings.notifyTests,
+                onChanged: (v) => settings.setNotification('tests', v),
+              ),
+              _ToggleTile(
+                icon: '✅',
+                title: strings.habitTracking,
+                subtitle: strings.habitTrackingSubtitle,
+                value: settings.notifyHabits,
+                onChanged: (v) => settings.setNotification('habits', v),
+              ),
+              _ToggleTile(
+                icon: '💡',
+                title: strings.aiTips,
+                subtitle: strings.aiTipsSubtitle,
+                value: settings.notifyTips,
+                onChanged: (v) => settings.setNotification('tips', v),
+              ),
+              const SizedBox(height: 20),
+              // Phần tùy chọn chính: chế độ tối, đơn vị đo lường, định dạng giờ, ngôn ngữ.
+              // Các lựa chọn này thay đổi bố cục hiển thị của ứng dụng.
+              Text(strings.preferences, style: Theme.of(context).textTheme.titleSmall),
+              const SizedBox(height: 10),
+              SectionCard(
+                padding: EdgeInsets.zero,
+                child: Column(
+                  children: [
+                    _ListTileOption(
+                      icon: isDark ? '🌙' : '☀️',
+                      title: strings.themeLabel,
+                      subtitle: strings.themeSubtitle,
+                      valueLabel: strings.themePreferenceLabel(theme.preference),
+                      onTap: () => _showThemeDialog(context, theme, strings),
                     ),
-                  ),
-                ),
-                const Divider(height: 1, indent: 56),
-                _MenuItem(
-                  icon: '📋',
-                  title: strings.termsOfService,
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const SettingsMorePage(initialSection: SettingsMoreSection.terms),
+                    const Divider(height: 1, indent: 56),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Cột bên trái: lựa chọn đơn vị đo lường.
+                                // Chọn Metric hoặc Imperial để thay đổi cách hiển thị đơn vị.
+                                Text(strings.measurementUnits, style: Theme.of(context).textTheme.titleSmall),
+                                const SizedBox(height: 8),
+                                _SelectableOption(
+                                  label: strings.metricMeters,
+                                  selected: settings.useMetric,
+                                  onTap: () => settings.toggleMetric(true),
+                                ),
+                                const SizedBox(height: 8),
+                                _SelectableOption(
+                                  label: strings.imperialFeet,
+                                  selected: !settings.useMetric,
+                                  onTap: () => settings.toggleMetric(false),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Cột bên phải: lựa chọn định dạng ngày/giờ.
+                                // Phần này thay đổi định dạng hiển thị giờ trong toàn bộ app.
+                                Text(strings.dateTime, style: Theme.of(context).textTheme.titleSmall),
+                                const SizedBox(height: 8),
+                                _SelectableOption(
+                                  label: strings.hour12,
+                                  selected: !settings.is24Hour,
+                                  onTap: () => settings.toggleTimeFormat(false),
+                                ),
+                                const SizedBox(height: 8),
+                                _SelectableOption(
+                                  label: strings.hour24,
+                                  selected: settings.is24Hour,
+                                  onTap: () => settings.toggleTimeFormat(true),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                ),
-                const Divider(height: 1, indent: 56),
-                _MenuItem(
-                  icon: '❓',
-                  title: strings.helpSupport,
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const SettingsMorePage(initialSection: SettingsMoreSection.help),
+                    const Divider(height: 1, indent: 56),
+                    _ListTileOption(
+                      icon: '🌐',
+                      title: strings.language,
+                      subtitle: strings.languageSubtitle,
+                      valueLabel: language.isVietnamese ? strings.vietnamese : strings.english,
+                      onTap: () => _showLanguageDialog(context, language, strings),
                     ),
-                  ),
+                  ],
                 ),
-                const Divider(height: 1, indent: 56),
-                _MenuItem(
-                  icon: '📊',
-                  title: strings.dataUsagePermissions,
-                  onTap: () => _showPermissionSettings(context),
+              ),
+              const SizedBox(height: 20),
+              Text(strings.eyeCareSettingVisionProfile, style: Theme.of(context).textTheme.titleSmall),
+              const SizedBox(height: 10),
+              SectionCard(
+                padding: EdgeInsets.zero,
+                child: Column(
+                  children: [
+                    _ListTileOption(
+                      icon: '👓',
+                      title: strings.eyeCareSettingVisionProfile,
+                      subtitle: strings.eyeCareSettingVisionProfile,
+                      valueLabel: _visionProfileLabel(settings.visionProfile, strings),
+                      onTap: () => _showVisionProfileDialog(context, settings, strings),
+                    ),
+                    const Divider(height: 1, indent: 56),
+                    _ListTileOption(
+                      icon: '🎯',
+                      title: strings.eyeCareSettingReminderStyle,
+                      subtitle: strings.eyeCareSettingReminderStyle,
+                      valueLabel: _reminderStyleLabel(settings.reminderStyle, strings),
+                      onTap: () => _showReminderStyleDialog(context, settings, strings),
+                    ),
+                    const Divider(height: 1, indent: 56),
+                    _ListTileOption(
+                      icon: '📍',
+                      title: strings.eyeCareSettingViewingDistance,
+                      subtitle: strings.eyeCareSettingViewingDistance,
+                      valueLabel: _viewingDistanceLabel(settings.viewingDistanceMode, strings),
+                      onTap: () => _showViewingDistanceDialog(context, settings, strings),
+                    ),
+                  ],
                 ),
-                const Divider(height: 1, indent: 56),
-                _MenuItem(
-                  icon: '🚪',
-                  title: strings.signOut,
-                  color: AppColors.error,
-                  onTap: () => context.read<AuthProvider>().signOut(),
+              ),
+              const SizedBox(height: 20),
+              // Giao diện & màu sắc: đổi màu nhấn toàn app + chọn phông chữ, để
+              // trải nghiệm đa dạng/đầy màu sắc hơn thay vì chỉ có 1 theme cố định.
+              Text(strings.appearanceSection, style: Theme.of(context).textTheme.titleSmall),
+              const SizedBox(height: 10),
+              SectionCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(strings.accentColorLabel, style: Theme.of(context).textTheme.titleSmall),
+                    const SizedBox(height: 4),
+                    Text(
+                      strings.accentColorSubtitle,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textMuted),
+                    ),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 14,
+                      runSpacing: 10,
+                      children: AppAccentColor.values.map((c) {
+                        final selected = accent.choice == c;
+                        return _AccentColorSwatch(
+                          color: c.seed,
+                          selected: selected,
+                          label: c.label(strings.vi),
+                          onTap: () => accent.setChoice(c),
+                        );
+                      }).toList(),
+                    ),
+                    const Divider(height: 32),
+                    _ListTileOption(
+                      icon: '🔤',
+                      title: strings.fontLabel,
+                      subtitle: strings.fontSubtitleOther,
+                      valueLabel: font.effectiveChoice(language.isVietnamese).label(strings.vi),
+                      onTap: () => _showFontDialog(context, font, strings, isVietnamese: language.isVietnamese),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(height: 20),
+              Text(strings.more, style: Theme.of(context).textTheme.titleSmall),
+              const SizedBox(height: 10),
+              SectionCard(
+                padding: EdgeInsets.zero,
+                child: Column(
+                  children: [
+                    _ListTileOption(
+                      icon: '🛡️',
+                      title: strings.guardianEmailTitle,
+                      subtitle: strings.guardianEmailHint,
+                      valueLabel: settings.guardianEmail.isNotEmpty ? settings.guardianEmail : strings.guardianEmailAdd,
+                      onTap: () => _showGuardianEmailDialog(context, settings, strings),
+                    ),
+                    const Divider(height: 1, indent: 56),
+                    _MenuItem(
+                      icon: '🔒',
+                      title: strings.privacySecurity,
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const SettingsMorePage(initialSection: SettingsMoreSection.privacy),
+                        ),
+                      ),
+                    ),
+                    const Divider(height: 1, indent: 56),
+                    _MenuItem(
+                      icon: '📋',
+                      title: strings.termsOfService,
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const SettingsMorePage(initialSection: SettingsMoreSection.terms),
+                        ),
+                      ),
+                    ),
+                    const Divider(height: 1, indent: 56),
+                    _MenuItem(
+                      icon: '❓',
+                      title: strings.helpSupport,
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const SettingsMorePage(initialSection: SettingsMoreSection.help),
+                        ),
+                      ),
+                    ),
+                    const Divider(height: 1, indent: 56),
+                    _MenuItem(
+                      icon: '📊',
+                      title: strings.dataUsagePermissions,
+                      onTap: () => _showPermissionSettings(context),
+                    ),
+                    const Divider(height: 1, indent: 56),
+                    _MenuItem(
+                      icon: '🚪',
+                      title: strings.signOut,
+                      color: AppColors.error,
+                      onTap: () => context.read<AuthProvider>().signOut(),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              Center(
+                child: Text(
+                  strings.version,
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 16),
-          Center(
-            child: Text(
-              strings.version,
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -550,6 +608,227 @@ class _ListTileOption extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+String _visionProfileLabel(String value, AppStrings strings) {
+  switch (value) {
+    case 'glasses':
+      return strings.eyeCareSettingVisionGlasses;
+    case 'contact_lens':
+      return strings.eyeCareSettingVisionContacts;
+    case 'no_correction':
+      return strings.eyeCareSettingVisionNoCorrection;
+    default:
+      return strings.eyeCareSettingVisionGlasses;
+  }
+}
+
+String _reminderStyleLabel(String value, AppStrings strings) {
+  switch (value) {
+    case 'gentle':
+      return strings.eyeCareSettingStyleGentle;
+    case 'normal':
+      return strings.eyeCareSettingStyleNormal;
+    case 'strict':
+      return strings.eyeCareSettingStyleStrict;
+    default:
+      return strings.eyeCareSettingStyleGentle;
+  }
+}
+
+String _viewingDistanceLabel(String value, AppStrings strings) {
+  switch (value) {
+    case 'auto':
+      return strings.eyeCareSettingDistanceAuto;
+    case 'manual':
+      return strings.eyeCareSettingDistanceManual;
+    default:
+      return strings.eyeCareSettingDistanceAuto;
+  }
+}
+
+Future<void> _showVisionProfileDialog(BuildContext context, SettingsProvider settings, AppStrings strings) async {
+  final selected = await showDialog<String>(
+    context: context,
+    builder: (context) {
+      final options = [
+        ('glasses', strings.eyeCareSettingVisionGlasses),
+        ('contact_lens', strings.eyeCareSettingVisionContacts),
+        ('no_correction', strings.eyeCareSettingVisionNoCorrection),
+      ];
+
+      return SimpleDialog(
+        title: Text(strings.eyeCareSettingVisionProfile),
+        children: options.map((option) {
+          final isSelected = settings.visionProfile == option.$1;
+          return SimpleDialogOption(
+            onPressed: () => Navigator.pop(context, option.$1),
+            child: Row(
+              children: [
+                if (isSelected)
+                  Icon(Icons.check, size: 18, color: Theme.of(context).colorScheme.primary)
+                else
+                  const SizedBox(width: 18),
+                const SizedBox(width: 8),
+                Expanded(child: Text(option.$2)),
+              ],
+            ),
+          );
+        }).toList(),
+      );
+    },
+  );
+
+  if (selected != null) {
+    await settings.setVisionProfile(selected);
+  }
+}
+
+Future<void> _showReminderStyleDialog(BuildContext context, SettingsProvider settings, AppStrings strings) async {
+  final selected = await showDialog<String>(
+    context: context,
+    builder: (context) {
+      final options = [
+        ('gentle', strings.eyeCareSettingStyleGentle),
+        ('normal', strings.eyeCareSettingStyleNormal),
+        ('strict', strings.eyeCareSettingStyleStrict),
+      ];
+
+      return SimpleDialog(
+        title: Text(strings.eyeCareSettingReminderStyle),
+        children: options.map((option) {
+          final isSelected = settings.reminderStyle == option.$1;
+          return SimpleDialogOption(
+            onPressed: () => Navigator.pop(context, option.$1),
+            child: Row(
+              children: [
+                if (isSelected)
+                  Icon(Icons.check, size: 18, color: Theme.of(context).colorScheme.primary)
+                else
+                  const SizedBox(width: 18),
+                const SizedBox(width: 8),
+                Expanded(child: Text(option.$2)),
+              ],
+            ),
+          );
+        }).toList(),
+      );
+    },
+  );
+
+  if (selected != null) {
+    await settings.setReminderStyle(selected);
+  }
+}
+
+Future<void> _showViewingDistanceDialog(BuildContext context, SettingsProvider settings, AppStrings strings) async {
+  final selected = await showDialog<String>(
+    context: context,
+    builder: (context) {
+      final options = [
+        ('auto', strings.eyeCareSettingDistanceAuto),
+        ('manual', strings.eyeCareSettingDistanceManual),
+      ];
+
+      return SimpleDialog(
+        title: Text(strings.eyeCareSettingViewingDistance),
+        children: options.map((option) {
+          final isSelected = settings.viewingDistanceMode == option.$1;
+          return SimpleDialogOption(
+            onPressed: () => Navigator.pop(context, option.$1),
+            child: Row(
+              children: [
+                if (isSelected)
+                  Icon(Icons.check, size: 18, color: Theme.of(context).colorScheme.primary)
+                else
+                  const SizedBox(width: 18),
+                const SizedBox(width: 8),
+                Expanded(child: Text(option.$2)),
+              ],
+            ),
+          );
+        }).toList(),
+      );
+    },
+  );
+
+  if (selected != null) {
+    await settings.setViewingDistanceMode(selected);
+  }
+}
+
+Future<void> _showGuardianEmailDialog(BuildContext context, SettingsProvider settings, AppStrings strings) async {
+  final controller = TextEditingController(text: settings.guardianEmail);
+  final formKey = GlobalKey<FormState>();
+
+  final result = await showDialog<bool>(
+    context: context,
+    builder: (context) {
+      return AlertDialog(
+        title: Text(strings.guardianEmailTitle),
+        content: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextFormField(
+                controller: controller,
+                keyboardType: TextInputType.emailAddress,
+                decoration: InputDecoration(
+                  hintText: strings.guardianEmailAdd,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return strings.guardianEmailAdd;
+                  }
+                  final email = value.trim();
+                  final valid = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email);
+                  return valid ? null : 'Email không hợp lệ';
+                },
+              ),
+              const SizedBox(height: 12),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  onPressed: () {
+                    final email = controller.text.trim();
+                    if (email.isEmpty) return;
+                    final uri = Uri.parse(
+                      'mailto:$email?cc=eyecareai.app@gmail.com&subject=${Uri.encodeComponent(strings.vi ? 'EyeCare AI - Nhắc nhở sử dụng thiết bị' : 'EyeCare AI - Device usage reminder')}&body=${Uri.encodeComponent(strings.vi ? 'Xin chào,\n\nHệ thống EyeCare AI đã phát hiện người dùng đã dùng thiết bị quá giờ khuyến nghị. Vui lòng kiểm tra và nhắc nhở họ nghỉ ngơi.\n\nTrân trọng,\nEyeCare AI' : 'Hello,\n\nEyeCare AI detected that the user exceeded the recommended screen time. Please check in and remind them to take a break.\n\nRegards,\nEyeCare AI')}',
+                    );
+                    launchUrl(uri, mode: LaunchMode.externalApplication);
+                  },
+                  icon: const Icon(Icons.send_outlined),
+                  label: Text(strings.guardianEmailSendTest),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(strings.cancel)),
+          FilledButton(
+            onPressed: () {
+              if (formKey.currentState?.validate() ?? false) {
+                Navigator.pop(context, true);
+              }
+            },
+            child: Text(strings.save),
+          ),
+        ],
+      );
+    },
+  );
+
+  if (result == true) {
+    await settings.setGuardianEmail(controller.text);
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(strings.guardianEmailSaved)),
+      );
+    }
   }
 }
 

@@ -37,194 +37,201 @@ class _HabitsScreenState extends State<HabitsScreen> {
     final language = context.watch<LanguageProvider>();
     final strings = language.strings;
 
-    return RefreshIndicator(
-      onRefresh: habit.refreshHabitsFromDevice,
-      child: SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+    return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        automaticallyImplyLeading: false,
+        leading: IconButton(
+          onPressed: () => Navigator.of(context).maybePop(),
+          icon: const Icon(Icons.arrow_back_rounded),
+          tooltip: language.isVietnamese ? 'Quay lại' : 'Back',
+        ),
+        title: Text(strings.dailyHabits),
+      ),
+      body: SafeArea(
+        child: RefreshIndicator(
+          onRefresh: habit.refreshHabitsFromDevice,
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(strings.dailyHabits, style: Theme.of(context).textTheme.headlineMedium),
+                          const SizedBox(height: 4),
+                          Text(
+                            strings.trackRoutines,
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
+                        ],
+                      ),
+                    ),
+                    _CompletionBadge(percent: habit.habitsCompletionPercent),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Icon(Icons.wb_sunny_outlined, size: 14, color: AppColors.textMuted),
+                    const SizedBox(width: 6),
+                    Text(
+                      strings.vi
+                          ? 'Cập nhật lần cuối: ${_formatTime(habit.habitsLastUpdated)}'
+                          : 'Last updated: ${_formatTime(habit.habitsLastUpdated)}',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textMuted),
+                    ),
+                    const Spacer(),
+                    if (habit.isRefreshingHabits)
+                      const SizedBox(
+                        width: 12,
+                        height: 12,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                SectionCard(
+                  child: Row(
                     children: [
-                      Text(strings.dailyHabits, style: Theme.of(context).textTheme.headlineMedium),
-                      const SizedBox(height: 4),
-                      Text(
-                        strings.trackRoutines,
-                        style: Theme.of(context).textTheme.bodyMedium,
+                      SizedBox(
+                        width: 64,
+                        height: 64,
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            SizedBox(
+                              width: 64,
+                              height: 64,
+                              child: CircularProgressIndicator(
+                                value: habit.habitsCompletionPercent / 100,
+                                strokeWidth: 6,
+                                backgroundColor: AppColors.border,
+                                valueColor: const AlwaysStoppedAnimation(
+                                  AppColors.habitsAccent,
+                                ),
+                              ),
+                            ),
+                            Text(
+                              '${habit.habitsCompletionPercent}%',
+                              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                    color: AppColors.habitsAccent,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              strings.todaysProgress,
+                              style: Theme.of(context).textTheme.titleSmall,
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              strings.completedHabits(habit.habits.where((h) => h.progress >= 1).length, habit.habits.length),
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
                 ),
-                _CompletionBadge(percent: habit.habitsCompletionPercent),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                Icon(Icons.wb_sunny_outlined, size: 14, color: AppColors.textMuted),
-                const SizedBox(width: 6),
-                Text(
-                  strings.vi
-                      ? 'Cập nhật lần cuối: ${_formatTime(habit.habitsLastUpdated)}'
-                      : 'Last updated: ${_formatTime(habit.habitsLastUpdated)}',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textMuted),
-                ),
-                const Spacer(),
-                if (habit.isRefreshingHabits)
-                  const SizedBox(
-                    width: 12,
-                    height: 12,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            SectionCard(
-              child: Row(
-                children: [
-                  SizedBox(
-                    width: 64,
-                    height: 64,
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        SizedBox(
-                          width: 64,
-                          height: 64,
-                          child: CircularProgressIndicator(
-                            value: habit.habitsCompletionPercent / 100,
-                            strokeWidth: 6,
-                            backgroundColor: AppColors.border,
-                            valueColor: const AlwaysStoppedAnimation(
-                              AppColors.habitsAccent,
-                            ),
-                          ),
-                        ),
-                        Text(
-                          '${habit.habitsCompletionPercent}%',
-                          style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                                color: AppColors.habitsAccent,
-                                fontWeight: FontWeight.w800,
+                const SizedBox(height: 16),
+                ...habit.habits.map((habitItem) {
+                  Widget card = habitItem.id == 'sleep'
+                      ? InkWell(
+                          borderRadius: BorderRadius.circular(16),
+                          onTap: () => _showManualSleepSheet(context, habitItem.current),
+                          child: Stack(
+                            children: [
+                              _HabitCard(habit: habitItem),
+                              Positioned(
+                                top: 10,
+                                right: 10,
+                                child: Container(
+                                  padding: const EdgeInsets.all(5),
+                                  decoration: BoxDecoration(
+                                    color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.12),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(Icons.edit_rounded, size: 14, color: Theme.of(context).colorScheme.primary),
+                                ),
                               ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          strings.todaysProgress,
-                          style: Theme.of(context).textTheme.titleSmall,
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          strings.completedHabits(habit.habits.where((h) => h.progress >= 1).length, habit.habits.length),
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-            ...habit.habits.map((habitItem) {
-              Widget card = habitItem.id == 'sleep'
-                  ? InkWell(
-                      borderRadius: BorderRadius.circular(16),
-                      onTap: () => _showManualSleepSheet(context, habitItem.current),
-                      child: Stack(
-                        children: [
-                          _HabitCard(habit: habitItem),
-                          // Sleep không có cảm biến tự động đáng tin cậy
-                          // (phụ thuộc Health Connect + app khác ghi dữ
-                          // liệu) — thêm icon bút chì để người dùng BIẾT
-                          // có thể chạm vào để tự nhập giờ ngủ, thay vì
-                          // tưởng thẻ này bị đứng/lỗi vì không thấy gì đổi.
-                          Positioned(
-                            top: 10,
-                            right: 10,
-                            child: Container(
-                              padding: const EdgeInsets.all(5),
-                              decoration: BoxDecoration(
-                                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.12),
-                                shape: BoxShape.circle,
-                              ),
-                              child: Icon(Icons.edit_rounded, size: 14, color: Theme.of(context).colorScheme.primary),
-                            ),
+                            ],
                           ),
-                        ],
+                        )
+                      : _HabitCard(habit: habitItem);
+
+                  if (habitItem.isComingSoon) {
+                    card = IgnorePointer(
+                      child: Opacity(
+                        opacity: 0.45,
+                        child: Stack(
+                          children: [
+                            card,
+                            Positioned.fill(
+                              child: Align(
+                                alignment: Alignment.bottomCenter,
+                                child: Padding(
+                                  padding: const EdgeInsets.only(bottom: 8),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: Colors.black.withValues(alpha: 0.65),
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                    child: Text(
+                                      strings.featureInDevelopment,
+                                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    )
-                  : _HabitCard(habit: habitItem);
+                    );
+                  }
 
-              // Thói quen chưa có tính năng thật đứng sau (ví dụ "Eye Test
-              // Count") -> làm mờ card + khoá mọi tương tác (kể cả nút đổi
-              // mục tiêu bên dưới không áp dụng vào đây), tránh người dùng
-              // tưởng app bị lỗi khi số liệu luôn đứng yên ở 0.
-              if (habitItem.isComingSoon) {
-                card = IgnorePointer(
-                  child: Opacity(
-                    opacity: 0.45,
-                    child: Stack(
-                      children: [
-                        card,
-                        Positioned.fill(
-                          child: Align(
-                            alignment: Alignment.bottomCenter,
-                            child: Padding(
-                              padding: const EdgeInsets.only(bottom: 8),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: Colors.black.withValues(alpha: 0.65),
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                child: Text(
-                                  strings.featureInDevelopment,
-                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: card,
+                  );
+                }),
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    icon: const Icon(Icons.tune_rounded, size: 18),
+                    label: Text(strings.changeTargetButton),
+                    onPressed: () => _showChangeTargetSheet(context, habit, strings),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
                   ),
-                );
-              }
-
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: card,
-              );
-            }),
-            const SizedBox(height: 8),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                icon: const Icon(Icons.tune_rounded, size: 18),
-                label: Text(strings.changeTargetButton),
-                onPressed: () => _showChangeTargetSheet(context, habit, strings),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
-              ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );

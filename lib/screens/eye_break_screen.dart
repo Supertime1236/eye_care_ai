@@ -242,148 +242,177 @@ class _EyeBreakScreenState extends State<EyeBreakScreen> with WidgetsBindingObse
     final strings = language.strings;
 
     if (_breakPromptShowing) {
-      return _BreakPromptView(
-        onDone: () => _confirmBreakTaken(reminder),
-        onSkip: () => _dismissPrompt(reminder),
+      return Scaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          automaticallyImplyLeading: false,
+          leading: IconButton(
+            onPressed: () => Navigator.of(context).maybePop(),
+            icon: const Icon(Icons.arrow_back_rounded),
+            tooltip: language.isVietnamese ? 'Quay lại' : 'Back',
+          ),
+        ),
+        body: SafeArea(child: _BreakPromptView(
+          onDone: () => _confirmBreakTaken(reminder),
+          onSkip: () => _dismissPrompt(reminder),
+        )),
       );
     }
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(strings.eyeBreakTitle, style: Theme.of(context).textTheme.headlineMedium),
-          const SizedBox(height: 4),
-          Text(strings.eyeBreakSubtitle, style: Theme.of(context).textTheme.bodyMedium),
-          const SizedBox(height: 20),
-          SectionCard(
-            child: Column(
-              children: [
-                SizedBox(
-                  width: 160,
-                  height: 160,
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      SizedBox(
-                        width: 160,
-                        height: 160,
-                        child: CircularProgressIndicator(
-                          value: reminder.isEyeBreakReminderActive && reminder.reminderMinutes > 0
-                              ? _secondsRemaining / (reminder.reminderMinutes * 60)
-                              : 1,
-                          strokeWidth: 10,
-                          backgroundColor: AppColors.border,
-                          valueColor: const AlwaysStoppedAnimation(AppColors.testAccent),
-                        ),
-                      ),
-                      Column(
-                        mainAxisSize: MainAxisSize.min,
+    return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        automaticallyImplyLeading: false,
+        leading: IconButton(
+          onPressed: () => Navigator.of(context).maybePop(),
+          icon: const Icon(Icons.arrow_back_rounded),
+          tooltip: language.isVietnamese ? 'Quay lại' : 'Back',
+        ),
+        title: Text(strings.eyeBreakTitle),
+      ),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(strings.eyeBreakTitle, style: Theme.of(context).textTheme.headlineMedium),
+              const SizedBox(height: 4),
+              Text(strings.eyeBreakSubtitle, style: Theme.of(context).textTheme.bodyMedium),
+              const SizedBox(height: 20),
+              SectionCard(
+                child: Column(
+                  children: [
+                    SizedBox(
+                      width: 160,
+                      height: 160,
+                      child: Stack(
+                        alignment: Alignment.center,
                         children: [
-                          Text(
-                            reminder.isEyeBreakReminderActive
-                                ? _formatCountdown(_secondsRemaining)
-                                : '--:--',
-                            style: Theme.of(context).textTheme.headlineMedium,
+                          SizedBox(
+                            width: 160,
+                            height: 160,
+                            child: CircularProgressIndicator(
+                              value: reminder.isEyeBreakReminderActive && reminder.reminderMinutes > 0
+                                  ? _secondsRemaining / (reminder.reminderMinutes * 60)
+                                  : 1,
+                              strokeWidth: 10,
+                              backgroundColor: AppColors.border,
+                              valueColor: const AlwaysStoppedAnimation(AppColors.testAccent),
+                            ),
                           ),
-                          Text(
-                            reminder.isEyeBreakReminderActive
-                                ? strings.eyeBreakNextIn
-                                : strings.eyeBreakStart,
-                            style: Theme.of(context).textTheme.bodySmall,
+                          Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                reminder.isEyeBreakReminderActive
+                                    ? _formatCountdown(_secondsRemaining)
+                                    : '--:--',
+                                style: Theme.of(context).textTheme.headlineMedium,
+                              ),
+                              Text(
+                                reminder.isEyeBreakReminderActive
+                                    ? strings.eyeBreakNextIn
+                                    : strings.eyeBreakStart,
+                                style: Theme.of(context).textTheme.bodySmall,
+                              ),
+                            ],
                           ),
                         ],
                       ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 20),
-                if (!reminder.isEyeBreakReminderActive) ...[
-                  Text(strings.eyeBreakIntervalLabel, style: Theme.of(context).textTheme.titleSmall),
-                  const SizedBox(height: 10),
-                  Wrap(
-                    spacing: 8,
-                    children: _intervalOptions.map((minutes) {
-                      final selected = reminder.reminderMinutes == minutes;
-                      return ChoiceChip(
-                        label: Text('$minutes ${strings.vi ? "phút" : "min"}'),
-                        selected: selected,
-                        onSelected: (_) => reminder.setReminderMinutes(minutes),
-                        selectedColor: AppColors.testAccent.withValues(alpha: 0.15),
-                        labelStyle: TextStyle(
-                          color: selected ? AppColors.testAccent : null,
-                          fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                  const SizedBox(height: 20),
-                ],
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton(
-                    style: FilledButton.styleFrom(
-                      backgroundColor: reminder.isEyeBreakReminderActive
-                          ? AppColors.error
-                          : AppColors.testAccent,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
-                    onPressed: () => reminder.isEyeBreakReminderActive
-                        ? _stopReminder(reminder)
-                        : _startReminder(reminder),
-                    child: Text(
-                      reminder.isEyeBreakReminderActive ? strings.eyeBreakStop : strings.eyeBreakStart,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-          SectionCard(
-            child: SettingsToggleTile(
-              title: strings.autoDetectEyeBreakTitle,
-              description: strings.autoDetectEyeBreakDescription,
-              value: reminder.autoDetectEyeBreaks,
-              onChanged: (value) => reminder.setAutoDetectEyeBreaks(value),
-            ),
-          ),
-          const SizedBox(height: 16),
-          SectionCard(
-            child: Row(
-              children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: AppColors.testAccent.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  alignment: Alignment.center,
-                  child: const Text('👁️', style: TextStyle(fontSize: 22)),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(strings.eyeBreakTodayCount, style: Theme.of(context).textTheme.bodySmall),
-                      Text(
-                        '${context.watch<HabitProvider>().eyeBreaksTakenToday}',
-                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                              color: AppColors.testAccent,
-                              fontWeight: FontWeight.w800,
+                    const SizedBox(height: 20),
+                    if (!reminder.isEyeBreakReminderActive) ...[
+                      Text(strings.eyeBreakIntervalLabel, style: Theme.of(context).textTheme.titleSmall),
+                      const SizedBox(height: 10),
+                      Wrap(
+                        spacing: 8,
+                        children: _intervalOptions.map((minutes) {
+                          final selected = reminder.reminderMinutes == minutes;
+                          return ChoiceChip(
+                            label: Text('$minutes ${strings.vi ? "phút" : "min"}'),
+                            selected: selected,
+                            onSelected: (_) => reminder.setReminderMinutes(minutes),
+                            selectedColor: AppColors.testAccent.withValues(alpha: 0.15),
+                            labelStyle: TextStyle(
+                              color: selected ? AppColors.testAccent : null,
+                              fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
                             ),
+                          );
+                        }).toList(),
                       ),
+                      const SizedBox(height: 20),
                     ],
-                  ),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: reminder.isEyeBreakReminderActive
+                              ? AppColors.error
+                              : AppColors.testAccent,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        onPressed: () => reminder.isEyeBreakReminderActive
+                            ? _stopReminder(reminder)
+                            : _startReminder(reminder),
+                        child: Text(
+                          reminder.isEyeBreakReminderActive ? strings.eyeBreakStop : strings.eyeBreakStart,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(height: 16),
+              SectionCard(
+                child: SettingsToggleTile(
+                  title: strings.autoDetectEyeBreakTitle,
+                  description: strings.autoDetectEyeBreakDescription,
+                  value: reminder.autoDetectEyeBreaks,
+                  onChanged: (value) => reminder.setAutoDetectEyeBreaks(value),
+                ),
+              ),
+              const SizedBox(height: 16),
+              SectionCard(
+                child: Row(
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: AppColors.testAccent.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      alignment: Alignment.center,
+                      child: const Text('👁️', style: TextStyle(fontSize: 22)),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(strings.eyeBreakTodayCount, style: Theme.of(context).textTheme.bodySmall),
+                          Text(
+                            '${context.watch<HabitProvider>().eyeBreaksTakenToday}',
+                            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                  color: AppColors.testAccent,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

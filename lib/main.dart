@@ -73,6 +73,98 @@ class EyeCareApp extends StatelessWidget {
   }
 }
 
+class AppLoadingSkeleton extends StatelessWidget {
+  const AppLoadingSkeleton({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Scaffold(
+      backgroundColor: isDark ? const Color(0xFF1E293B) : const Color(0xFFE9EEF7),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 12),
+              _SkeletonBlock(width: 180, height: 18),
+              const SizedBox(height: 24),
+              _SkeletonCard(),
+              const SizedBox(height: 20),
+              Row(
+                children: const [
+                  Expanded(child: _SkeletonCard(height: 120)),
+                  SizedBox(width: 12),
+                  Expanded(child: _SkeletonCard(height: 120)),
+                  SizedBox(width: 12),
+                  Expanded(child: _SkeletonCard(height: 120)),
+                ],
+              ),
+              const SizedBox(height: 20),
+              _SkeletonBlock(width: 160, height: 18),
+              const SizedBox(height: 12),
+              const _SkeletonCard(height: 170),
+              const SizedBox(height: 14),
+              const _SkeletonCard(height: 120),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SkeletonCard extends StatelessWidget {
+  const _SkeletonCard({this.height = 90});
+  final double height;
+
+  @override
+  Widget build(BuildContext context) {
+    final base = Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.7);
+    final highlight = Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.95);
+    return Container(
+      height: height,
+      decoration: BoxDecoration(
+        color: base,
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(width: 120, height: 12, decoration: BoxDecoration(color: highlight, borderRadius: BorderRadius.circular(999))),
+            const SizedBox(height: 12),
+            Container(width: 220, height: 10, decoration: BoxDecoration(color: highlight, borderRadius: BorderRadius.circular(999))),
+            const SizedBox(height: 8),
+            Container(width: 180, height: 10, decoration: BoxDecoration(color: highlight, borderRadius: BorderRadius.circular(999))),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SkeletonBlock extends StatelessWidget {
+  const _SkeletonBlock({required this.width, required this.height});
+  final double width;
+  final double height;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.8);
+    return Container(
+      width: width,
+      height: height,
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(999),
+      ),
+    );
+  }
+}
+
 class _AppGate extends StatefulWidget {
   const _AppGate();
 
@@ -129,7 +221,7 @@ class _AppGateState extends State<_AppGate> {
       future: _consentGivenFuture,
       builder: (context, consentSnapshot) {
         if (!consentSnapshot.hasData) {
-          return const Scaffold(body: Center(child: CircularProgressIndicator()));
+          return const AppLoadingSkeleton();
         }
         // Consent not given → show consent screen
         if (consentSnapshot.data != true) {
@@ -140,7 +232,7 @@ class _AppGateState extends State<_AppGate> {
           future: _surveyCompletedFuture,
           builder: (context, snapshot) {
             if (!snapshot.hasData) {
-              return const Scaffold(body: Center(child: CircularProgressIndicator()));
+              return const AppLoadingSkeleton();
             }
             if (snapshot.data == true) {
               WidgetsBinding.instance.addPostFrameCallback((_) {

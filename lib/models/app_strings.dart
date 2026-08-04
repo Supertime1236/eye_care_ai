@@ -94,6 +94,84 @@ class AppStrings {
   String get helpSupport => vi ? 'Trợ giúp & Hỗ trợ' : 'Help & Support';
   String get signOut => vi ? 'Đăng xuất' : 'Sign Out';
   String get version => vi ? 'EyeCare AI v1.0.0' : 'EyeCare AI v1.0.0';
+  String get guardianEmailTitle => vi ? 'Email người bảo hộ' : 'Guardian email';
+  String get guardianEmailHint => vi ? 'Nhận mail nhắc nhở nếu quá giờ dùng thiết bị' : 'Receive reminders if device usage exceeds limits';
+  String get guardianEmailAdd => vi ? 'Thêm email' : 'Add email';
+  String get guardianEmailSendTest => vi ? 'Gửi mail nhắc thử' : 'Send test reminder';
+  String get guardianEmailSaved => vi ? 'Đã lưu email người bảo hộ.' : 'Guardian email saved.';
+  String get roadmapTitle => vi ? 'Lộ trình tính năng sắp tới' : 'Upcoming feature roadmap';
+  List<String> get roadmapFeatures => vi
+      ? [
+          'Weekly Eye Health Report',
+          'Streak cho Habits',
+          'Achievement/Badges',
+          'Đồng bộ Firebase',
+          'AI Eye Health Score',
+          'Outdoor Detection (tự động)',
+          'Widget ngoài màn hình chính',
+          'Export PDF Report',
+          'Biểu đồ cải thiện mắt',
+          'Bài tập mắt có hướng dẫn',
+          'Chế độ Focus',
+          'Widget countdown lần nghỉ tiếp theo',
+          'So sánh xu hướng sức khỏe mắt theo tuần/tháng',
+          'Chế độ đọc ban đêm',
+          'Nhắc nhắc uống nước kèm nghỉ mắt',
+          'Báo thức cập nhật thời gian báo tiếp theo',
+        ]
+      : [
+          'Weekly Eye Health Report',
+          'Streak for Habits',
+          'Achievement/Badges',
+          'Firebase Sync',
+          'AI Eye Health Score',
+          'Outdoor Detection (auto)',
+          'Home screen widget',
+          'Export PDF Report',
+          'Eye improvement chart',
+          'Guided eye exercises',
+          'Focus mode',
+          'Next-break countdown widget',
+          'Weekly/monthly eye health trend comparison',
+          'Night-reading mode',
+          'Water reminder + eye break',
+          'Next reminder update in notification bar',
+        ];
+
+  String get eyeCareSettingVisionProfile => vi ? 'Hồ sơ thị lực' : 'Vision Profile';
+  String get eyeCareSettingReminderStyle => vi ? 'Kiểu nhắc nhở' : 'Reminder Style';
+  String get eyeCareSettingViewingDistance => vi ? 'Khoảng cách xem' : 'Viewing Distance';
+  String get eyeCareSettingDistanceUnit => vi ? 'Đơn vị khoảng cách' : 'Distance Unit';
+  String get eyeCareSettingMetric => vi ? 'Mét' : 'Metric (Meters)';
+  String get eyeCareSettingImperial => vi ? 'Feet' : 'Imperial (Feet)';
+  String get eyeCareSettingVisionGlasses => vi ? 'Đeo kính' : 'Glasses';
+  String get eyeCareSettingVisionContacts => vi ? 'Kính áp tròng' : 'Contact Lens';
+  String get eyeCareSettingVisionNoCorrection => vi ? 'Không sử dụng kính' : 'No Vision Correction';
+  String get eyeCareSettingStyleGentle => vi ? 'Nhẹ nhàng' : 'Gentle';
+  String get eyeCareSettingStyleNormal => vi ? 'Thông thường' : 'Normal';
+  String get eyeCareSettingStyleStrict => vi ? 'Nghiêm ngặt' : 'Strict';
+  String get eyeCareSettingDistanceAuto => vi ? 'Tự động phát hiện' : 'Auto Detect';
+  String get eyeCareSettingDistanceManual => vi ? 'Thủ công' : 'Manual';
+  String get eyeCareSettingMeter => vi ? 'Mét' : 'Meter';
+  String get eyeCareSettingCentimeter => vi ? 'Centimét' : 'Centimeter';
+  String get eyeCareSettingFeet => vi ? 'Feet' : 'Feet';
+  String get eyeCareSettingInch => vi ? 'Inch' : 'Inch';
+  String get achievementBadges => vi ? 'Thành tựu' : 'Achievements';
+  String get achievementTitle => vi ? 'Thành tựu của bạn' : 'Your achievements';
+  String get achievementUnlocked => vi ? 'Đã mở khóa' : 'Unlocked';
+  String get achievementLocked => vi ? 'Chưa mở khóa' : 'Locked';
+  String get achievementMood => vi ? 'Cứ mỗi lần bạn hoàn thành mục tiêu, EyeCare AI sẽ lưu lại và thông báo ngay khi thành tựu được mở khóa.' : 'Every time you complete a goal, EyeCare AI saves it and notifies you immediately when an achievement is unlocked.';
+  String get achievementEyeRest => vi ? 'Nghỉ ngơi cho mắt' : 'Rest for the eyes';
+  String get achievementRookie => vi ? '20-20-20 Rookie' : '20-20-20 Rookie';
+  String get achievementMaster => vi ? 'Eye Break Master' : 'Eye Break Master';
+  String get achievementLegend => vi ? 'Blink Legend' : 'Blink Legend';
+  String get achievementGuardian => vi ? 'Guardian of Vision' : 'Guardian of Vision';
+  String get achievementEyeRestDesc => vi ? 'Hoàn thành quy tắc 20-20-20 lần đầu.' : 'Complete the 20-20-20 rule for the first time.';
+  String get achievementRookieDesc => vi ? 'Hoàn thành quy tắc 20-20-20 lần đầu.' : 'Complete the 20-20-20 rule for the first time.';
+  String get achievementMasterDesc => vi ? 'Hoàn thành 5 lần nghỉ mắt.' : 'Complete 5 eye breaks.';
+  String get achievementLegendDesc => vi ? 'Hoàn thành 15 lần nghỉ mắt.' : 'Complete 15 eye breaks.';
+  String get achievementGuardianDesc => vi ? 'Không bỏ lỡ bất kỳ nhắc nhở nghỉ mắt nào trong 30 ngày.' : 'Never miss any eye-break reminder for 30 days.';
+  String get underDevelopment => vi ? 'Đang phát triển' : 'Under development';
 
   // Bottom sheet "Quyền sử dụng dữ liệu"
   String get dataUsagePermissions => vi ? 'Quyền sử dụng dữ liệu' : 'Data usage permissions';
@@ -162,7 +240,33 @@ class AppStrings {
           'When to see an eye doctor?',
         ];
 
-  String get eyeTest => vi ? 'Nhắc nghỉ mắt' : 'Break Reminder';
+  String get eyeTest => vi ? 'Kiểm tra mắt' : 'Eye Test';
+  String get quickEyeCheck => vi ? 'Kiểm tra nhanh mắt' : 'Quick eye check';
+  String get stepLabel => vi ? 'Bước' : 'Step';
+  String get canReadClearly => vi ? 'Đọc rõ' : 'Clear';
+  String get notClear => vi ? 'Không rõ' : 'Not clear';
+  String get eyeFeelsFine => vi ? 'Mắt vẫn ổn' : 'Eyes feel fine';
+  String get eyeFeelsTired => vi ? 'Mắt mỏi' : 'Eyes tired';
+  String get startCountdown => vi ? 'Bắt đầu đếm ngược' : 'Start countdown';
+  String get countdownRunning => vi ? 'Đang đếm ngược…' : 'Counting down…';
+  String get eyeTestStep1Title => vi ? 'Đọc chữ' : 'Read the letter';
+  String get eyeTestStep1Subtitle => vi ? 'Nhìn vào ký tự ở giữa và hỏi bản thân: có đọc rõ không?' : 'Look at the letter in the center and ask: can you read it clearly?';
+  String get eyeTestStep2Title => vi ? 'Nhìn xa' : 'Focus far away';
+  String get eyeTestStep2Subtitle => vi ? 'Chuyển tầm nhìn ra xa trong 3 giây để kiểm tra độ rõ của mắt.' : 'Shift your focus far away for 3 seconds to test your visual clarity.';
+  String get eyeTestStep3Title => vi ? 'Đếm thời gian nghỉ' : 'Count the rest time';
+  String get eyeTestStep3Subtitle => vi ? 'Đừng đọc thêm, hãy nhìn xa trong khoảng 20 giây rồi trả lời mức độ mỏi.' : 'Avoid reading more; look away for 20 seconds, then rate your eye fatigue.';
+  String get eyeTestResult => vi ? 'Kết quả kiểm tra' : 'Check result';
+  String get eyeTestGood => vi ? 'Mắt của bạn đang ở mức ổn.' : 'Your eyes look in good condition.';
+  String get eyeTestFair => vi ? 'Mắt có thể đang mỏi nhẹ, nên nghỉ ngơi thêm.' : 'Your eyes may be a bit tired; take a short rest.';
+  String get eyeTestNeedsCare => vi ? 'Mắt đang cần nghỉ và theo dõi tốt hơn.' : 'Your eyes need more rest and attention.';
+  String get eyeTestSummaryBody => vi ? 'Hãy dành vài phút nghỉ mắt, nhìn xa và giảm thời gian màn hình nếu cảm thấy mỏi.' : 'Take regular screen breaks, look away from the screen, and reduce exposure if you feel strain.';
+  String get eyeTestReading => vi ? 'Đọc rõ' : 'Reading';
+  String get eyeTestFocus => vi ? 'Tập trung' : 'Focus';
+  String get eyeTestGoodShort => vi ? 'Ổn định' : 'Stable';
+  String get eyeTestWeakShort => vi ? 'Cần chú ý' : 'Needs care';
+  String get eyeTestStableShort => vi ? 'Tốt' : 'Good';
+  String get eyeTestNeedBreakShort => vi ? 'Nghỉ mắt' : 'Take a break';
+  String get eyeTestRetake => vi ? 'Làm lại' : 'Retake';
 
   // ---------------- Eye Break reminder screen ----------------
   String get eyeBreakTitle => vi ? 'Nhắc nghỉ mắt' : 'Eye Break Reminder';
