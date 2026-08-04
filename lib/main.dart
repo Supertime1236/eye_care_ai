@@ -13,9 +13,11 @@ import 'providers/reminder_provider.dart';
 import 'providers/settings_more_provider.dart';
 import 'providers/settings_provider.dart';
 import 'providers/theme_provider.dart';
+import 'screens/consent_screen.dart';
 import 'screens/habits_survey_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/main_shell.dart';
+import 'services/analytics_service.dart';
 import 'services/device_data_service.dart';
 import 'services/notification_service.dart';
 import 'theme/app_theme.dart';
@@ -80,12 +82,14 @@ class _AppGate extends StatefulWidget {
 
 class _AppGateState extends State<_AppGate> {
   late final Future<bool> _surveyCompletedFuture;
+  late final Future<bool> _consentGivenFuture;
   AuthProvider? _authProvider;
 
   @override
   void initState() {
     super.initState();
     _surveyCompletedFuture = DeviceDataService.instance.isSurveyCompleted();
+    _consentGivenFuture = AnalyticsService.instance.init().then((_) => AnalyticsService.instance.consentGiven);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       NotificationService.instance.requestDeferredSystemPermissions();
     });
@@ -122,20 +126,32 @@ class _AppGateState extends State<_AppGate> {
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<bool>(
-      future: _surveyCompletedFuture,
-      builder: (context, snapshot) {
-        if (!snapshot.hasData) {
+      future: _consentGivenFuture,
+      builder: (context, consentSnapshot) {
+        if (!consentSnapshot.hasData) {
           return const Scaffold(body: Center(child: CircularProgressIndicator()));
         }
-        if (snapshot.data == true) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            context.read<HabitProvider>().setSurveyCompleted(true);
-          });
-          final isLoggedIn = context.read<AuthProvider>().isLoggedIn;
-          debugPrint('🚪 _AppGate build: isLoggedIn=$isLoggedIn');
-          return isLoggedIn ? const MainShell() : const LoginScreen();
+        // Consent not given → show consent screen
+        if (consentSnapshot.data != true) {
+          return const ConsentScreen();
         }
-        return const HabitsSurveyScreen(mandatory: true);
+        // Consent given → check survey
+        return FutureBuilder<bool>(
+          future: _surveyCompletedFuture,
+          builder: (context, snapshot) {
+            if (!snapshot.hasData) {
+              return const Scaffold(body: Center(child: CircularProgressIndicator()));
+            }
+            if (snapshot.data == true) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                context.read<HabitProvider>().setSurveyCompleted(true);
+              });
+              final isLoggedIn = context.read<AuthProvider>().isLoggedIn;
+              return isLoggedIn ? const MainShell() : const LoginScreen();
+            }
+            return const HabitsSurveyScreen(mandatory: true);
+          },
+        );
       },
     );
   }
