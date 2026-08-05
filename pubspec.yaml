@@ -56,6 +56,7 @@ dependencies:
   # --- Đăng nhập / tài khoản ---
   firebase_core: ^3.8.0
   firebase_auth: ^5.3.3
+  cloud_firestore: ^5.5.0
   google_sign_in: ^6.2.2
 
 dev_dependencies:

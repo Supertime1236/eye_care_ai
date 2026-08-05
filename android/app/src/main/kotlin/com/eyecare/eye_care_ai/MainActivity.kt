@@ -35,6 +35,7 @@ class MainActivity : FlutterActivity() {
         // vao "Thoi gian su dung ung dung" trong muc Quyen su dung du lieu
         // khong he mo man hinh cap quyen.
         UsageStatsHandler(this).register(flutterEngine.dartExecutor.binaryMessenger)
+        FocusModeHandler(this).register(flutterEngine.dartExecutor.binaryMessenger)
 
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, channelName).setMethodCallHandler { call, result ->
             when (call.method) {

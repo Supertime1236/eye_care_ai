@@ -139,6 +139,15 @@ class HomeScreen extends StatelessWidget {
           ),
           const SizedBox(height: 20),
           Text(strings.weeklyOverview, style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 2),
+          // Làm rõ đơn vị của biểu đồ cột: đây là ĐIỂM SỨC KHỎE MẮT hàng
+          // ngày (thang 0-100), không phải giờ/phút — trước đây không ghi
+          // gì nên chạm vào cột chỉ thấy số trần trụi kiểu "10.0" không
+          // biết là gì.
+          Text(
+            strings.weeklyOverviewUnit,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textMuted),
+          ),
           const SizedBox(height: 12),
           const _WeeklyOverviewChart(),
           const SizedBox(height: 20),
@@ -1283,6 +1292,7 @@ class _WeeklyOverviewChartState extends State<_WeeklyOverviewChart> {
   Widget build(BuildContext context) {
     final snapshots = _snapshots;
     final today = DateTime.now().weekday - 1; // 0 = thứ 2 ... 6 = chủ nhật
+    final strings = context.watch<LanguageProvider>().strings;
 
     return SectionCard(
       child: SizedBox(
@@ -1295,6 +1305,32 @@ class _WeeklyOverviewChartState extends State<_WeeklyOverviewChart> {
                   maxY: 100,
                   gridData: const FlGridData(show: false),
                   borderData: FlBorderData(show: false),
+                  // BUG ĐÃ SỬA: trước đây không cấu hình barTouchData nên
+                  // fl_chart tự dùng tooltip MẶC ĐỊNH — chỉ in số thô kiểu
+                  // "10.0" khi chạm vào cột, không ai biết đó là gì. Giờ
+                  // hiện rõ "XX/100 điểm" (hoặc "Chưa có dữ liệu" nếu ngày
+                  // đó chưa có snapshot).
+                  barTouchData: BarTouchData(
+                    touchTooltipData: BarTouchTooltipData(
+                      getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                        final hasData = groupIndex < snapshots.length && snapshots[groupIndex] != null;
+                        final text = hasData
+                            ? (strings.vi
+                                ? '${rod.toY.round()}/100 điểm'
+                                : '${rod.toY.round()}/100 points')
+                            : strings.vi
+                                ? 'Chưa có dữ liệu'
+                                : 'No data yet';
+                        return BarTooltipItem(
+                          text,
+                          Theme.of(context).textTheme.bodySmall!.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                              ),
+                        );
+                      },
+                    ),
+                  ),
                   titlesData: FlTitlesData(
                     topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
                     rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),

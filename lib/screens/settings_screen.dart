@@ -303,6 +303,7 @@ class SettingsScreen extends StatelessWidget {
                       title: strings.guardianEmailTitle,
                       subtitle: strings.guardianEmailHint,
                       valueLabel: settings.guardianEmail.isNotEmpty ? settings.guardianEmail : strings.guardianEmailAdd,
+                      valueOnNewLine: true,
                       onTap: () => _showGuardianEmailDialog(context, settings, strings),
                     ),
                     const Divider(height: 1, indent: 56),
@@ -566,6 +567,7 @@ class _ListTileOption extends StatelessWidget {
     required this.subtitle,
     required this.valueLabel,
     required this.onTap,
+    this.valueOnNewLine = false,
   });
 
   final String icon;
@@ -573,9 +575,58 @@ class _ListTileOption extends StatelessWidget {
   final String subtitle;
   final String valueLabel;
   final VoidCallback onTap;
+  // BUG ĐÃ SỬA: chuỗi dài (ví dụ email "anhkhoa1572@gmail.com") nhét vào
+  // Text(valueLabel) không giới hạn chiều rộng bên phải Row -> nó "giành"
+  // hết chỗ theo độ dài chuỗi, ép cột tiêu đề bên trái (Expanded) co lại
+  // còn vài pixel -> chữ tiêu đề bị bẻ xuống dòng theo TỪNG KÝ TỰ một. Bật
+  // cờ này để hiện valueLabel trên MỘT DÒNG RIÊNG bên dưới subtitle, không
+  // giới hạn độ dài, thay vì nhét chung 1 hàng ngang với tiêu đề.
+  final bool valueOnNewLine;
 
   @override
   Widget build(BuildContext context) {
+    if (valueOnNewLine) {
+      return InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(icon, style: const TextStyle(fontSize: 22)),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: Theme.of(context).textTheme.titleSmall),
+                    const SizedBox(height: 4),
+                    Text(subtitle, style: Theme.of(context).textTheme.bodySmall),
+                    if (valueLabel.isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        valueLabel,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: AppColors.primaryBlue,
+                              fontWeight: FontWeight.w600,
+                            ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Icon(
+                Icons.chevron_right,
+                color: AppColors.textMuted,
+                size: 20,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return InkWell(
       onTap: onTap,
       child: Padding(
@@ -594,9 +645,17 @@ class _ListTileOption extends StatelessWidget {
                 ],
               ),
             ),
-            Text(
-              valueLabel,
-              style: Theme.of(context).textTheme.bodyMedium,
+            // Giới hạn tối đa 120px + cắt "..." nếu dài hơn, không cho phép
+            // chiếm chỗ vô hạn của cột tiêu đề bên trái nữa.
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 120),
+              child: Text(
+                valueLabel,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.right,
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
             ),
             const SizedBox(width: 8),
             Icon(

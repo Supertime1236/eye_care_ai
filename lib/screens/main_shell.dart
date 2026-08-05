@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/habit_provider.dart';
+import '../providers/rank_provider.dart';
 import '../providers/reminder_provider.dart';
 import 'home_screen.dart';
 
@@ -38,10 +39,10 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
     final habit = context.read<HabitProvider>();
     habit.startHabitTracking();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      habit.refreshHabitsFromDevice();
+      _refreshHabitsAndSyncRank();
     });
     _usagePollTimer = Timer.periodic(const Duration(seconds: 60), (_) {
-      context.read<HabitProvider>().refreshHabitsFromDevice();
+      _refreshHabitsAndSyncRank();
     });
   }
 
@@ -55,7 +56,7 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
     if (state == AppLifecycleState.resumed && mounted) {
       // Mở app trở lại (từ nền) -> làm mới ngay, không chờ tick 60s tiếp
       // theo, vì người dùng vừa dùng các app khác trong lúc app này ở nền.
-      context.read<HabitProvider>().refreshHabitsFromDevice();
+      _refreshHabitsAndSyncRank();
 
       final pausedAt = _pausedAt;
       _pausedAt = null;
@@ -66,6 +67,17 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
         context.read<HabitProvider>().recordEyeBreak();
       }
     }
+  }
+
+  // Làm mới dữ liệu thói quen từ thiết bị RỒI đồng bộ streak mới nhất lên
+  // bậc xếp hạng (RankProvider) + Firestore — gộp 2 bước lại một chỗ vì mọi
+  // nơi refresh habit đều cần rank cập nhật theo, tránh quên đồng bộ ở một
+  // trong các điểm gọi (initState, poll timer, resume từ nền).
+  Future<void> _refreshHabitsAndSyncRank() async {
+    final habit = context.read<HabitProvider>();
+    await habit.refreshHabitsFromDevice();
+    if (!mounted) return;
+    context.read<RankProvider>().updateStreak(habit.streakDays);
   }
 
   @override

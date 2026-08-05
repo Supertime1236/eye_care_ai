@@ -7,6 +7,7 @@ import '../providers/habit_provider.dart';
 import '../providers/language_provider.dart';
 import '../providers/reminder_provider.dart';
 import '../services/device_data_service.dart';
+import '../services/focus_mode_service.dart';
 import '../services/notification_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/settings_toggle_tile.dart';
@@ -79,6 +80,9 @@ class _EyeBreakScreenState extends State<EyeBreakScreen> with WidgetsBindingObse
     final remaining = _endAt!.difference(DateTime.now()).inSeconds;
     if (remaining <= 0) {
       _countdownTimer?.cancel();
+      // Đã hết giờ trong lúc app chạy nền (chỉ giờ mở app lại mới biết) ->
+      // tắt DND ngay, đừng để bị kẹt "chặn thông báo" quá thời gian dự định.
+      FocusModeService.instance.disable();
       setState(() {
         _secondsRemaining = 0;
         _breakPromptShowing = true;
@@ -127,6 +131,16 @@ class _EyeBreakScreenState extends State<EyeBreakScreen> with WidgetsBindingObse
     }
   }
 
+  // ---------------- Chế độ Focus (chặn thông báo app khác lúc làm việc) ----------------
+  // GIỚI HẠN THỰC TẾ CẦN BIẾT: báo thức hết-giờ-nghỉ-mắt bắn HOÀN TOÀN
+  // NATIVE (qua flutter_local_notifications.periodicallyShowWithDuration,
+  // xem notification_service.dart) — KHÔNG có đoạn code Dart nào chạy đúng
+  // lúc báo thức đó bắn. Vì vậy nếu hệ điều hành đã ĐÓNG HẲN tiến trình app
+  // (không chỉ đưa xuống nền), DND sẽ không tự tắt đúng lúc báo thức bắn,
+  // mà chỉ tắt lại khi người dùng MỞ APP LẦN KẾ TIẾP (đã xử lý ở
+  // _recomputeFromEndAt/_syncWithRealNextFireTime bên trên) — chấp nhận
+  // được vì đa số trường hợp app vẫn còn tiến trình chạy nền.
+
   void _startReminder(ReminderProvider reminder) {
     _countdownTimer?.cancel();
     final endAt = DateTime.now().add(Duration(minutes: reminder.reminderMinutes));
@@ -137,6 +151,12 @@ class _EyeBreakScreenState extends State<EyeBreakScreen> with WidgetsBindingObse
     _scheduleRepeatingAlarm(reminder.reminderMinutes);
     _startCountdown(reminder);
     _updateOngoingNotification();
+    // Chế độ Focus: bắt đầu 1 chu kỳ "đang làm việc" -> bật DND nếu người
+    // dùng đã bật tính năng này (và đã cấp quyền notification policy access
+    // — nếu chưa, FocusModeService.enable() tự trả về false, không làm gì).
+    if (reminder.focusModeEnabled) {
+      FocusModeService.instance.enable();
+    }
     setState(() {});
   }
 
@@ -182,6 +202,9 @@ class _EyeBreakScreenState extends State<EyeBreakScreen> with WidgetsBindingObse
         if (remaining <= 0) {
           _breakPromptShowing = true;
           _countdownTimer?.cancel();
+          // Chế độ Focus: hết giờ "làm việc", tới lúc nghỉ mắt -> tắt DND
+          // ngay, không lý do gì tiếp tục chặn thông báo trong lúc nghỉ.
+          FocusModeService.instance.disable();
           // KHÔNG tự bắn thêm thông báo tay ở đây nữa: báo thức LẶP LẠI
           // (scheduleRepeatingBreakAlarm) đã là nguồn duy nhất bắn thông
           // báo hết-giờ-nghỉ-mắt, chạy độc lập trong isolate nền của hệ
@@ -206,6 +229,9 @@ class _EyeBreakScreenState extends State<EyeBreakScreen> with WidgetsBindingObse
     // LẶP LẠI đã đăng ký với hệ điều hành, nếu không nó sẽ tiếp tục tự bắn
     // mỗi `intervalMinutes` phút vô thời hạn kể cả khi app đã đóng.
     NotificationService.instance.cancelRepeatingBreakAlarm();
+    // Chế độ Focus: dừng nhắc hẳn -> tắt DND, không để bị kẹt "chặn thông
+    // báo" mãi mãi sau khi người dùng đã tắt tính năng nhắc nghỉ mắt.
+    FocusModeService.instance.disable();
     setState(() {
       _secondsRemaining = 0;
       _breakPromptShowing = false;
@@ -379,6 +405,21 @@ class _EyeBreakScreenState extends State<EyeBreakScreen> with WidgetsBindingObse
               ),
               const SizedBox(height: 16),
               SectionCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    SettingsToggleTile(
+                      title: strings.focusModeTitle,
+                      description: strings.focusModeDescription,
+                      value: reminder.focusModeEnabled,
+                      onChanged: (value) => reminder.setFocusModeEnabled(value),
+                    ),
+                    if (reminder.focusModeEnabled) const _FocusModePermissionBanner(),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              SectionCard(
                 child: Row(
                   children: [
                     Container(
@@ -500,6 +541,96 @@ class _BreakPromptViewState extends State<_BreakPromptView> {
             child: Text(strings.eyeBreakSkip),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// Chỉ hiện khi Chế độ Focus đang BẬT nhưng app CHƯA được cấp quyền
+// "Notification policy access" — quyền đặc biệt của Android, app không tự
+// xin được qua hộp thoại thường, phải dẫn người dùng vào đúng màn hình Cài
+// đặt hệ thống. Tự kiểm tra lại mỗi khi widget được build lại (ví dụ sau khi
+// người dùng quay lại từ màn Cài đặt) để tự ẩn banner ngay khi đã cấp xong,
+// không cần khởi động lại app.
+class _FocusModePermissionBanner extends StatefulWidget {
+  const _FocusModePermissionBanner();
+
+  @override
+  State<_FocusModePermissionBanner> createState() => _FocusModePermissionBannerState();
+}
+
+class _FocusModePermissionBannerState extends State<_FocusModePermissionBanner> with WidgetsBindingObserver {
+  bool? _hasAccess;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _checkAccess();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Người dùng có thể vừa quay lại từ màn Cài đặt hệ thống sau khi cấp
+    // quyền -> kiểm tra lại ngay khi app foreground trở lại.
+    if (state == AppLifecycleState.resumed) _checkAccess();
+  }
+
+  Future<void> _checkAccess() async {
+    final granted = await FocusModeService.instance.hasAccess();
+    if (mounted) setState(() => _hasAccess = granted);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_hasAccess != false) return const SizedBox.shrink();
+    final strings = context.watch<LanguageProvider>().strings;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: AppColors.warning.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.warning.withValues(alpha: 0.3)),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.notifications_off_rounded, color: AppColors.warning, size: 20),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    strings.focusModePermissionTitle,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(strings.focusModePermissionDescription, style: Theme.of(context).textTheme.bodySmall),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            TextButton(
+              onPressed: () async {
+                await FocusModeService.instance.openAccessSettings();
+                // Người dùng thường bấm rồi quay lại app ngay lập tức trước
+                // khi didChangeAppLifecycleState kịp bắn -> kiểm tra thêm 1
+                // lần nữa sau khi Future openAccessSettings() trả về, phòng
+                // trường hợp OS trả quyền điều khiển về app nhanh hơn dự kiến.
+                _checkAccess();
+              },
+              child: Text(strings.focusModeGrantAccess),
+            ),
+          ],
+        ),
       ),
     );
   }

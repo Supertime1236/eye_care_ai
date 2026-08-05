@@ -30,6 +30,12 @@
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"/>
     <!-- Giúp báo thức nghỉ mắt bắn đúng giờ ngay cả khi máy đang ngủ sâu. -->
     <uses-permission android:name="android.permission.WAKE_LOCK"/>
+    <!-- Cần cho Chế độ Focus: bật/tắt Do Not Disturb (chặn thông báo app
+         khác) trong lúc làm việc. Đây là quyền "đặc biệt" (special
+         permission) — không xin được qua hộp thoại runtime bình thường,
+         người dùng phải tự bật trong Cài đặt hệ thống (app chỉ mở đúng màn
+         hình cài đặt đó giúp, xem FocusModeHandler.kt). -->
+    <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY"/>
     <application
         android:label="EyeCare AI"
         android:name="${applicationName}"

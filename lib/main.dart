@@ -9,6 +9,7 @@ import 'providers/font_provider.dart';
 import 'providers/habit_provider.dart';
 import 'providers/language_provider.dart';
 import 'providers/profile_provider.dart';
+import 'providers/rank_provider.dart';
 import 'providers/reminder_provider.dart';
 import 'providers/settings_more_provider.dart';
 import 'providers/settings_provider.dart';
@@ -39,6 +40,7 @@ Future<void> main() async {
           create: (_) => SettingsMoreProvider()..init(),
         ),
         ChangeNotifierProvider(create: (_) => HabitProvider()),
+        ChangeNotifierProvider(create: (_) => RankProvider()),
         ChangeNotifierProvider(create: (_) => ChatProvider()),
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProxyProvider<AuthProvider, ProfileProvider>(
