@@ -114,6 +114,7 @@ class AppStrings {
           'Export PDF Report',
           'Biểu đồ cải thiện mắt',
           'Bài tập mắt có hướng dẫn',
+          'Chế độ Focus',
           'Widget countdown lần nghỉ tiếp theo',
           'So sánh xu hướng sức khỏe mắt theo tuần/tháng',
           'Chế độ đọc ban đêm',
@@ -131,6 +132,7 @@ class AppStrings {
           'Export PDF Report',
           'Eye improvement chart',
           'Guided eye exercises',
+          'Focus mode',
           'Next-break countdown widget',
           'Weekly/monthly eye health trend comparison',
           'Night-reading mode',
@@ -157,6 +159,7 @@ class AppStrings {
   String get eyeCareSettingFeet => vi ? 'Feet' : 'Feet';
   String get eyeCareSettingInch => vi ? 'Inch' : 'Inch';
   String get achievementBadges => vi ? 'Thành tựu' : 'Achievements';
+  String get rank => vi ? 'Xếp hạng' : 'Rank';
   String get achievementTitle => vi ? 'Thành tựu của bạn' : 'Your achievements';
   String get achievementUnlocked => vi ? 'Đã mở khóa' : 'Unlocked';
   String get achievementLocked => vi ? 'Chưa mở khóa' : 'Locked';
@@ -285,16 +288,6 @@ class AppStrings {
   String get autoDetectEyeBreakDescription => vi
       ? 'Khoá màn hình / rời app từ 20 giây trở lên sẽ tự tính là 1 lần nghỉ mắt, không cần bấm "Xong" thủ công.'
       : 'Locking the screen or leaving the app for 20+ seconds automatically counts as an eye break — no need to tap "Done".';
-  String get focusModeTitle => vi ? 'Chế độ Focus' : 'Focus mode';
-  String get focusModeDescription => vi
-      ? 'Chặn thông báo từ app khác trong lúc đang đếm ngược, giảm giật mình/mất tập trung — tự tắt lại khi đến giờ nghỉ mắt.'
-      : 'Blocks notifications from other apps while the countdown runs, reducing startle/distraction — turns off automatically when it\'s break time.';
-  String get focusModePermissionTitle =>
-      vi ? 'Cần cấp quyền "Không làm phiền"' : 'Needs "Do Not Disturb" access';
-  String get focusModePermissionDescription => vi
-      ? 'Android yêu cầu cấp quyền này thủ công trong Cài đặt hệ thống, app không tự xin được. Bấm để mở đúng màn hình cần bật.'
-      : 'Android requires granting this manually in system Settings — the app can\'t request it directly. Tap to open the right screen.';
-  String get focusModeGrantAccess => vi ? 'Cấp quyền' : 'Grant access';
   String get eyeBreakTimeUp => vi ? 'Đến giờ nghỉ mắt rồi!' : 'Time for an eye break!';
   String get eyeBreakLookAway =>
       vi ? 'Nhìn vào một vật cách xa khoảng 6 mét' : 'Look at something about 20 feet away';

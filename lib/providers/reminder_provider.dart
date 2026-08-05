@@ -9,9 +9,6 @@ class ReminderProvider extends ChangeNotifier {
   // xuống / khoá màn hình hơn là bấm nút "Xong" thủ công). Không tốn thêm
   // pin/quyền vì chỉ dùng WidgetsBindingObserver có sẵn của Flutter.
   static const _kAutoDetectKey = 'pref_auto_detect_eye_breaks';
-  // Chế độ Focus: chặn thông báo app khác (Do Not Disturb) trong lúc đang
-  // đếm ngược giữa 2 lần nghỉ mắt, giảm giật mình/mất tập trung.
-  static const _kFocusModeKey = 'pref_focus_mode_enabled';
 
   ReminderProvider() {
     _loadSavedPreferences();
@@ -20,25 +17,15 @@ class ReminderProvider extends ChangeNotifier {
   bool _isEyeBreakReminderActive = false;
   int _reminderMinutes = 20;
   bool _autoDetectEyeBreaks = true;
-  bool _focusModeEnabled = false;
 
   bool get isEyeBreakReminderActive => _isEyeBreakReminderActive;
   int get reminderMinutes => _reminderMinutes;
   bool get autoDetectEyeBreaks => _autoDetectEyeBreaks;
-  bool get focusModeEnabled => _focusModeEnabled;
 
   Future<void> _loadSavedPreferences() async {
     final prefs = await SharedPreferences.getInstance();
     _reminderMinutes = prefs.getInt(_kReminderMinutesKey) ?? _reminderMinutes;
     _autoDetectEyeBreaks = prefs.getBool(_kAutoDetectKey) ?? _autoDetectEyeBreaks;
-    _focusModeEnabled = prefs.getBool(_kFocusModeKey) ?? _focusModeEnabled;
-    notifyListeners();
-  }
-
-  Future<void> setFocusModeEnabled(bool value) async {
-    _focusModeEnabled = value;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_kFocusModeKey, value);
     notifyListeners();
   }
 
