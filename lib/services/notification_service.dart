@@ -8,6 +8,19 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timezone/data/latest.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
 
+// PHẢI là hàm top-level hoặc static + có @pragma('vm:entry-point') — đây là
+// yêu cầu bắt buộc của flutter_local_notifications để callback này còn gọi
+// được khi app đã bị hệ điều hành tắt hẳn (chạy trong 1 isolate nền riêng,
+// tách biệt hoàn toàn với isolate chính của app). Chỉ dùng để ghi nhận việc
+// nhấn thông báo lúc app đã đóng — việc điều hướng thật sự tới EyeBreakScreen
+// vẫn diễn ra bình thường vì Android sẽ tự khởi động lại isolate chính của
+// app khi người dùng nhấn thông báo, và NotificationService.initialize() gọi
+// lại ở đó sẽ nhận được response qua getNotificationAppLaunchDetails() (xem
+// main.dart) — hàm dưới đây chỉ là bắt buộc về mặt kỹ thuật của plugin, bản
+// thân nó không cần làm gì thêm.
+@pragma('vm:entry-point')
+void _onBackgroundNotificationResponse(NotificationResponse response) {}
+
 // NotificationService quản lý toàn bộ thông báo cục bộ của app.
 //
 // Có 2 loại thông báo cho tính năng nhắc nghỉ mắt:
@@ -84,6 +97,23 @@ class NotificationService {
 
   bool _initialized = false;
 
+  // Gọi khi người dùng NHẤN vào thông báo "Đến giờ nghỉ mắt" (payload =
+  // breakReminderPayload) — main.dart gán hàm này để điều hướng thẳng tới
+  // EyeBreakScreen thông qua 1 navigatorKey toàn cục, tách biệt tầng service
+  // (ở đây) khỏi tầng UI/route.
+  void Function()? onBreakReminderTapped;
+
+  // Payload đính kèm thông báo hết-giờ-nghỉ-mắt — dùng để phân biệt với các
+  // thông báo khác (vd cảnh báo dùng điện thoại trong bóng tối) khi người
+  // dùng nhấn vào, tránh điều hướng nhầm màn hình.
+  static const String breakReminderPayload = 'break_reminder';
+
+  void _onNotificationResponse(NotificationResponse response) {
+    if (response.payload == breakReminderPayload) {
+      onBreakReminderTapped?.call();
+    }
+  }
+
   Future<void> initialize() async {
     if (_initialized) return;
     tz_data.initializeTimeZones();
@@ -97,6 +127,12 @@ class NotificationService {
 
     await notifications.initialize(
       const InitializationSettings(android: android, iOS: ios),
+      onDidReceiveNotificationResponse: _onNotificationResponse,
+      // Xử lý trường hợp app đã bị tắt hẳn (không chỉ thu nhỏ) và người dùng
+      // mở lại app bằng cách nhấn vào thông báo — plugin yêu cầu callback nền
+      // này phải là 1 hàm TOP-LEVEL hoặc STATIC (không được là closure/method
+      // của instance), xem _onBackgroundNotificationResponse bên dưới.
+      onDidReceiveBackgroundNotificationResponse: _onBackgroundNotificationResponse,
     );
 
     final androidPlugin =
@@ -259,6 +295,7 @@ class NotificationService {
           scheduledDate,
           _details(insistent: true),
           androidScheduleMode: mode,
+          payload: breakReminderPayload,
         );
         final pending = await notifications.pendingNotificationRequests();
         final registered = pending.any((p) => p.id == _alarmNotificationId);
@@ -331,6 +368,7 @@ class NotificationService {
         Duration(minutes: intervalMinutes),
         _details(insistent: true),
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        payload: breakReminderPayload,
       );
     } catch (e, st) {
       debugPrint('[NotificationService] periodicallyShowWithDuration exact FAILED: $e\n$st');
@@ -341,6 +379,7 @@ class NotificationService {
         Duration(minutes: intervalMinutes),
         _details(insistent: true),
         androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        payload: breakReminderPayload,
       );
     }
 

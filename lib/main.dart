@@ -15,6 +15,7 @@ import 'providers/settings_more_provider.dart';
 import 'providers/settings_provider.dart';
 import 'providers/theme_provider.dart';
 import 'screens/consent_screen.dart';
+import 'screens/eye_break_screen.dart';
 import 'screens/habits_survey_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/main_shell.dart';
@@ -23,10 +24,39 @@ import 'services/device_data_service.dart';
 import 'services/notification_service.dart';
 import 'theme/app_theme.dart';
 
+// Navigator toàn cục — dùng để điều hướng tới EyeBreakScreen ngay khi người
+// dùng nhấn vào thông báo "Đến giờ nghỉ mắt", kể cả khi thông báo được nhấn
+// lúc app đang ở nền (không có BuildContext nào sẵn có lúc đó). Đặt ở top
+// level (không phải trong 1 State) vì NotificationService (tầng service,
+// không có UI) cần gọi được nó thông qua callback onBreakReminderTapped mà
+// không phải import ngược lại màn hình.
+final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
+
+void _openEyeBreakScreenFromNotification() {
+  final navigator = _rootNavigatorKey.currentState;
+  if (navigator == null) return;
+  // Tránh chồng nhiều EyeBreakScreen nếu người dùng bấm thông báo nhiều lần
+  // liên tiếp (VD báo thức lặp bắn 2 lần trước khi mở thông báo đầu) — quay
+  // về route gốc trước rồi mới đẩy EyeBreakScreen lên trên.
+  navigator.popUntil((route) => route.isFirst);
+  navigator.push(MaterialPageRoute(builder: (_) => const EyeBreakScreen()));
+}
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
+  NotificationService.instance.onBreakReminderTapped = _openEyeBreakScreenFromNotification;
   await NotificationService.instance.initialize();
+
+  // Trường hợp app đã bị TẮT HẲN (không chỉ thu nhỏ) và người dùng mở lại
+  // bằng cách nhấn vào thông báo "Đến giờ nghỉ mắt": onDidReceiveNotification
+  // Response ở trên chỉ bắt được các lần nhấn khi app đã đang chạy — lần khởi
+  // động NÀY (do chính cú nhấn thông báo gây ra) phải được phát hiện riêng
+  // qua getNotificationAppLaunchDetails().
+  final launchDetails = await NotificationService.instance.notifications.getNotificationAppLaunchDetails();
+  final launchedFromBreakNotification = launchDetails?.didNotificationLaunchApp == true &&
+      launchDetails?.notificationResponse?.payload == NotificationService.breakReminderPayload;
+
   runApp(
     MultiProvider(
       providers: [
@@ -48,13 +78,28 @@ Future<void> main() async {
           update: (_, auth, profile) => profile!..syncFromUser(auth.user),
         ),
       ],
-      child: const EyeCareApp(),
+      child: EyeCareApp(launchedFromBreakNotification: launchedFromBreakNotification),
     ),
   );
 }
 
-class EyeCareApp extends StatelessWidget {
-  const EyeCareApp({super.key});
+class EyeCareApp extends StatefulWidget {
+  const EyeCareApp({super.key, this.launchedFromBreakNotification = false});
+
+  final bool launchedFromBreakNotification;
+
+  @override
+  State<EyeCareApp> createState() => _EyeCareAppState();
+}
+
+class _EyeCareAppState extends State<EyeCareApp> {
+  @override
+  void initState() {
+    super.initState();
+    if (widget.launchedFromBreakNotification) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _openEyeBreakScreenFromNotification());
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -65,6 +110,7 @@ class EyeCareApp extends StatelessWidget {
     final fontTextTheme = font.getTextTheme(isVietnamese);
 
     return MaterialApp(
+      navigatorKey: _rootNavigatorKey,
       title: 'EyeCare AI',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(accentSeed: accent.seedColor, fontTextTheme: fontTextTheme),

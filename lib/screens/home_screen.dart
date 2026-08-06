@@ -6,22 +6,23 @@ import 'package:provider/provider.dart';
 
 import '../models/app_strings.dart';
 import '../models/rank_tier.dart';
+import '../providers/accent_color_provider.dart';
 import '../providers/habit_provider.dart';
 import '../providers/language_provider.dart';
 import '../providers/profile_provider.dart';
 import '../providers/rank_provider.dart';
-import '../providers/accent_color_provider.dart';
 import '../services/device_data_service.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_theme.dart';
-import '../widgets/shared_widgets.dart';
 import '../widgets/animated_gradient_border.dart';
+import '../widgets/shared_widgets.dart';
 import 'chat_screen.dart';
 import 'eye_break_screen.dart';
 import 'habits_screen.dart';
 import 'habits_survey_screen.dart';
 import 'rank_screen.dart';
 import 'settings_screen.dart';
+import 'statistics_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -72,8 +73,6 @@ class HomeScreen extends StatelessWidget {
           ),
           const SizedBox(height: 20),
           _ScoreCard(score: habit.eyeHealthScore),
-          const SizedBox(height: 14),
-          const _RankTeaserCard(),
           const SizedBox(height: 18),
           _FeatureHubCard(),
           const SizedBox(height: 20),
@@ -146,6 +145,15 @@ class HomeScreen extends StatelessWidget {
           ),
           const SizedBox(height: 20),
           Text(strings.weeklyOverview, style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 2),
+          // Làm rõ đơn vị của biểu đồ cột: đây là ĐIỂM SỨC KHỎE MẮT hàng
+          // ngày (thang 0-100), không phải giờ/phút — trước đây không ghi
+          // gì nên chạm vào cột chỉ thấy số trần trụi kiểu "10.0" không
+          // biết là gì.
+          Text(
+            strings.weeklyOverviewUnit,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textMuted),
+          ),
           const SizedBox(height: 12),
           const _WeeklyOverviewChart(),
           const SizedBox(height: 20),
@@ -219,6 +227,7 @@ class _FeatureHubCard extends StatelessWidget {
 
     final features = [
       _FeatureItem(icon: '🏆', title: strings.achievementBadges, route: const _AchievementPage()),
+      _FeatureItem(icon: '📊', title: strings.statistics, route: const StatisticsScreen()),
       _FeatureItem(icon: '🏅', title: strings.rank, route: const RankScreen()),
       _FeatureItem(icon: '🧪', title: strings.eyeTest, route: const _EyeTestPage()),
       _FeatureItem(icon: '✅', title: strings.habits, route: const HabitsScreen()),
@@ -1023,69 +1032,6 @@ class _EyeTestStep {
   final String icon;
 }
 
-// Chip nhỏ hiện bậc xếp hạng + streak hiện tại ngay trên Trang chủ, bấm vào
-// mở thẳng RankScreen. Tự đồng bộ streak thật (từ HabitProvider) vào
-// RankProvider mỗi lần build để luôn khớp số liệu mới nhất mà không cần mở
-// RankScreen trước.
-class _RankTeaserCard extends StatelessWidget {
-  const _RankTeaserCard();
-
-  @override
-  Widget build(BuildContext context) {
-    final vi = context.watch<LanguageProvider>().isVietnamese;
-    final habit = context.watch<HabitProvider>();
-    final rank = context.watch<RankProvider>();
-
-    if (habit.streakDays != rank.streakDays) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        context.read<RankProvider>().updateStreak(habit.streakDays);
-      });
-    }
-
-    final tier = RankTiers.forStreak(habit.streakDays);
-    final accent = context.watch<AccentColorProvider>().seedColor;
-
-    return AnimatedGradientBorder(
-      baseColor: accent,
-      borderRadius: 18,
-      borderWidth: 1.6,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(18),
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const RankScreen()),
-        ),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          child: Row(
-            children: [
-              Text(tier.emoji, style: const TextStyle(fontSize: 24)),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      tier.title(vi),
-                      style: TextStyle(fontWeight: FontWeight.w700, color: tier.color),
-                    ),
-                    Text(
-                      vi
-                          ? '${habit.streakDays} ngày duy trì · Xem bảng xếp hạng'
-                          : '${habit.streakDays}-day streak · View leaderboard',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                  ],
-                ),
-              ),
-              Icon(Icons.chevron_right_rounded, color: tier.color),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class _ScoreCard extends StatelessWidget {
   const _ScoreCard({required this.score});
 
@@ -1358,7 +1304,7 @@ class _WeeklyOverviewChartState extends State<_WeeklyOverviewChart> {
 
     return SectionCard(
       child: SizedBox(
-        height: 120,
+        height: 132,
         child: snapshots == null
             ? const Center(child: CircularProgressIndicator(strokeWidth: 2))
             : BarChart(
@@ -1396,7 +1342,22 @@ class _WeeklyOverviewChartState extends State<_WeeklyOverviewChart> {
                   titlesData: FlTitlesData(
                     topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
                     rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                    leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    leftTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        reservedSize: 30,
+                        interval: 50,
+                        getTitlesWidget: (value, meta) {
+                          // Chỉ hiện 0/50/100 để làm rõ trục là thang điểm
+                          // sức khỏe mắt, không cần dày đặc mọi mốc.
+                          if (value != 0 && value != 50 && value != 100) return const SizedBox.shrink();
+                          return Text(
+                            '${value.toInt()}',
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 10),
+                          );
+                        },
+                      ),
+                    ),
                     bottomTitles: AxisTitles(
                       sideTitles: SideTitles(
                         showTitles: true,
