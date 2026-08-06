@@ -1,6 +1,7 @@
 name: Build APK
 
 on:
+  workflow_dispatch: {}
   push:
     branches:
       - main
@@ -61,9 +62,10 @@ jobs:
 
       - name: Rename APK
         run: |
+          SHORT_SHA=$(git rev-parse --short=8 HEAD)
           mkdir -p release
           cp build/app/outputs/flutter-apk/app-release.apk \
-            "release/eye_care_ai-${{ steps.version.outputs.version }}-build${{ github.run_number }}.apk"
+            "release/eye_care_ai-${{ steps.version.outputs.version }}-${SHORT_SHA}-build${{ github.run_number }}.apk"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
