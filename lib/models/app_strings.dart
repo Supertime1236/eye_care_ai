@@ -60,8 +60,29 @@ class AppStrings {
       ? 'Chỉ hiện các phông đã kiểm chứng hỗ trợ đầy đủ dấu tiếng Việt, để tránh lỗi hiển thị.'
       : 'Only fonts verified to fully support Vietnamese diacritics are shown, to avoid rendering issues.';
   String get darkMode => vi ? 'Chế độ tối' : 'Dark Mode';
+  String get darkModeSubtitle => vi ? 'Bật/tắt nhanh giao diện tối' : 'Quickly switch to a dark interface';
   String get themeLabel => vi ? 'Giao diện' : 'Theme';
   String get themeSubtitle => vi ? 'Sáng, tối hoặc theo máy' : 'Light, dark, or match device';
+  String get screenSection => vi ? 'Màn hình' : 'Screen';
+  String get brightnessTips => vi ? 'Gợi ý độ sáng' : 'Brightness Tips';
+  String get brightnessTipsSubtitle =>
+      vi ? 'Cách chỉnh độ sáng phù hợp cho mắt' : 'How to set brightness that\'s easy on your eyes';
+  String get brightnessTipsBody => vi
+      ? 'Chỉnh độ sáng màn hình khớp với ánh sáng xung quanh — đừng để màn hình sáng hơn hoặc tối hơn nhiều so với căn phòng, vì độ chênh lệch lớn khiến mắt phải điều tiết liên tục và nhanh mỏi.\n\n'
+          '• Trong phòng tối: giảm độ sáng, bật Chế độ tối hoặc Bộ lọc ánh sáng xanh.\n'
+          '• Ngoài trời/nơi nhiều ánh sáng: tăng độ sáng đủ để chữ rõ, tránh nheo mắt.\n'
+          '• Bật độ sáng tự động (Auto-brightness) trong cài đặt máy để màn hình tự điều chỉnh theo môi trường.\n'
+          '• Giữ khoảng cách 50-65cm giữa mắt và màn hình.'
+      : 'Match your screen brightness to the light around you — a screen that\'s much brighter or dimmer than '
+          'the room forces your eyes to keep adjusting and tires them faster.\n\n'
+          '• In a dark room: lower brightness, use Dark Mode or the Blue Light Filter.\n'
+          '• Outdoors or in bright light: raise brightness enough to read comfortably without squinting.\n'
+          '• Turn on Auto-brightness in your device settings so it adapts automatically.\n'
+          '• Keep your screen 50-65cm (20-25in) from your eyes.';
+  String get blueLightFilter => vi ? 'Bộ lọc ánh sáng xanh' : 'Blue Light Filter';
+  String get blueLightFilterSubtitle =>
+      vi ? 'Phủ tông ấm lên màn hình, giảm ánh sáng xanh' : 'Warms up the screen tint to cut blue light';
+  String get blueLightIntensity => vi ? 'Độ đậm' : 'Intensity';
   String themePreferenceLabel(AppThemePreference pref) {
     switch (pref) {
       case AppThemePreference.light:
@@ -718,4 +739,18 @@ class AppStrings {
   String get confirmNewPassword => vi ? 'Xác nhận mật khẩu mới' : 'Confirm New Password';
   String get updatePassword => vi ? 'Cập nhật mật khẩu' : 'Update Password';
   String get passwordUpdated => vi ? 'Đã cập nhật mật khẩu.' : 'Password updated.';
+
+  // Cập nhật app từ GitHub Releases (xem lib/services/update_service.dart +
+  // lib/widgets/update_dialog.dart) — app không lên Google Play nên tự kiểm
+  // tra bản mới thay vì trông chờ Play Store.
+  String get updateAvailableTitle => vi ? 'Có bản cập nhật mới' : 'Update available';
+  String updateAvailableSubtitle(String versionName) =>
+      vi ? 'Phiên bản $versionName đã sẵn sàng.' : 'Version $versionName is ready.';
+  String get updateNotesTitle => vi ? 'Có gì mới' : "What's new";
+  String get updateLater => vi ? 'Để sau' : 'Later';
+  String get updateNow => vi ? 'Cập nhật ngay' : 'Update now';
+  String get updateDownloading => vi ? 'Đang tải bản cập nhật...' : 'Downloading update...';
+  String get updateDownloadFailed =>
+      vi ? 'Tải bản cập nhật thất bại. Vui lòng thử lại sau.' : 'Download failed. Please try again later.';
+  String get updateOpenInstaller => vi ? 'Mở trình cài đặt' : 'Open installer';
 }

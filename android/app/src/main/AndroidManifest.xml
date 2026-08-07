@@ -36,6 +36,13 @@
          người dùng phải tự bật trong Cài đặt hệ thống (app chỉ mở đúng màn
          hình cài đặt đó giúp, xem FocusModeHandler.kt). -->
     <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY"/>
+    <!-- Cho phép app cài đặt APK tải về từ GitHub Releases (sideload) — không
+         có quyền này, Android sẽ chặn hẳn việc mở trình cài đặt gói khi app
+         không phải là nguồn cài đặt "được tin cậy" (ví dụ Play Store). Người
+         dùng vẫn cần tự bật "Cho phép từ nguồn này" 1 lần trong Cài đặt hệ
+         thống khi cài lần đầu — đây là màn hình hệ thống tự bật lên, app
+         không cần code gì thêm cho bước đó. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
     <application
         android:label="EyeCare AI"
         android:name="${applicationName}"

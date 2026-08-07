@@ -57,7 +57,14 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Build release APK
-        run: flutter build apk --release --dart-define=NIM_API_KEY=${{ secrets.NIM_API_KEY }}
+        # --build-number gắn ĐÚNG run_number của lần chạy này làm versionCode
+        # thật của APK — bắt buộc phải có để tính năng "Kiểm tra cập nhật"
+        # trong app (lib/services/update_service.dart) so sánh được số này
+        # với tag GitHub Release "build-<run_number>" và biết máy đang chạy
+        # bản cũ hay mới. Thiếu dòng này thì mọi APK đều mang versionCode cũ
+        # cố định trong pubspec.yaml (1) và app không bao giờ phát hiện được
+        # bản mới.
+        run: flutter build apk --release --build-number=${{ github.run_number }} --dart-define=NIM_API_KEY=${{ secrets.NIM_API_KEY }}
 
       - name: Rename APK
         run: |
