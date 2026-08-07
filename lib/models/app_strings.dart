@@ -708,6 +708,7 @@ class AppStrings {
       ? 'Không tìm thấy ứng dụng email trên máy. Vui lòng gửi góp ý tới eyecareai.app@gmail.com'
       : 'No email app found on this device. Please send feedback to eyecareai.app@gmail.com';
   String get aboutTitle => vi ? 'Giới thiệu' : 'About';
+  String get commitCopied => vi ? 'Đã sao chép commit SHA' : 'Commit SHA copied';
 
   // Sign out / change password flows
   String get signOutConfirmTitle => vi ? 'Đăng xuất?' : 'Sign Out?';
