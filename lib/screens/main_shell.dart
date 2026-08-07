@@ -59,9 +59,9 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
     final target = context ?? this.context;
     if (!manual) {
       if (update == null || !mounted) return;
-      final strings = target?.read<LanguageProvider>().strings;
-      if (strings == null || !mounted) return;
-      UpdateDialog.show(context, update, strings);
+      final strings = target.read<LanguageProvider>().strings;
+      if (!mounted) return;
+      UpdateDialog.show(target, update, strings);
       return;
     }
 
