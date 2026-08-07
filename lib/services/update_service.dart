@@ -62,7 +62,8 @@ class UpdateService {
       final tag = (data['tag_name'] ?? '').toString(); // "build-42"
       final match = RegExp(r'build-(\d+)').firstMatch(tag);
       if (match == null) return null;
-      final latestBuildNumber = int.parse(match.group(1)!);
+      final latestBuildNumber = int.tryParse(match.group(1) ?? '') ?? 0;
+      if (latestBuildNumber <= 0) return null;
 
       final assets = (data['assets'] as List?) ?? [];
       final apkAsset = assets.cast<Map<String, dynamic>>().firstWhere(
