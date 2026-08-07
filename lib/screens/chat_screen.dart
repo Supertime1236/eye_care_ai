@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/chat_provider.dart';
+import '../providers/habit_provider.dart';
 import '../providers/language_provider.dart';
+import '../services/ai_action_handler.dart';
 import '../services/eye_chat_service.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_theme.dart';
@@ -57,6 +59,26 @@ class _ChatScreenState extends State<ChatScreen> {
     });
   }
 
+  // Tóm tắt mục tiêu (target) hiện tại của người dùng thành vài dòng text
+  // ngắn gọn, gửi kèm mỗi lượt hỏi để AI đề xuất số hợp lý (ví dụ biết mục
+  // tiêu Phone Usage đang là 6 giờ thì mới hạ xuống 4 giờ được, chứ không
+  // đoán mò) — xem cách dùng ở EyeChatService.sendMessageStream(contextInfo:).
+  String _buildHabitContext(HabitProvider habits, bool isVi) {
+    final buffer = StringBuffer();
+    for (final habit in habits.habits) {
+      if (habit.isComingSoon) continue;
+      final unit = switch (habit.id) {
+        'phone' || 'sleep' => isVi ? 'giờ/ngày' : 'hrs/day',
+        'outdoor' => isVi ? 'phút/ngày' : 'min/day',
+        'breaks' => isVi ? 'lần/ngày' : 'times/day',
+        _ => habit.unit,
+      };
+      final decimals = habit.target == habit.target.roundToDouble() ? 0 : 1;
+      buffer.writeln('- ${habit.title} (id: "${habit.id}"): mục tiêu hiện tại = ${habit.target.toStringAsFixed(decimals)} $unit');
+    }
+    return buffer.toString();
+  }
+
   Future<void> _send(String rawText) async {
     final text = rawText.trim();
     if (text.isEmpty || _sending) return;
@@ -77,14 +99,36 @@ class _ChatScreenState extends State<ChatScreen> {
 
     try {
       final history = chat.toApiHistory();
+      final habits = context.read<HabitProvider>();
+      final isVi = context.read<LanguageProvider>().isVietnamese;
       var gotAnyChunk = false;
-      await for (final delta in EyeChatService.instance.sendMessageStream(history: history)) {
+      await for (final delta in EyeChatService.instance.sendMessageStream(
+        history: history,
+        contextInfo: _buildHabitContext(habits, isVi),
+      )) {
         gotAnyChunk = true;
         chat.appendToLastMessage(delta);
         _scrollToBottom();
       }
       if (!gotAnyChunk) {
         chat.appendToLastMessage(strings.chatErrorGeneric);
+      } else {
+        // Model có thể đã chèn khối %%ACTION%%...%%END%% ở cuối câu trả lời
+        // (xem system prompt trong eye_chat_service.dart) — tách nó ra khỏi
+        // văn bản hiển thị rồi THỰC SỰ áp dụng thay đổi vào app.
+        final result = AiActionHandler.extract(chat.messages.last.text);
+        chat.setLastMessageText(result.cleanedText);
+        if (result.actions.isNotEmpty) {
+          final confirmations = await AiActionHandler.execute(
+            result.actions,
+            habits: habits,
+            isVietnamese: isVi,
+          );
+          for (final line in confirmations) {
+            chat.addActionMessage(line);
+          }
+          _scrollToBottom();
+        }
       }
     } catch (e) {
       final message = e.toString();
@@ -242,6 +286,35 @@ class _ChatBubble extends StatelessWidget {
   Widget build(BuildContext context) {
     final primary = Theme.of(context).colorScheme.primary;
     final isUser = message.isUser;
+
+    // Bong bóng xác nhận AI vừa thao tác thật với app (đổi target, bật Focus
+    // Mode...) — hiện dạng pill xanh lá nhạt, căn giữa, tách biệt hẳn khỏi
+    // bong bóng chat thường để người dùng nhận ra ngay đây là 1 THAY ĐỔI
+    // THẬT chứ không phải chỉ là câu trả lời bằng lời.
+    if (message.isAction) {
+      return Align(
+        alignment: Alignment.center,
+        child: Container(
+          margin: const EdgeInsets.symmetric(vertical: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.85),
+          decoration: BoxDecoration(
+            color: AppColors.success.withValues(alpha: isDark ? 0.16 : 0.1),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: AppColors.success.withValues(alpha: 0.35)),
+          ),
+          child: Text(
+            message.text,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: AppColors.success,
+              fontSize: 12.5,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      );
+    }
 
     final bubbleColor = isUser
         ? null

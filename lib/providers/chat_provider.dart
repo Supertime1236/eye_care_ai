@@ -1,11 +1,20 @@
 import 'package:flutter/foundation.dart';
 
 class ChatMessage {
-  ChatMessage({required this.text, required this.isUser, this.isTyping = false});
+  ChatMessage({
+    required this.text,
+    required this.isUser,
+    this.isTyping = false,
+    this.isAction = false,
+  });
 
   String text;
   final bool isUser;
   bool isTyping;
+  // true = đây là bong bóng xác nhận AI vừa thao tác thật với app (ví dụ
+  // "Đã hạ mục tiêu dùng điện thoại xuống 4 giờ/ngày"), hiển thị khác màu
+  // với bong bóng trả lời thông thường để người dùng dễ nhận ra.
+  final bool isAction;
 }
 
 class ChatProvider extends ChangeNotifier {
@@ -39,6 +48,20 @@ class ChatProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  // Ghi đè toàn bộ nội dung tin nhắn CUỐI CÙNG — dùng sau khi stream xong để
+  // xoá khối %%ACTION%%...%%END%% (nếu có) khỏi văn bản hiển thị, mà không
+  // cần tạo lại tin nhắn mới (giữ nguyên vị trí, tránh giật list).
+  void setLastMessageText(String text) {
+    if (messages.isEmpty) return;
+    messages.last.text = text;
+    notifyListeners();
+  }
+
+  void addActionMessage(String text) {
+    messages.add(ChatMessage(text: text, isUser: false, isAction: true));
+    notifyListeners();
+  }
+
   void setTyping(bool value) {
     isTyping = value;
     notifyListeners();
@@ -61,7 +84,7 @@ class ChatProvider extends ChangeNotifier {
   // ngữ cảnh nhiều lượt hỏi-đáp thay vì chỉ gửi mỗi câu hỏi mới nhất.
   List<Map<String, String>> toApiHistory() {
     return messages
-        .where((m) => !m.isTyping && m.text.trim().isNotEmpty)
+        .where((m) => !m.isTyping && !m.isAction && m.text.trim().isNotEmpty)
         .map((m) => {'role': m.isUser ? 'user' : 'assistant', 'content': m.text})
         .toList();
   }

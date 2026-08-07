@@ -60,6 +60,51 @@ Không chẩn đoán bệnh.
 Nếu triệu chứng nghiêm trọng hoặc kéo dài hãy khuyên người dùng đến bác sĩ chuyên khoa mắt.
 
 Trả lời ngắn gọn, dễ hiểu, thân thiện.
+
+## Khả năng điều chỉnh app thay người dùng
+
+Bạn không chỉ tư vấn bằng lời — bạn còn có thể TỰ THAO TÁC thay đổi cài đặt
+thật trong app khi phù hợp với những gì người dùng vừa kể. Ví dụ: người
+dùng nói "mắt mình mỏi/đau quá", "dạo này dùng điện thoại nhiều quá", "mình
+muốn ngủ nhiều hơn"... thì thay vì chỉ khuyên suông, hãy CHỦ ĐỘNG đề xuất
+VÀ áp dụng luôn thay đổi hợp lý.
+
+Để thực hiện 1 hành động, thêm CHÍNH XÁC MỘT khối lệnh ở CUỐI câu trả lời,
+theo đúng định dạng sau (không thêm dấu ``` hay giải thích gì trong khối):
+
+%%ACTION%%{"action":"<tên hành động>", ...tham số}%%END%%
+
+Có thể chèn NHIỀU khối %%ACTION%%...%%END%% liên tiếp nếu cần nhiều hành động.
+Khối lệnh này sẽ KHÔNG hiện ra với người dùng (hệ thống tự ẩn đi), nên đừng
+nhắc tới cú pháp JSON trong câu trả lời — chỉ cần nói tự nhiên kiểu "Mình đã
+tạm hạ mục tiêu dùng điện thoại xuống còn X giờ/ngày để mắt được nghỉ ngơi
+nhiều hơn nhé" rồi mới chèn khối lệnh tương ứng phía sau.
+
+Danh sách hành động hợp lệ:
+
+1. Đổi mục tiêu (target) của 1 thói quen:
+   %%ACTION%%{"action":"set_habit_target","habit":"phone","value":4}%%END%%
+   - "habit" chỉ được là 1 trong: "phone" (giờ dùng điện thoại/ngày, hiện
+     dùng đơn vị giờ), "sleep" (giờ ngủ/đêm), "outdoor" (phút ra ngoài
+     trời/ngày), "breaks" (số lần nghỉ mắt/ngày).
+   - "value" là số mục tiêu MỚI, hợp lý theo tình huống (ví dụ mắt mỏi vì
+     dùng điện thoại nhiều -> hạ "phone" xuống thấp hơn mục tiêu hiện tại
+     một chút, không hạ về 0 hoặc số phi thực tế).
+   - Mục tiêu hiện tại của người dùng sẽ được cung cấp thêm ở dưới (nếu có)
+     — hãy dựa vào đó để đề xuất số hợp lý, đừng đoán mò.
+
+2. Ghi nhận người dùng vừa nghỉ mắt xong:
+   %%ACTION%%{"action":"record_eye_break"}%%END%%
+   Dùng khi người dùng nói kiểu "mình vừa nghỉ mắt xong", "mình vừa nhìn xa
+   20 giây xong" theo quy tắc 20-20-20.
+
+3. Bật/tắt Chế độ Tập trung (chặn thông báo để mắt đỡ bị làm phiền/mỏi):
+   %%ACTION%%{"action":"enable_focus_mode"}%%END%%
+   %%ACTION%%{"action":"disable_focus_mode"}%%END%%
+
+CHỈ chèn khối lệnh khi thực sự có lý do rõ ràng từ câu nói của người dùng.
+KHÔNG tự ý đổi cài đặt nếu người dùng chỉ đang hỏi thông tin chung chung
+(ví dụ hỏi "quy tắc 20-20-20 là gì?" thì KHÔNG cần chèn action nào).
 ''';
 
   // Bản STREAMING: thay vì chờ model trả lời XONG HẾT rồi mới hiện 1 lần
@@ -71,6 +116,7 @@ Trả lời ngắn gọn, dễ hiểu, thân thiện.
   // để "AI trả lời chậm" bớt khó chịu, kể cả khi dùng model free chậm.
   Stream<String> sendMessageStream({
     required List<Map<String, String>> history,
+    String? contextInfo,
   }) async* {
     final apiKey = Env.nimApiKey;
     if (apiKey.isEmpty) {
@@ -85,8 +131,16 @@ Trả lời ngắn gọn, dễ hiểu, thân thiện.
       ),
     );
 
+    // contextInfo mang theo mục tiêu (target) hiện tại của người dùng —
+    // ghép vào cuối system prompt (thay vì để trong hội thoại) để nó luôn
+    // là dữ liệu MỚI NHẤT ngay tại thời điểm gọi API, không bị lẫn vào
+    // lịch sử chat và không bị model "quên" khi hội thoại dài ra.
+    final systemContent = contextInfo == null || contextInfo.isEmpty
+        ? _systemPrompt
+        : '$_systemPrompt\n\n## Dữ liệu hiện tại của người dùng\n$contextInfo';
+
     final messages = <Map<String, dynamic>>[
-      {"role": "system", "content": _systemPrompt},
+      {"role": "system", "content": systemContent},
       for (final item in history)
         {
           "role": item["role"] == "assistant" ? "assistant" : "user",
@@ -167,6 +221,7 @@ Trả lời ngắn gọn, dễ hiểu, thân thiện.
 
   Future<String> sendMessage({
     required List<Map<String, String>> history,
+    String? contextInfo,
   }) async {
     final apiKey = Env.nimApiKey;
 
@@ -183,10 +238,13 @@ Trả lời ngắn gọn, dễ hiểu, thân thiện.
     );
 
     try {
+      final systemContent = contextInfo == null || contextInfo.isEmpty
+          ? _systemPrompt
+          : '$_systemPrompt\n\n## Dữ liệu hiện tại của người dùng\n$contextInfo';
       final messages = <Map<String, dynamic>>[
         {
           "role": "system",
-          "content": _systemPrompt,
+          "content": systemContent,
         },
       ];
 
