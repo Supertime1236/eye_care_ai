@@ -116,6 +116,24 @@ class _EyeCareAppState extends State<EyeCareApp> {
       theme: AppTheme.light(accentSeed: accent.seedColor, fontTextTheme: fontTextTheme),
       darkTheme: AppTheme.dark(accentSeed: accent.seedColor, fontTextTheme: fontTextTheme),
       themeMode: theme.themeMode,
+      // Phủ lớp lọc ánh sáng xanh lên TRÊN TOÀN BỘ app (mọi màn hình, mọi
+      // dialog) tại đúng 1 chỗ duy nhất — thay vì phải nhét vào từng
+      // Scaffold riêng lẻ. IgnorePointer để lớp phủ không chặn thao tác
+      // chạm xuyên qua nó.
+      builder: (context, child) {
+        if (child == null) return const SizedBox.shrink();
+        if (!theme.blueLightFilterEnabled) return child;
+        return Stack(
+          children: [
+            child,
+            IgnorePointer(
+              child: Container(
+                color: Color.fromRGBO(255, 138, 0, theme.blueLightIntensity),
+              ),
+            ),
+          ],
+        );
+      },
       home: const _AppGate(),
     );
   }

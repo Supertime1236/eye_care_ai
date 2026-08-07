@@ -146,14 +146,6 @@ class SettingsScreen extends StatelessWidget {
                 padding: EdgeInsets.zero,
                 child: Column(
                   children: [
-                    _ListTileOption(
-                      icon: isDark ? '🌙' : '☀️',
-                      title: strings.themeLabel,
-                      subtitle: strings.themeSubtitle,
-                      valueLabel: strings.themePreferenceLabel(theme.preference),
-                      onTap: () => _showThemeDialog(context, theme, strings),
-                    ),
-                    const Divider(height: 1, indent: 56),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                       child: Row(
@@ -214,6 +206,45 @@ class SettingsScreen extends StatelessWidget {
                       subtitle: strings.languageSubtitle,
                       valueLabel: language.isVietnamese ? strings.vietnamese : strings.english,
                       onTap: () => _showLanguageDialog(context, language, strings),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+              // 📱 Màn hình: gộp mọi cài đặt ảnh hưởng trực tiếp tới ánh sáng/độ
+              // sáng màn hình vào 1 chỗ — tách riêng khỏi "Tùy chọn" chung ở trên
+              // vì đây đều là các cài đặt liên quan tới MẮT (mỏi mắt do màn hình
+              // quá sáng/quá xanh), không phải tùy chọn hiển thị đơn thuần.
+              Text(strings.screenSection, style: Theme.of(context).textTheme.titleSmall),
+              const SizedBox(height: 10),
+              SectionCard(
+                padding: EdgeInsets.zero,
+                child: Column(
+                  children: [
+                    _ListTileOption(
+                      icon: '💡',
+                      title: strings.brightnessTips,
+                      subtitle: strings.brightnessTipsSubtitle,
+                      valueLabel: '',
+                      onTap: () => _showBrightnessTipsDialog(context, strings),
+                    ),
+                    const Divider(height: 1, indent: 56),
+                    _BlueLightFilterTile(theme: theme, strings: strings),
+                    const Divider(height: 1, indent: 56),
+                    _InlineToggleRow(
+                      icon: isDark ? '🌙' : '☀️',
+                      title: strings.darkMode,
+                      subtitle: strings.darkModeSubtitle,
+                      value: isDark,
+                      onChanged: theme.toggleDarkMode,
+                    ),
+                    const Divider(height: 1, indent: 56),
+                    _ListTileOption(
+                      icon: isDark ? '🌙' : '☀️',
+                      title: strings.themeLabel,
+                      subtitle: strings.themeSubtitle,
+                      valueLabel: strings.themePreferenceLabel(theme.preference),
+                      onTap: () => _showThemeDialog(context, theme, strings),
                     ),
                   ],
                 ),
@@ -415,6 +446,115 @@ class _ToggleTile extends StatelessWidget {
   }
 }
 
+
+// Dòng bật/tắt gọn (icon + tiêu đề/phụ đề + Switch) để nhét XEN KẼ bên trong
+// 1 SectionCard dùng chung với các _ListTileOption khác (khác với _ToggleTile
+// ở trên vốn tự bọc SectionCard riêng của nó) — dùng cho dòng "Chế độ tối"
+// trong mục Màn hình.
+class _InlineToggleRow extends StatelessWidget {
+  const _InlineToggleRow({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.value,
+    required this.onChanged,
+  });
+
+  final String icon;
+  final String title;
+  final String subtitle;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Row(
+        children: [
+          Text(icon, style: const TextStyle(fontSize: 22)),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: Theme.of(context).textTheme.titleSmall),
+                Text(subtitle, style: Theme.of(context).textTheme.bodySmall),
+              ],
+            ),
+          ),
+          Switch.adaptive(
+            value: value,
+            onChanged: onChanged,
+            activeTrackColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.5),
+            activeThumbColor: Theme.of(context).colorScheme.primary,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// Dòng "Bộ lọc ánh sáng xanh" — bật/tắt lớp phủ hổ phách toàn app (xem
+// MaterialApp.builder trong main.dart) + thanh trượt chỉnh độ đậm, thanh
+// trượt chỉ hiện ra khi đã bật để đỡ rối mắt lúc tắt.
+class _BlueLightFilterTile extends StatelessWidget {
+  const _BlueLightFilterTile({required this.theme, required this.strings});
+
+  final ThemeProvider theme;
+  final AppStrings strings;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Text('🟠', style: TextStyle(fontSize: 22)),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(strings.blueLightFilter, style: Theme.of(context).textTheme.titleSmall),
+                    Text(strings.blueLightFilterSubtitle, style: Theme.of(context).textTheme.bodySmall),
+                  ],
+                ),
+              ),
+              Switch.adaptive(
+                value: theme.blueLightFilterEnabled,
+                onChanged: theme.setBlueLightFilterEnabled,
+                activeTrackColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.5),
+                activeThumbColor: Theme.of(context).colorScheme.primary,
+              ),
+            ],
+          ),
+          if (theme.blueLightFilterEnabled)
+            Padding(
+              padding: const EdgeInsets.only(left: 34, top: 4),
+              child: Row(
+                children: [
+                  Text(strings.blueLightIntensity, style: Theme.of(context).textTheme.bodySmall),
+                  Expanded(
+                    child: Slider(
+                      value: theme.blueLightIntensity,
+                      min: 0.05,
+                      max: 0.6,
+                      onChanged: theme.setBlueLightIntensity,
+                      activeColor: const Color(0xFFFF8A00),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
 
 // Vòng tròn màu để chọn accent color — có animation nhún nhẹ + viền check
 // khi được chọn, giúp giao diện Settings cảm giác sống động/mượt hơn.
@@ -889,6 +1029,32 @@ Future<void> _showGuardianEmailDialog(BuildContext context, SettingsProvider set
       );
     }
   }
+}
+
+Future<void> _showBrightnessTipsDialog(BuildContext context, AppStrings strings) async {
+  await showDialog<void>(
+    context: context,
+    builder: (context) {
+      return AlertDialog(
+        title: Row(
+          children: [
+            const Text('💡', style: TextStyle(fontSize: 22)),
+            const SizedBox(width: 10),
+            Expanded(child: Text(strings.brightnessTips)),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Text(strings.brightnessTipsBody, style: Theme.of(context).textTheme.bodyMedium),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(strings.vi ? 'Đã hiểu' : 'Got it'),
+          ),
+        ],
+      );
+    },
+  );
 }
 
 Future<void> _showThemeDialog(BuildContext context, ThemeProvider theme, AppStrings strings) async {

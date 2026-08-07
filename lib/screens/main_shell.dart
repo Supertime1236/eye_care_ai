@@ -4,8 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/habit_provider.dart';
+import '../providers/language_provider.dart';
 import '../providers/rank_provider.dart';
 import '../providers/reminder_provider.dart';
+import '../services/update_service.dart';
+import '../widgets/update_dialog.dart';
 import 'home_screen.dart';
 
 class MainShell extends StatefulWidget {
@@ -40,10 +43,23 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
     habit.startHabitTracking();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _refreshHabitsAndSyncRank();
+      _checkForAppUpdate();
     });
     _usagePollTimer = Timer.periodic(const Duration(seconds: 60), (_) {
       _refreshHabitsAndSyncRank();
     });
+  }
+
+  // Mở app lên là tự hỏi GitHub Releases xem có bản mới hơn không (xem
+  // lib/services/update_service.dart) — chỉ hỏi 1 LẦN mỗi lần mở app (không
+  // đặt trong Timer.periodic như refresh habit ở trên), tránh phiền người
+  // dùng bằng dialog bật lên lặp lại giữa lúc họ đang dùng app.
+  Future<void> _checkForAppUpdate() async {
+    final update = await UpdateService.instance.checkForUpdate();
+    if (update == null || !mounted) return;
+    final strings = context.read<LanguageProvider>().strings;
+    if (!mounted) return;
+    UpdateDialog.show(context, update, strings);
   }
 
   @override
