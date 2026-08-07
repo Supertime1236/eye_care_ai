@@ -1,16 +1,117 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../providers/chat_provider.dart';
 import '../providers/language_provider.dart';
+import '../services/eye_chat_service.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_theme.dart';
+import '../widgets/formatted_chat_text.dart';
+import '../widgets/shared_widgets.dart';
 
-class ChatScreen extends StatelessWidget {
+class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
+
+  @override
+  State<ChatScreen> createState() => _ChatScreenState();
+}
+
+class _ChatScreenState extends State<ChatScreen> {
+  final TextEditingController _inputController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
+  final FocusNode _inputFocus = FocusNode();
+  bool _sending = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Chào 1 lần đầu tiên khi mở màn hình chat (không lặp lại giữa các lần
+    // mở nếu đã chào rồi, nhờ cờ `greeted` sống trong ChatProvider).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final chat = context.read<ChatProvider>();
+      if (!chat.greeted) {
+        final strings = context.read<LanguageProvider>().strings;
+        chat.addBotMessage(strings.chatGreeting);
+        chat.markGreeted();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _inputController.dispose();
+    _scrollController.dispose();
+    _inputFocus.dispose();
+    super.dispose();
+  }
+
+  void _scrollToBottom() {
+    if (!_scrollController.hasClients) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_scrollController.hasClients) return;
+      _scrollController.animateTo(
+        _scrollController.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOut,
+      );
+    });
+  }
+
+  Future<void> _send(String rawText) async {
+    final text = rawText.trim();
+    if (text.isEmpty || _sending) return;
+
+    final chat = context.read<ChatProvider>();
+    final strings = context.read<LanguageProvider>().strings;
+
+    _inputController.clear();
+    chat.addUserMessage(text);
+    _scrollToBottom();
+
+    setState(() => _sending = true);
+    // Bong bóng trả lời của AI, bắt đầu ở trạng thái "đang gõ..." rồi được
+    // nối chữ dần dần (appendToLastMessage) ngay khi từng mẩu chữ về tới —
+    // đây là điều tạo ra hiệu ứng "gõ chữ" thay vì chờ xong mới hiện.
+    chat.addMessage(ChatMessage(text: '', isUser: false, isTyping: true));
+    _scrollToBottom();
+
+    try {
+      final history = chat.toApiHistory();
+      var gotAnyChunk = false;
+      await for (final delta in EyeChatService.instance.sendMessageStream(history: history)) {
+        gotAnyChunk = true;
+        chat.appendToLastMessage(delta);
+        _scrollToBottom();
+      }
+      if (!gotAnyChunk) {
+        chat.appendToLastMessage(strings.chatErrorGeneric);
+      }
+    } catch (e) {
+      final message = e.toString();
+      String friendly;
+      if (message.contains('missing_api_key')) {
+        friendly = strings.chatErrorMissingKey;
+      } else if (message.contains('invalid_api_key')) {
+        friendly = strings.chatErrorInvalidKey;
+      } else if (message.contains('rate_limited')) {
+        friendly = strings.chatErrorRateLimited;
+      } else if (message.contains('network_error')) {
+        friendly = strings.chatErrorNetwork;
+      } else {
+        friendly = strings.chatErrorGeneric;
+      }
+      chat.appendToLastMessage(friendly);
+    } finally {
+      if (mounted) setState(() => _sending = false);
+      _scrollToBottom();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final strings = context.watch<LanguageProvider>().strings;
+    final primary = Theme.of(context).colorScheme.primary;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -29,7 +130,7 @@ class ChatScreen extends StatelessWidget {
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                gradient: AppTheme.gradientFor(Theme.of(context).colorScheme.primary),
+                gradient: AppTheme.gradientFor(primary),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: const Center(
@@ -71,39 +172,187 @@ class ChatScreen extends StatelessWidget {
         child: Column(
           children: [
             const SizedBox(height: 8),
-            // CHAT DISABLED: NVIDIA NIM was only for testing.
-            // Self-hosted 1-bit model planned — re-enable when ready.
             Expanded(
-              child: Center(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 40),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.chat_bubble_outline_rounded,
-                        size: 48,
-                        color: AppColors.textSecondary.withValues(alpha: 0.4),
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        strings.chatDisabledTitle,
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w600,
-                            ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        strings.chatDisabledSubtitle,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: AppColors.textSecondary,
-                              height: 1.5,
-                            ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
+              child: Consumer<ChatProvider>(
+                builder: (context, chat, _) {
+                  if (chat.messages.isEmpty) {
+                    return const SizedBox.shrink();
+                  }
+                  return ListView.builder(
+                    controller: _scrollController,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    itemCount: chat.messages.length,
+                    itemBuilder: (context, index) {
+                      final message = chat.messages[index];
+                      return _ChatBubble(message: message, isDark: isDark);
+                    },
+                  );
+                },
+              ),
+            ),
+            Consumer<ChatProvider>(
+              builder: (context, chat, _) {
+                // Gợi ý câu hỏi nhanh — chỉ hiện khi mới vào chat (chưa hỏi gì).
+                final onlyGreeting = chat.messages.length <= 1;
+                if (!onlyGreeting) return const SizedBox.shrink();
+                return SizedBox(
+                  height: 40,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: strings.chatQuickPrompts.length,
+                    separatorBuilder: (_, __) => const SizedBox(width: 8),
+                    itemBuilder: (context, index) {
+                      final prompt = strings.chatQuickPrompts[index];
+                      return ActionChip(
+                        label: Text(prompt, style: const TextStyle(fontSize: 13)),
+                        backgroundColor: isDark ? AppColors.darkSurface : AppColors.surface,
+                        side: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.border),
+                        onPressed: _sending ? null : () => _send(prompt),
+                      );
+                    },
                   ),
+                );
+              },
+            ),
+            const SizedBox(height: 8),
+            _ChatInputBar(
+              controller: _inputController,
+              focusNode: _inputFocus,
+              hintText: strings.askAboutEyeHealth,
+              sending: _sending,
+              onSend: _send,
+              primary: primary,
+              isDark: isDark,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ChatBubble extends StatelessWidget {
+  const _ChatBubble({required this.message, required this.isDark});
+
+  final ChatMessage message;
+  final bool isDark;
+
+  @override
+  Widget build(BuildContext context) {
+    final primary = Theme.of(context).colorScheme.primary;
+    final isUser = message.isUser;
+
+    final bubbleColor = isUser
+        ? null
+        : (isDark ? AppColors.darkSurface : AppColors.surface);
+    final textColor = isUser
+        ? Colors.white
+        : (isDark ? Colors.white : AppColors.textPrimary);
+
+    Widget content;
+    if (!isUser && message.isTyping && message.text.isEmpty) {
+      content = const Padding(
+        padding: EdgeInsets.symmetric(vertical: 2),
+        child: TypingDots(),
+      );
+    } else if (isUser) {
+      content = Text(message.text, style: TextStyle(color: textColor, height: 1.4));
+    } else {
+      // AI trả lời có thể dùng **đậm**/*nghiêng* -> render đúng định dạng
+      // thay vì hiện nguyên dấu * thô.
+      content = FormattedChatText(
+        text: message.text,
+        style: TextStyle(color: textColor, height: 1.4, fontSize: 14.5),
+      );
+    }
+
+    return Align(
+      alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+      child: Container(
+        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.78),
+        margin: const EdgeInsets.symmetric(vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          gradient: isUser ? AppTheme.gradientFor(primary) : null,
+          color: bubbleColor,
+          borderRadius: BorderRadius.only(
+            topLeft: const Radius.circular(16),
+            topRight: const Radius.circular(16),
+            bottomLeft: Radius.circular(isUser ? 16 : 4),
+            bottomRight: Radius.circular(isUser ? 4 : 16),
+          ),
+          border: isUser
+              ? null
+              : Border.all(color: isDark ? AppColors.darkBorder : AppColors.border),
+        ),
+        child: content,
+      ),
+    );
+  }
+}
+
+class _ChatInputBar extends StatelessWidget {
+  const _ChatInputBar({
+    required this.controller,
+    required this.focusNode,
+    required this.hintText,
+    required this.sending,
+    required this.onSend,
+    required this.primary,
+    required this.isDark,
+  });
+
+  final TextEditingController controller;
+  final FocusNode focusNode;
+  final String hintText;
+  final bool sending;
+  final ValueChanged<String> onSend;
+  final Color primary;
+  final bool isDark;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      child: SectionCard(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        child: Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: controller,
+                focusNode: focusNode,
+                minLines: 1,
+                maxLines: 5,
+                textInputAction: TextInputAction.send,
+                onSubmitted: sending ? null : onSend,
+                decoration: InputDecoration(
+                  hintText: hintText,
+                  border: InputBorder.none,
+                  isDense: true,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                ),
+              ),
+            ),
+            const SizedBox(width: 4),
+            GestureDetector(
+              onTap: sending ? null : () => onSend(controller.text),
+              child: Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  gradient: AppTheme.gradientFor(primary),
+                  shape: BoxShape.circle,
+                ),
+                child: Center(
+                  child: sending
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        )
+                      : const Icon(Icons.arrow_upward_rounded, color: Colors.white, size: 20),
                 ),
               ),
             ),

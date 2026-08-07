@@ -80,11 +80,16 @@ flutter_launcher_icons:
   android: true
   ios: true
   image_path: "assets/icon/app_icon.png"
-  # Android 8+ (adaptive icon): lớp nền trắng + lớp hình mắt AI được co nhỏ
-  # vào "vùng an toàn" ở giữa (app_icon_foreground.png) để không bị cắt mất
-  # khi hệ thống bo tròn/bo vuông/giọt nước icon tuỳ launcher của máy.
-  adaptive_icon_background: "#FFFFFF"
+  # Android 8+ (adaptive icon): lớp nền TRONG SUỐT + lớp hình mắt AI được co
+  # nhỏ vào "vùng an toàn" ở giữa (app_icon_foreground.png) để không bị cắt
+  # mất khi hệ thống bo tròn/bo vuông/giọt nước icon tuỳ launcher của máy.
+  # "#00FFFFFF" = trắng với alpha 00 (trong suốt hoàn toàn), không phải "#FFFFFF"
+  # (trắng đục) — đổi thành FFFFFF nếu sau này muốn quay lại nền trắng.
+  adaptive_icon_background: "#00FFFFFF"
   adaptive_icon_foreground: "assets/icon/app_icon_foreground.png"
+  # iOS không cho phép icon có vùng trong suốt (Apple sẽ tự động lấp nền
+  # trắng khi build) — giữ true để plugin tự xử lý, tránh lỗi khi submit App Store.
+  remove_alpha_ios: true
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
