@@ -381,10 +381,10 @@ class SettingsScreen extends StatelessWidget {
                       title: strings.checkForUpdate,
                       onTap: () async {
                         final update = await UpdateService.instance.checkForUpdate();
+                        if (!context.mounted) return;
                         if (update == null) {
-                          if (!context.mounted) return;
                           ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text(strings.updateCheckFailed)),
+                            SnackBar(content: Text(strings.noUpdateAvailable)),
                           );
                           return;
                         }

@@ -65,7 +65,7 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
       return;
     }
 
-    if (!mounted || target == null) return;
+    if (!mounted) return;
     final strings = target.read<LanguageProvider>().strings;
     if (update == null) {
       ScaffoldMessenger.of(target).showSnackBar(
