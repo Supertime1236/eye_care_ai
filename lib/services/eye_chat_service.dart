@@ -21,7 +21,7 @@ class EyeChatService {
       'https://integrate.api.nvidia.com/v1/chat/completions';
 
   
-  static const String _model = 'nvidia/nemotron-3-ultra-550b-a55b:free';
+  static const String _model = 'nvidia/nemotron-3-ultra-550b-a55b';
 
   static const String _systemPrompt = '''
 Bạn là trợ lý AI của ứng dụng EyeCare AI.
