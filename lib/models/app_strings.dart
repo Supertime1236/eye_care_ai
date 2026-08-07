@@ -99,10 +99,10 @@ class AppStrings {
   String get imperialUnitsSubtitle => vi ? 'Xem inch và giờ' : 'Inches, hours';
   String get measurementUnits => vi ? 'Đơn vị đo lường' : 'Measurement Units';
   String get dateTime => vi ? 'Ngày & Giờ' : 'Date & Time';
-  String get metricMeters => vi ? 'Metric (Meters) / Mét' : 'Metric (Meters) / Mét';
-  String get imperialFeet => vi ? 'Imperial (Feet)' : 'Imperial (Feet)';
-  String get hour12 => vi ? '12-hour Clock / Định dạng 12 giờ' : '12-hour Clock / Định dạng 12 giờ';
-  String get hour24 => vi ? '24-hour Clock / Định dạng 24 giờ' : '24-hour Clock / Định dạng 24 giờ';
+  String get metricMeters => vi ? 'Mét' : 'Meters';
+  String get imperialFeet => vi ? 'Feet' : 'Imperial (Feet)';
+  String get hour12 => vi ? 'Định dạng 12 giờ' : '12-hour Clock';
+  String get hour24 => vi ? 'Định dạng 24 giờ' : '24-hour Clock';
   String get language => vi ? 'Ngôn ngữ' : 'Language';
   String get selectOption => vi ? 'Chọn lựa' : 'Select option';
   String get chooseValue => vi ? 'Chọn giá trị' : 'Choose value';
