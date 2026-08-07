@@ -5,16 +5,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../models/app_strings.dart';
-import '../models/rank_tier.dart';
-import '../providers/accent_color_provider.dart';
 import '../providers/habit_provider.dart';
 import '../providers/language_provider.dart';
 import '../providers/profile_provider.dart';
-import '../providers/rank_provider.dart';
 import '../services/device_data_service.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_theme.dart';
-import '../widgets/animated_gradient_border.dart';
 import '../widgets/shared_widgets.dart';
 import 'chat_screen.dart';
 import 'eye_break_screen.dart';

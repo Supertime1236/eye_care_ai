@@ -9,8 +9,8 @@ import 'package:path_provider/path_provider.dart';
 /// trực tiếp qua GitHub Actions, xem .github/workflows/build-apk.yml).
 ///
 /// Cách so sánh phiên bản: workflow build APK luôn gắn thẻ release dạng
-/// "build-<run_number>" (ví dụ "build-42") VÀ build APK với đúng
-/// --build-number=<run_number> (xem ghi chú ở cuối build-apk.yml) — nghĩa là
+/// `build-<run_number>` (ví dụ "build-42") VÀ build APK với đúng
+/// `--build-number=<run_number>` (xem ghi chú ở cuối build-apk.yml) — nghĩa là
 /// run_number CHÍNH LÀ versionCode thật của APK đó. Nhờ vậy so sánh được
 /// "trên GitHub có bản mới hơn máy đang chạy không" chỉ bằng cách so sánh 2
 /// số nguyên, không cần app tự theo dõi lịch sử bản đã cài.
