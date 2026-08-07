@@ -380,11 +380,18 @@ class SettingsScreen extends StatelessWidget {
                       icon: '🔄',
                       title: strings.checkForUpdate,
                       onTap: () async {
+                        debugPrint('MANUAL_UPDATE_TAP');
                         final update = await UpdateService.instance.checkForUpdate();
+                        debugPrint('MANUAL_UPDATE_RESULT: ${update == null ? 'null' : update.buildNumber.toString()}');
                         if (!context.mounted) return;
                         if (update == null) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text(strings.noUpdateAvailable)),
+                          showDialog(
+                            context: context,
+                            builder: (_) => AlertDialog(
+                              title: const Text('DEBUG_NO_UPDATE'),
+                              content: Text(strings.noUpdateAvailable),
+                              actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('OK'))],
+                            ),
                           );
                           return;
                         }
