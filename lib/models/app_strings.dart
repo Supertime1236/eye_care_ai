@@ -754,4 +754,7 @@ class AppStrings {
   String get updateDownloadFailed =>
       vi ? 'Tải bản cập nhật thất bại. Vui lòng thử lại sau.' : 'Download failed. Please try again later.';
   String get updateOpenInstaller => vi ? 'Mở trình cài đặt' : 'Open installer';
+  String get checkForUpdate => vi ? 'Kiểm tra bản cập nhật' : 'Check for update';
+  String get noUpdateAvailable => vi ? 'Bạn đang dùng bản mới nhất.' : 'You are on the latest version.';
+  String get updateCheckFailed => vi ? 'Không kiểm tra được bản cập nhật. Vui lòng thử lại sau.' : 'Unable to check for updates. Please try again later.';
 }

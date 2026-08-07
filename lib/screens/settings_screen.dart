@@ -375,6 +375,12 @@ class SettingsScreen extends StatelessWidget {
                     ),
                     const Divider(height: 1, indent: 56),
                     _MenuItem(
+                      icon: '🔄',
+                      title: strings.checkForUpdate,
+                      onTap: () => _checkForAppUpdate(context: context, manual: true),
+                    ),
+                    const Divider(height: 1, indent: 56),
+                    _MenuItem(
                       icon: '🚪',
                       title: strings.signOut,
                       color: AppColors.error,
