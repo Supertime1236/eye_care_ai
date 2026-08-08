@@ -33,11 +33,13 @@ dependencies:
   url_launcher: ^6.3.1
   share_plus: ^10.1.4
   path_provider: ^2.1.5  
-  lucide_icons: ^0.257.0
+  # lucide_icons đã bị BỎ — không tương thích Flutter SDK mới (IconData giờ
+  # là `final class`, lucide_icons 0.257.0 viết theo kiểu `extends IconData`
+  # nên build release bị lỗi "can't be extended outside of its library").
+  # Dùng thẳng bộ Icons.* có sẵn trong Flutter, không cần package ngoài.
   google_fonts: ^6.2.1
   fl_chart: ^0.70.2
   provider: ^6.1.2
-  screen_brightness: ^2.1.7
   
   flutter_local_notifications: ^19.4.0
   timezone: ^0.10.1
