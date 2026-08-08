@@ -194,12 +194,30 @@ class DeviceDataService {
   // "Permission launcher not found" bị spam liên tục và tốn tài nguyên hỏi
   // quyền lặp lại vô ích dù đã được cấp/từ chối từ trước.
   bool? _sleepPermissionGranted;
+  // health package v10+ (đang dùng v13.3.1) BẮT BUỘC phải gọi configure()
+  // đúng 1 lần trước khi gọi BẤT KỲ method nào khác (hasPermissions,
+  // requestAuthorization, getHealthDataFromTypes) — thiếu bước này là lý do
+  // Health Connect "không hoạt động": mọi lệnh gọi phía dưới đều throw ngay,
+  // bị try/catch nuốt mất, và habit Sleep luôn rơi về "không có dữ liệu".
+  bool _healthConfigured = false;
 
   // ---------------- Sleep: HealthKit (iOS) / Health Connect (Android) ----------------
   Future<double?> getSleepHours() async {
     try {
       final health = Health();
-      final types = [HealthDataType.SLEEP_ASLEEP];
+      if (!_healthConfigured) {
+        await health.configure();
+        _healthConfigured = true;
+      }
+      // Chỉ xin quyền SLEEP_ASLEEP thôi thì bỏ sót dữ liệu: nhiều app đồng
+      // bộ giấc ngủ vào Health Connect (Samsung Health, Fitbit, Xiaomi
+      // Health...) chỉ ghi bản ghi tổng SLEEP_SESSION, KHÔNG tách nhỏ ra
+      // từng giai đoạn SLEEP_ASLEEP — nếu chỉ hỏi SLEEP_ASLEEP, những app đó
+      // sẽ luôn trả về rỗng dù người dùng rõ ràng có dữ liệu ngủ trong Health
+      // Connect. Xin quyền cả 2 loại, rồi ưu tiên SLEEP_SESSION (tổng thời
+      // gian ngủ, đã được app nguồn tính sẵn) nếu có, để tránh cộng dồn
+      // trùng lặp giữa SLEEP_SESSION và các bản ghi SLEEP_ASLEEP con của nó.
+      final types = [HealthDataType.SLEEP_SESSION, HealthDataType.SLEEP_ASLEEP];
 
       if (_sleepPermissionGranted == null) {
         final alreadyGranted = await health.hasPermissions(types) ?? false;
@@ -211,6 +229,8 @@ class DeviceDataService {
       // giây — đánh đổi hợp lý).
       if (_sleepPermissionGranted != true) return null;
 
+      // Giấc ngủ có thể bắt đầu từ tối hôm trước và kết thúc sáng hôm nay —
+      // nới khung truy vấn ra 20 tiếng thay vì chỉ "hôm nay" để không bỏ sót.
       final now = DateTime.now();
       final yesterday = now.subtract(const Duration(hours: 20));
       final points = await health.getHealthDataFromTypes(
@@ -220,7 +240,13 @@ class DeviceDataService {
       );
       if (points.isEmpty) return null;
 
-      final totalMinutes = points.fold<int>(0, (sum, p) {
+      final sessionPoints = points.where((p) => p.type == HealthDataType.SLEEP_SESSION).toList();
+      final relevantPoints = sessionPoints.isNotEmpty
+          ? sessionPoints
+          : points.where((p) => p.type == HealthDataType.SLEEP_ASLEEP).toList();
+      if (relevantPoints.isEmpty) return null;
+
+      final totalMinutes = relevantPoints.fold<int>(0, (sum, p) {
         final value = p.value;
         if (value is NumericHealthValue) {
           return sum + value.numericValue.round();

@@ -7,7 +7,6 @@ import '../providers/auth_provider.dart';
 import '../providers/habit_provider.dart';
 import '../providers/language_provider.dart';
 import '../providers/settings_provider.dart';
-import '../providers/theme_provider.dart';
 import '../theme/app_colors.dart';
 import '../widgets/shared_widgets.dart';
 import 'login_screen.dart';
@@ -147,7 +146,6 @@ class _HabitsSurveyScreenState extends State<HabitsSurveyScreen> {
   @override
   Widget build(BuildContext context) {
     final language = context.watch<LanguageProvider>();
-    final theme = context.watch<ThemeProvider>();
     final strings = language.strings;
 
     return PopScope(
@@ -161,19 +159,15 @@ class _HabitsSurveyScreenState extends State<HabitsSurveyScreen> {
                 : (_showSummary ? strings.surveyResultsTitle : strings.targetSelectionTitle),
           ),
           actions: [
-            // Cho phép đổi ngôn ngữ và chế độ sáng/tối ngay trong khảo sát
-            // bắt buộc lần đầu — lúc này người dùng chưa vào được trang Settings.
+            // Cho phép đổi ngôn ngữ ngay trong khảo sát bắt buộc lần đầu —
+            // lúc này người dùng chưa vào được trang Settings. (Nút đổi
+            // sáng/tối đã BỎ cùng với việc bỏ tính năng Chế độ tối.)
             TextButton(
               onPressed: () => language.toggleVietnamese(!language.isVietnamese),
               child: Text(
                 strings.vi ? 'EN' : 'VI',
                 style: const TextStyle(fontWeight: FontWeight.w700),
               ),
-            ),
-            IconButton(
-              icon: Icon(theme.isDarkMode ? Icons.light_mode_outlined : Icons.dark_mode_outlined),
-              tooltip: strings.vi ? 'Đổi giao diện' : 'Toggle theme',
-              onPressed: () => theme.toggleDarkMode(!theme.isDarkMode),
             ),
             const SizedBox(width: 4),
           ],

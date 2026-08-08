@@ -106,6 +106,12 @@ class AppStrings {
         return vi ? 'Theo hệ thống' : 'System';
     }
   }
+  // Tự động điều chỉnh độ sáng (liên tục theo cảm biến, khác "Gợi ý độ
+  // sáng" ở trên vốn chỉ áp 1 lần khi người dùng tự bấm).
+  String get autoBrightnessTitle => vi ? 'Tự động điều chỉnh độ sáng' : 'Auto-adjust brightness';
+  String get autoBrightnessSubtitle => vi
+      ? 'Tăng/giảm độ sáng màn hình liên tục theo ánh sáng môi trường xung quanh'
+      : 'Continuously raises/lowers screen brightness to match the light around you';
   String get metricUnits => vi ? 'Đơn vị mét' : 'Metric Units';
   String get imperialUnits => vi ? 'Đơn vị Anh' : 'Imperial Units';
   String get metricUnitsSubtitle => vi ? 'Xem centimet và giờ' : 'Centimeters, hours';

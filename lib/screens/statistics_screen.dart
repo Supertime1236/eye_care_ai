@@ -62,27 +62,22 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
   // HabitProvider.statsMetricIndex xác định Score / Screen Time / Sleep.
   // Giá trị null trong danh sách nghĩa là "chưa có dữ liệu ngày đó" — UI vẽ
   // đoạn đó như một đoạn CHƯA HOÀN THÀNH thay vì bịa số.
+  //
+  // QUAN TRỌNG: _weekSnapshots/_monthSnapshots chỉ được tải MỘT LẦN lúc mở
+  // màn hình (initState) — nếu chỉ dùng đúng số đó, điểm dữ liệu của HÔM NAY
+  // sẽ đứng yên ở đúng giá trị lúc mở trang, trong khi thẻ "Sử dụng theo ứng
+  // dụng" (_AppUsageBreakdownCard) bên dưới lại đọc TRỰC TIẾP từ
+  // HabitProvider nên vẫn tự cập nhật theo từng lượt refresh 60s — đây
+  // chính là lý do "Thời gian màn hình" trên biểu đồ và tổng ở "Sử dụng
+  // theo ứng dụng" bị LỆCH NHAU dù cùng 1 nguồn dữ liệu gốc. Ghi đè điểm
+  // CUỐI CÙNG (hôm nay / tuần này) bằng giá trị SỐNG từ [state] mỗi lần
+  // build lại để 2 nơi luôn khớp nhau tuyệt đối.
   List<double?> _getData(HabitProvider state) {
     final isWeekly = state.statsTabIndex == 0;
-    if (isWeekly) {
-      final snapshots = _weekSnapshots;
-      if (snapshots == null) return List.filled(7, null);
-      return snapshots.map((s) {
-        if (s == null) return null;
-        switch (state.statsMetricIndex) {
-          case 1:
-            return s.screenHours;
-          case 2:
-            return s.sleepHours;
-          default:
-            return s.score.toDouble();
-        }
-      }).toList();
-    }
-
-    final snapshots = _monthSnapshots;
+    final snapshots = isWeekly ? _weekSnapshots : _monthSnapshots;
     if (snapshots == null) return List.filled(7, null);
-    return snapshots.map((s) {
+
+    final values = snapshots.map((s) {
       if (s == null) return null;
       switch (state.statsMetricIndex) {
         case 1:
@@ -93,6 +88,25 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
           return s.score.toDouble();
       }
     }).toList();
+
+    if (values.isNotEmpty && isWeekly) {
+      // Chỉ ghi đè điểm HÔM NAY ở view Weekly (tuần này) — view Monthly gộp
+      // theo tuần nên điểm cuối là "tuần này nói chung", không phải đúng
+      // hôm nay, ghi đè ở đó sẽ làm sai lệch số liệu các ngày khác trong tuần.
+      // Mảng xếp theo Thứ 2(0)..Chủ nhật(6) (xem loadCurrentWeekSnapshots),
+      // nên KHÔNG được giả định "hôm nay" luôn là phần tử CUỐI — chỉ đúng
+      // nếu hôm nay là Chủ nhật. Tính đúng chỉ số theo weekday thật.
+      final todayIndex = DateTime.now().weekday - 1; // Monday=1 -> 0 ... Sunday=7 -> 6
+      final liveValue = switch (state.statsMetricIndex) {
+        1 => state.screenTimeHours,
+        2 => state.habits.firstWhere((h) => h.id == 'sleep').current,
+        _ => state.habitsCompletionPercent.toDouble(),
+      };
+      if (todayIndex >= 0 && todayIndex < values.length) {
+        values[todayIndex] = liveValue;
+      }
+    }
+    return values;
   }
 
   // Trả về đơn vị hiển thị phụ thuộc vào loại số liệu.
@@ -147,9 +161,20 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     
     final latestValue = realValues.isEmpty ? null : realValues.last;
 
-    return Material(
-      color: Theme.of(context).scaffoldBackgroundColor,
-      child: SingleChildScrollView(
+    return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        automaticallyImplyLeading: false,
+        leading: IconButton(
+          onPressed: () => Navigator.of(context).maybePop(),
+          icon: const Icon(Icons.arrow_back_rounded),
+          tooltip: strings.vi ? 'Quay lại' : 'Back',
+        ),
+      ),
+      body: SafeArea(
+        child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -408,6 +433,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
             const SizedBox(height: 16),
             const _AppUsageBreakdownCard(),
           ],
+        ),
         ),
       ),
     );

@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import 'providers/accent_color_provider.dart';
 import 'providers/auth_provider.dart';
+import 'providers/auto_brightness_provider.dart';
 import 'providers/chat_provider.dart';
 import 'providers/font_provider.dart';
 import 'providers/habit_provider.dart';
@@ -61,6 +62,7 @@ Future<void> main() async {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
+        ChangeNotifierProvider(create: (_) => AutoBrightnessProvider()),
         ChangeNotifierProvider(create: (_) => FontProvider()),
         ChangeNotifierProvider(create: (_) => AccentColorProvider()),
         ChangeNotifierProvider(create: (_) => LanguageProvider()),
