@@ -9,6 +9,7 @@ import '../providers/habit_provider.dart';
 import '../providers/language_provider.dart';
 import '../services/device_data_service.dart';
 import '../theme/app_colors.dart';
+import '../utils/app_icon.dart';
 import '../widgets/shared_widgets.dart';
 
 // StatisticsScreen hiển thị biểu đồ và số liệu thống kê sức khỏe mắt.
@@ -146,20 +147,9 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     
     final latestValue = realValues.isEmpty ? null : realValues.last;
 
-    return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        automaticallyImplyLeading: false,
-        leading: IconButton(
-          onPressed: () => Navigator.of(context).maybePop(),
-          icon: const Icon(Icons.arrow_back_rounded),
-          tooltip: strings.vi ? 'Quay lại' : 'Back',
-        ),
-      ),
-      body: SafeArea(
-        child: SingleChildScrollView(
+    return Material(
+      color: Theme.of(context).scaffoldBackgroundColor,
+      child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -392,7 +382,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const Text('🔥', style: TextStyle(fontSize: 20)),
+                                const AppIcon('🔥', size: 20, color: AppColors.primaryBlue),
                                 Text(
                                   '${state.streakDays}',
                                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
@@ -418,7 +408,6 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
             const SizedBox(height: 16),
             const _AppUsageBreakdownCard(),
           ],
-        ),
         ),
       ),
     );

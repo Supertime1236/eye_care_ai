@@ -4,6 +4,7 @@ import 'package:open_filex/open_filex.dart';
 import '../models/app_strings.dart';
 import '../services/update_service.dart';
 import '../theme/app_colors.dart';
+import '../utils/app_icon.dart';
 
 /// Dialog "Có bản cập nhật mới" — hiện khi UpdateService.checkForUpdate()
 /// tìm thấy 1 bản build mới hơn trên GitHub Releases. Bấm "Cập nhật ngay"
@@ -71,7 +72,7 @@ class _UpdateDialogState extends State<UpdateDialog> {
     return AlertDialog(
       title: Row(
         children: [
-          const Text('🚀', style: TextStyle(fontSize: 22)),
+          const AppIcon('🚀', size: 22, color: AppColors.primaryBlue),
           const SizedBox(width: 10),
           Expanded(child: Text(strings.updateAvailableTitle)),
         ],

@@ -254,6 +254,28 @@ class AppStrings {
       ? 'Loại trừ khỏi tối ưu hoá pin để báo thức nghỉ mắt luôn kêu đúng giờ, kể cả khi app không mở'
       : 'Exclude from battery optimization so break reminders always fire on time, even when the app is closed';
 
+  // Bộ lọc ánh sáng xanh — bật/tắt lớp phủ hổ phách toàn app (xem
+  // MaterialApp.builder trong main.dart) để giảm mỏi mắt buổi tối.
+  String get blueLightFilter => vi ? 'Bộ lọc ánh sáng xanh' : 'Blue Light Filter';
+  String get blueLightFilterSubtitle => vi
+      ? 'Phủ 1 lớp màu ấm lên toàn màn hình, giảm ánh sáng xanh gây mỏi mắt vào ban đêm'
+      : 'Applies a warm tint over the whole screen, reducing blue light that strains eyes at night';
+  String get blueLightIntensity => vi ? 'Độ đậm' : 'Intensity';
+  String get darkMode => vi ? 'Chế độ tối' : 'Dark Mode';
+  String get darkModeSubtitle => vi ? 'Bật/tắt nhanh giao diện tối' : 'Quickly switch to a dark interface';
+  String get brightnessTipsBody => vi
+      ? 'Chỉnh độ sáng màn hình khớp với ánh sáng xung quanh — đừng để màn hình sáng hơn hoặc tối hơn nhiều so với căn phòng, vì độ chênh lệch lớn khiến mắt phải điều tiết liên tục và nhanh mỏi.\n\n'
+          '• Trong phòng tối: giảm độ sáng, bật Chế độ tối hoặc Bộ lọc ánh sáng xanh.\n'
+          '• Ngoài trời/nơi nhiều ánh sáng: tăng độ sáng đủ để chữ rõ, tránh nheo mắt.\n'
+          '• Bật độ sáng tự động (Auto-brightness) trong cài đặt máy để màn hình tự điều chỉnh theo môi trường.\n'
+          '• Giữ khoảng cách 50-65cm giữa mắt và màn hình.'
+      : 'Match your screen brightness to the light around you — a screen that\'s much brighter or dimmer than '
+          'the room forces your eyes to keep adjusting and tires them faster.\n\n'
+          '• In a dark room: lower brightness, use Dark Mode or the Blue Light Filter.\n'
+          '• Outdoors or in bright light: raise brightness enough to read comfortably without squinting.\n'
+          '• Turn on Auto-brightness in your device settings so it adapts automatically.\n'
+          '• Keep your screen 50-65cm (20-25in) from your eyes.';
+
   // Nhập tay giờ ngủ (fallback khi Health Connect không có dữ liệu)
   String get manualSleepTitle => vi ? 'Nhập giờ ngủ đêm qua' : 'Log last night\'s sleep';
   String get manualSleepDesc => vi

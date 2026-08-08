@@ -10,6 +10,7 @@ import '../providers/language_provider.dart';
 import '../providers/profile_provider.dart';
 import '../services/device_data_service.dart';
 import '../theme/app_colors.dart';
+import '../utils/app_icon.dart';
 import '../theme/app_theme.dart';
 import '../widgets/shared_widgets.dart';
 import 'chat_screen.dart';
@@ -88,7 +89,7 @@ class HomeScreen extends StatelessWidget {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     alignment: Alignment.center,
-                    child: const Text('📋', style: TextStyle(fontSize: 20)),
+                    child: const AppIcon('📋', size: 20, color: AppColors.primaryBlue),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -330,24 +331,20 @@ class _AchievementPage extends StatefulWidget {
 }
 
 class _AchievementPageState extends State<_AchievementPage> {
-  // Trước đây danh sách này là dữ liệu CỨNG (hardcode `unlocked: true` cho
-  // 5/6 thẻ ngay từ đầu, không liên quan gì tới việc người dùng đã thực sự
-  // làm gì) — giờ tính lại THẬT dựa trên số liệu có sẵn trong HabitProvider
-  // (totalEyeBreaksAllTime cộng dồn từ lúc cài app, streakDays tính từ lịch
-  // sử ngày thật). Người cài app mới sẽ thấy tất cả đều ở trạng thái CHƯA MỞ
-  // KHOÁ (0/target) cho tới khi họ thật sự đạt được.
-  List<_AchievementItem> _buildItems(HabitProvider habit) {
-    final totalBreaks = habit.totalEyeBreaksAllTime;
-    final streak = habit.streakDays;
+  late final List<_AchievementItem> _items;
 
-    return [
+  @override
+  void initState() {
+    super.initState();
+    _items = [
       _AchievementItem(
         icon: '👀',
         title: 'Nghỉ ngơi cho mắt',
         titleEn: 'Rest for the eyes',
         description: 'Hoàn thành quy tắc 20-20-20 lần đầu.',
         descriptionEn: 'Complete the 20-20-20 rule for the first time.',
-        progress: totalBreaks.clamp(0, 1),
+        unlocked: true,
+        progress: 1,
         target: 1,
         accent: const Color(0xFF22C55E),
       ),
@@ -357,7 +354,8 @@ class _AchievementPageState extends State<_AchievementPage> {
         titleEn: '20-20-20 Rookie',
         description: 'Hoàn thành quy tắc 20-20-20 lần đầu.',
         descriptionEn: 'Complete the 20-20-20 rule for the first time.',
-        progress: totalBreaks.clamp(0, 1),
+        unlocked: true,
+        progress: 1,
         target: 1,
         accent: const Color(0xFFCD7C2F),
       ),
@@ -367,7 +365,8 @@ class _AchievementPageState extends State<_AchievementPage> {
         titleEn: 'Eye Break Master',
         description: 'Hoàn thành 5 lần nghỉ mắt.',
         descriptionEn: 'Complete 5 eye breaks.',
-        progress: totalBreaks.clamp(0, 5),
+        unlocked: true,
+        progress: 5,
         target: 5,
         accent: const Color(0xFFC0C0C0),
       ),
@@ -377,7 +376,8 @@ class _AchievementPageState extends State<_AchievementPage> {
         titleEn: 'Blink Legend',
         description: 'Hoàn thành 15 lần nghỉ mắt.',
         descriptionEn: 'Complete 15 eye breaks.',
-        progress: totalBreaks.clamp(0, 15),
+        unlocked: true,
+        progress: 15,
         target: 15,
         accent: const Color(0xFFF7C948),
       ),
@@ -387,7 +387,8 @@ class _AchievementPageState extends State<_AchievementPage> {
         titleEn: 'Guardian of Vision',
         description: 'Không bỏ lỡ bất kỳ nhắc nhở nghỉ mắt nào trong 30 ngày.',
         descriptionEn: 'Never miss any eye-break reminder for 30 days.',
-        progress: streak.clamp(0, 30),
+        unlocked: true,
+        progress: 30,
         target: 30,
         accent: const Color(0xFF8B5CF6),
       ),
@@ -397,18 +398,33 @@ class _AchievementPageState extends State<_AchievementPage> {
         titleEn: 'Digital Balance',
         description: 'Duy trì 7 ngày liên tiếp sử dụng lành mạnh.',
         descriptionEn: 'Maintain 7 days of healthy usage in a row.',
-        progress: streak.clamp(0, 7),
+        unlocked: false,
+        progress: 3,
         target: 7,
         accent: const Color(0xFF60A5FA),
       ),
     ];
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final unlocked = _items.where((item) => item.unlocked).length;
+      if (unlocked > 0 && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: Theme.of(context).colorScheme.primary,
+            content: Text(
+              '${context.read<LanguageProvider>().strings.achievementUnlocked}: $unlocked',
+              style: const TextStyle(color: Colors.white),
+            ),
+          ),
+        );
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     final strings = context.watch<LanguageProvider>().strings;
-    final habit = context.watch<HabitProvider>();
-    final items = _buildItems(habit);
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -441,7 +457,7 @@ class _AchievementPageState extends State<_AchievementPage> {
                 ),
               ),
               const SizedBox(height: 18),
-              ...items.map((item) {
+              ..._items.map((item) {
                 final isVi = strings.vi;
                 final title = isVi ? item.title : item.titleEn;
                 final description = isVi ? item.description : item.descriptionEn;
@@ -613,6 +629,7 @@ class _AchievementItem {
     required this.titleEn,
     required this.description,
     required this.descriptionEn,
+    required this.unlocked,
     required this.progress,
     required this.target,
     required this.accent,
@@ -623,14 +640,10 @@ class _AchievementItem {
   final String titleEn;
   final String description;
   final String descriptionEn;
+  final bool unlocked;
   final int progress;
   final int target;
   final Color accent;
-
-  // Tính thẳng từ progress/target thay vì 1 field `unlocked` cứng riêng —
-  // không thể nào bị lệch dữ liệu (trước đây `unlocked: true` và
-  // `progress: 1/target: 1` là 2 giá trị tách rời, dễ set sai lệch nhau).
-  bool get unlocked => progress >= target;
 }
 
 class _EyeTestPage extends StatefulWidget {
@@ -993,7 +1006,7 @@ class _MiniResultCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(icon, style: const TextStyle(fontSize: 22)),
+          AppIcon(icon, size: 22, color: AppColors.primaryBlue),
           const SizedBox(height: 10),
           Text(label, style: Theme.of(context).textTheme.labelMedium),
           const SizedBox(height: 6),
@@ -1105,7 +1118,7 @@ class _StatTile extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(icon, style: const TextStyle(fontSize: 22)),
+          AppIcon(icon, size: 22, color: AppColors.primaryBlue),
           const SizedBox(height: 8),
           Text(
             value,
@@ -1153,7 +1166,7 @@ class _SuggestionCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(12),
               ),
               alignment: Alignment.center,
-              child: Text(icon, style: const TextStyle(fontSize: 22)),
+              child: AppIcon(icon, size: 22, color: AppColors.primaryBlue),
             ),
             const SizedBox(width: 14),
             Expanded(
@@ -1194,7 +1207,7 @@ class _SuggestionCard extends StatelessWidget {
                     height: 48,
                     decoration: BoxDecoration(color: color.withValues(alpha: 0.12), shape: BoxShape.circle),
                     alignment: Alignment.center,
-                    child: Text(icon, style: const TextStyle(fontSize: 24)),
+                    child: AppIcon(icon, size: 24, color: AppColors.primaryBlue),
                   ),
                   const SizedBox(width: 14),
                   Expanded(
