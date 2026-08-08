@@ -39,6 +39,8 @@ class SettingsProvider extends ChangeNotifier {
   String get viewingDistanceMode => _viewingDistanceMode;
   String get guardianEmail => _guardianEmail;
 
+  Future<void> reload() => _loadSavedPreferences();
+
   Future<void> _loadSavedPreferences() async {
     final prefs = await SharedPreferences.getInstance();
     _useMetric = prefs.getBool(_kMetricKey) ?? _useMetric;

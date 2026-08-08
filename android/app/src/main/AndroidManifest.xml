@@ -43,6 +43,13 @@
          thống khi cài lần đầu — đây là màn hình hệ thống tự bật lên, app
          không cần code gì thêm cho bước đó. -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
+    <!-- Cho phép tính năng "Gợi ý độ sáng" tự chỉnh ĐỘ SÁNG HỆ THỐNG (không
+         chỉ độ sáng riêng trong app) khớp với ánh sáng môi trường đọc được
+         từ cảm biến. Đây là quyền "đặc biệt" (special access) — Android
+         không hiện popup xin quyền thông thường, người dùng phải tự bật ở
+         màn hình Cài đặt hệ thống; app mở thẳng màn hình đó bằng Intent
+         ACTION_MANAGE_WRITE_SETTINGS (xem lib/services/brightness_service.dart). -->
+    <uses-permission android:name="android.permission.WRITE_SETTINGS" tools:ignore="ProtectedPermissions"/>
     <application
         android:label="EyeCare AI"
         android:name="${applicationName}"

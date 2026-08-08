@@ -106,6 +106,10 @@ class HabitProvider extends ChangeNotifier {
   DateTime? habitsLastUpdated;
   int habitsCompletionPercent = 0;
   int eyeBreaksTakenToday = 0;
+  // Tổng số lần nghỉ mắt CỘNG DỒN TOÀN BỘ THỜI GIAN (không reset theo
+  // ngày) — dùng để tính thật tiến độ các thẻ ở màn hình Thành tựu, xem
+  // _refreshTotalEyeBreaks() bên dưới.
+  int totalEyeBreaksAllTime = 0;
   int statsTabIndex = 0;
   int statsMetricIndex = 0;
   int streakDays = 0;
@@ -122,6 +126,11 @@ class HabitProvider extends ChangeNotifier {
   double get screenTimeHours => habits.firstWhere((h) => h.id == 'phone').current;
   double get outdoorHours => habits.firstWhere((h) => h.id == 'outdoor').current / 60;
   int get breakCount => habits.firstWhere((h) => h.id == 'breaks').current.round();
+
+  /// Nạp lại từ SharedPreferences — gọi sau khi CloudBackupService ghi dữ
+  /// liệu khôi phục vào local storage, để provider (đang sống suốt vòng đời
+  /// app, không bị tạo lại khi đăng nhập) cập nhật đúng giá trị mới.
+  Future<void> reload() => _loadSavedPreferences();
 
   Future<void> _loadSavedPreferences() async {
     final prefs = await SharedPreferences.getInstance();
@@ -211,6 +220,7 @@ class HabitProvider extends ChangeNotifier {
     final breaks = results[3] as int;
     _applyHabitValue('breaks', breaks.toDouble());
     eyeBreaksTakenToday = breaks;
+    totalEyeBreaksAllTime = await service.getTotalEyeBreaksAllTime();
 
     _updateHabitsCompletion();
     habitsLastUpdated = DateTime.now();
@@ -270,6 +280,7 @@ class HabitProvider extends ChangeNotifier {
   Future<void> recordEyeBreak() async {
     final total = await DeviceDataService.instance.recordEyeBreak();
     eyeBreaksTakenToday = total;
+    totalEyeBreaksAllTime += 1;
     final habit = habits.firstWhere((h) => h.id == 'breaks');
     habit.current = total.toDouble();
     habit.isLive = true;

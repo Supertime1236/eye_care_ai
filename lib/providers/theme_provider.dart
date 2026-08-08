@@ -40,6 +40,8 @@ class ThemeProvider extends ChangeNotifier {
         AppThemePreference.system => ThemeMode.system,
       };
 
+  Future<void> reload() => _loadSavedPreferences();
+
   Future<void> _loadSavedPreferences() async {
     final prefs = await SharedPreferences.getInstance();
     final saved = prefs.getString(_kThemePrefKey);

@@ -15,6 +15,7 @@ import '../providers/theme_provider.dart';
 import '../services/notification_service.dart';
 import '../services/update_service.dart';
 import '../theme/app_colors.dart';
+import '../utils/app_icon.dart';
 import '../widgets/shared_widgets.dart';
 import '../widgets/update_dialog.dart';
 import 'edit_profile_screen.dart';
@@ -440,7 +441,7 @@ class _ToggleTile extends StatelessWidget {
       child: SectionCard(
         child: Row(
           children: [
-            Text(icon, style: const TextStyle(fontSize: 22)),
+            AppIcon(icon, size: 22, color: AppColors.primaryBlue),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -490,7 +491,7 @@ class _InlineToggleRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
         children: [
-          Text(icon, style: const TextStyle(fontSize: 22)),
+          AppIcon(icon, size: 22, color: AppColors.primaryBlue),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -531,7 +532,7 @@ class _BlueLightFilterTile extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Text('🟠', style: TextStyle(fontSize: 22)),
+              const AppIcon('🟠', size: 22, color: Colors.orange),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -648,7 +649,7 @@ class _MenuItem extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         child: Row(
           children: [
-            Text(icon, style: const TextStyle(fontSize: 22)),
+            AppIcon(icon, size: 22, color: AppColors.primaryBlue),
             const SizedBox(width: 12),
             Expanded(
               child: Text(
@@ -751,7 +752,7 @@ class _ListTileOption extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(icon, style: const TextStyle(fontSize: 22)),
+              AppIcon(icon, size: 22, color: AppColors.primaryBlue),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -791,7 +792,7 @@ class _ListTileOption extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         child: Row(
           children: [
-            Text(icon, style: const TextStyle(fontSize: 22)),
+            AppIcon(icon, size: 22, color: AppColors.primaryBlue),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -1056,7 +1057,7 @@ Future<void> _showBrightnessTipsDialog(BuildContext context, AppStrings strings)
       return AlertDialog(
         title: Row(
           children: [
-            const Text('💡', style: TextStyle(fontSize: 22)),
+            const AppIcon('💡', size: 22, color: AppColors.primaryBlue),
             const SizedBox(width: 10),
             Expanded(child: Text(strings.brightnessTips)),
           ],
@@ -1483,9 +1484,10 @@ class _PermissionTile extends StatelessWidget {
               borderRadius: BorderRadius.circular(12),
             ),
             child: Center(
-              child: Text(
+              child: AppIcon(
                 icon,
-                style: const TextStyle(fontSize: 22),
+                size: 22,
+                color: isGranted ? Colors.green : Colors.orange,
               ),
             ),
           ),

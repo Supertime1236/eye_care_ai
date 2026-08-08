@@ -7,6 +7,8 @@ import '../providers/habit_provider.dart';
 import '../providers/language_provider.dart';
 import '../providers/rank_provider.dart';
 import '../providers/reminder_provider.dart';
+import '../providers/settings_more_provider.dart';
+import '../services/cloud_backup_service.dart';
 import '../services/update_service.dart';
 import '../widgets/update_dialog.dart';
 import 'home_screen.dart';
@@ -24,6 +26,13 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
   // đó đứng yên dù người dùng vẫn đang dùng máy. Thêm timer định kỳ để số
   // liệu tự cập nhật trong lúc app đang mở, giống Digital Wellbeing.
   Timer? _usagePollTimer;
+  // Đẩy dữ liệu (thống kê, cài đặt, tiến độ thành tựu) lên Firestore định kỳ
+  // trong lúc app đang mở, để nếu người dùng đổi máy/cài lại app giữa
+  // chừng thì vẫn không mất quá nhiều dữ liệu của phiên hiện tại. Tách
+  // riêng khỏi _usagePollTimer (60s) vì đây là việc mạng, không cần chạy
+  // dày như refresh dữ liệu cảm biến cục bộ.
+  Timer? _cloudBackupTimer;
+  static const _cloudBackupInterval = Duration(minutes: 5);
 
   // Mốc thời gian app bị đưa xuống nền — dùng cho chế độ nghỉ mắt THỤ ĐỘNG:
   // nếu người dùng khoá màn hình/rời app đủ lâu rồi quay lại, coi như đã có
@@ -48,6 +57,16 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
     _usagePollTimer = Timer.periodic(const Duration(seconds: 60), (_) {
       _refreshHabitsAndSyncRank();
     });
+    _cloudBackupTimer = Timer.periodic(_cloudBackupInterval, (_) => _pushCloudBackupIfEnabled());
+  }
+
+  // Chỉ đẩy lên Firestore khi người dùng đã bật "Sao lưu trên đám mây" ở
+  // Cài đặt (mặc định bật) — CloudBackupService.pushBackup() tự bỏ qua âm
+  // thầm nếu chưa đăng nhập, nên gọi ở đây luôn an toàn kể cả khi chưa login.
+  void _pushCloudBackupIfEnabled() {
+    if (!mounted) return;
+    if (!context.read<SettingsMoreProvider>().cloudBackup) return;
+    unawaited(CloudBackupService.instance.pushBackup());
   }
 
   // Mở app lên là tự hỏi GitHub Releases xem có bản mới hơn không (xem
@@ -80,6 +99,10 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.paused) {
       _pausedAt = DateTime.now();
+      // App xuống nền -> đẩy backup ngay (không chờ tick định kỳ tiếp theo,
+      // có thể còn tới vài phút nữa) — đây là thời điểm hợp lý nhất vì
+      // người dùng vừa dùng xong 1 phiên, dữ liệu vừa đổi khả năng cao nhất.
+      _pushCloudBackupIfEnabled();
       return;
     }
 
@@ -113,6 +136,7 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
   @override
   void dispose() {
     _usagePollTimer?.cancel();
+    _cloudBackupTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }

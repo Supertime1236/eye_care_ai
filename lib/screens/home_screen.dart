@@ -10,6 +10,7 @@ import '../providers/language_provider.dart';
 import '../providers/profile_provider.dart';
 import '../services/device_data_service.dart';
 import '../theme/app_colors.dart';
+import '../utils/app_icon.dart';
 import '../theme/app_theme.dart';
 import '../widgets/shared_widgets.dart';
 import 'chat_screen.dart';
@@ -88,7 +89,7 @@ class HomeScreen extends StatelessWidget {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     alignment: Alignment.center,
-                    child: const Text('📋', style: TextStyle(fontSize: 20)),
+                    child: const AppIcon('📋', size: 20, color: AppColors.primaryBlue),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -1005,7 +1006,7 @@ class _MiniResultCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(icon, style: const TextStyle(fontSize: 22)),
+          AppIcon(icon, size: 22, color: AppColors.primaryBlue),
           const SizedBox(height: 10),
           Text(label, style: Theme.of(context).textTheme.labelMedium),
           const SizedBox(height: 6),
@@ -1117,7 +1118,7 @@ class _StatTile extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(icon, style: const TextStyle(fontSize: 22)),
+          AppIcon(icon, size: 22, color: AppColors.primaryBlue),
           const SizedBox(height: 8),
           Text(
             value,
@@ -1165,7 +1166,7 @@ class _SuggestionCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(12),
               ),
               alignment: Alignment.center,
-              child: Text(icon, style: const TextStyle(fontSize: 22)),
+              child: AppIcon(icon, size: 22, color: AppColors.primaryBlue),
             ),
             const SizedBox(width: 14),
             Expanded(
@@ -1206,7 +1207,7 @@ class _SuggestionCard extends StatelessWidget {
                     height: 48,
                     decoration: BoxDecoration(color: color.withValues(alpha: 0.12), shape: BoxShape.circle),
                     alignment: Alignment.center,
-                    child: Text(icon, style: const TextStyle(fontSize: 24)),
+                    child: AppIcon(icon, size: 24, color: AppColors.primaryBlue),
                   ),
                   const SizedBox(width: 14),
                   Expanded(

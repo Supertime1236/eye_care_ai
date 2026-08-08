@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../providers/language_provider.dart';
 import '../services/auth_service.dart';
 import '../theme/app_colors.dart';
+import '../utils/app_icon.dart';
 import '../theme/app_theme.dart';
 import '../widgets/shared_widgets.dart';
 import 'main_shell.dart';
@@ -136,7 +137,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       shape: BoxShape.circle,
                     ),
                     alignment: Alignment.center,
-                    child: const Text('👁️', style: TextStyle(fontSize: 32)),
+                    child: const AppIcon('👁️', size: 32, color: AppColors.primaryBlue),
                   ),
                   const SizedBox(height: 16),
                   Text(

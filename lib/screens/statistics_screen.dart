@@ -9,6 +9,7 @@ import '../providers/habit_provider.dart';
 import '../providers/language_provider.dart';
 import '../services/device_data_service.dart';
 import '../theme/app_colors.dart';
+import '../utils/app_icon.dart';
 import '../widgets/shared_widgets.dart';
 
 // StatisticsScreen hiển thị biểu đồ và số liệu thống kê sức khỏe mắt.
@@ -381,7 +382,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const Text('🔥', style: TextStyle(fontSize: 20)),
+                                const AppIcon('🔥', size: 20, color: AppColors.primaryBlue),
                                 Text(
                                   '${state.streakDays}',
                                   style: Theme.of(context).textTheme.titleLarge?.copyWith(

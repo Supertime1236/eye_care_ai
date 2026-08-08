@@ -5,6 +5,7 @@ import '../models/app_strings.dart';
 import '../providers/habit_provider.dart';
 import '../providers/language_provider.dart';
 import '../theme/app_colors.dart';
+import '../utils/app_icon.dart';
 import '../theme/app_theme.dart';
 import '../widgets/shared_widgets.dart';
 
@@ -381,7 +382,7 @@ class _HabitCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(10),
                 ),
                 alignment: Alignment.center,
-                child: Text(habit.icon, style: const TextStyle(fontSize: 20)),
+                child: AppIcon(habit.icon, size: 20, color: AppColors.primaryBlue),
               ),
               const SizedBox(width: 12),
               Expanded(

@@ -10,6 +10,7 @@ import '../services/device_data_service.dart';
 import '../services/focus_mode_service.dart';
 import '../services/notification_service.dart';
 import '../theme/app_colors.dart';
+import '../utils/app_icon.dart';
 import '../widgets/settings_toggle_tile.dart';
 import '../widgets/shared_widgets.dart';
 
@@ -455,7 +456,7 @@ class _EyeBreakScreenState extends State<EyeBreakScreen> with WidgetsBindingObse
                         borderRadius: BorderRadius.circular(12),
                       ),
                       alignment: Alignment.center,
-                      child: const Text('👁️', style: TextStyle(fontSize: 22)),
+                      child: const AppIcon('👁️', size: 22, color: AppColors.primaryBlue),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -526,7 +527,7 @@ class _BreakPromptViewState extends State<_BreakPromptView> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Text('🌿', style: TextStyle(fontSize: 56)),
+          const AppIcon('🌿', size: 56, color: AppColors.primaryBlue),
           const SizedBox(height: 16),
           Text(
             strings.eyeBreakTimeUp,
