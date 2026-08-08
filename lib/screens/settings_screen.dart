@@ -441,7 +441,7 @@ class _ToggleTile extends StatelessWidget {
       child: SectionCard(
         child: Row(
           children: [
-            AppIcon(icon, size: 22, color: AppColors.primaryBlue),
+            AppIcon(icon, size: 22, color: Theme.of(context).colorScheme.primary),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -491,7 +491,7 @@ class _InlineToggleRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
         children: [
-          AppIcon(icon, size: 22, color: AppColors.primaryBlue),
+          AppIcon(icon, size: 22, color: Theme.of(context).colorScheme.primary),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -649,7 +649,7 @@ class _MenuItem extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         child: Row(
           children: [
-            AppIcon(icon, size: 22, color: AppColors.primaryBlue),
+            AppIcon(icon, size: 22, color: Theme.of(context).colorScheme.primary),
             const SizedBox(width: 12),
             Expanded(
               child: Text(
@@ -752,7 +752,7 @@ class _ListTileOption extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              AppIcon(icon, size: 22, color: AppColors.primaryBlue),
+              AppIcon(icon, size: 22, color: Theme.of(context).colorScheme.primary),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -792,7 +792,7 @@ class _ListTileOption extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         child: Row(
           children: [
-            AppIcon(icon, size: 22, color: AppColors.primaryBlue),
+            AppIcon(icon, size: 22, color: Theme.of(context).colorScheme.primary),
             const SizedBox(width: 12),
             Expanded(
               child: Column(

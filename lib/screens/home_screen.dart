@@ -89,7 +89,7 @@ class HomeScreen extends StatelessWidget {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     alignment: Alignment.center,
-                    child: const AppIcon('📋', size: 20, color: AppColors.primaryBlue),
+                    child: const AppIcon('📋', size: 20, color: Colors.white),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -1009,7 +1009,7 @@ class _MiniResultCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          AppIcon(icon, size: 22, color: AppColors.primaryBlue),
+          AppIcon(icon, size: 22, color: Theme.of(context).colorScheme.primary),
           const SizedBox(height: 10),
           Text(label, style: Theme.of(context).textTheme.labelMedium),
           const SizedBox(height: 6),
@@ -1121,7 +1121,7 @@ class _StatTile extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          AppIcon(icon, size: 22, color: AppColors.primaryBlue),
+          AppIcon(icon, size: 22, color: Theme.of(context).colorScheme.primary),
           const SizedBox(height: 8),
           Text(
             value,
@@ -1210,7 +1210,7 @@ class _SuggestionCard extends StatelessWidget {
                     height: 48,
                     decoration: BoxDecoration(color: color.withValues(alpha: 0.12), shape: BoxShape.circle),
                     alignment: Alignment.center,
-                    child: AppIcon(icon, size: 24, color: AppColors.primaryBlue),
+                    child: AppIcon(icon, size: 24, color: Theme.of(context).colorScheme.primary),
                   ),
                   const SizedBox(width: 14),
                   Expanded(
