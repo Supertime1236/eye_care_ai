@@ -83,6 +83,8 @@ class FontProvider extends ChangeNotifier {
     return AppFontChoice.values.where((f) => f.supportsVietnamese).toList();
   }
 
+  Future<void> reload() => _loadSavedPreference();
+
   Future<void> _loadSavedPreference() async {
     final prefs = await SharedPreferences.getInstance();
     final saved = prefs.getString(_kFontPrefKey);

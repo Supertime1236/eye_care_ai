@@ -2,8 +2,16 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../providers/accent_color_provider.dart';
+import '../providers/font_provider.dart';
+import '../providers/habit_provider.dart';
 import '../providers/language_provider.dart';
+import '../providers/reminder_provider.dart';
+import '../providers/settings_more_provider.dart';
+import '../providers/settings_provider.dart';
+import '../providers/theme_provider.dart';
 import '../services/auth_service.dart';
+import '../services/cloud_backup_service.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_theme.dart';
 import '../widgets/shared_widgets.dart';
@@ -46,6 +54,33 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
+  // Kéo dữ liệu đã sao lưu trên Firestore (nếu có) về máy TRƯỚC khi vào
+  // MainShell — quan trọng: các provider (theme, ngôn ngữ, habit target,
+  // thành tựu...) đều sống Ở GỐC app (main.dart), KHÔNG bị tạo lại khi
+  // đăng nhập, nên chỉ ghi vào SharedPreferences thôi là chưa đủ — phải gọi
+  // .reload() trên từng provider để chúng nạp lại giá trị mới vào bộ nhớ,
+  // nếu không màn hình sau khi đăng nhập vẫn hiện dữ liệu CŨ của máy hiện
+  // tại cho tới khi app bị khởi động lại.
+  Future<void> _restoreCloudBackupIfAny() async {
+    try {
+      final applied = await CloudBackupService.instance.pullAndApply();
+      if (!applied || !mounted) return;
+      await Future.wait([
+        context.read<HabitProvider>().reload(),
+        context.read<SettingsProvider>().reload(),
+        context.read<ReminderProvider>().reload(),
+        context.read<ThemeProvider>().reload(),
+        context.read<LanguageProvider>().reload(),
+        context.read<AccentColorProvider>().reload(),
+        context.read<FontProvider>().reload(),
+        context.read<SettingsMoreProvider>().init(),
+      ]);
+    } catch (_) {
+      // Khôi phục thất bại (mất mạng, chưa từng sao lưu...) -> im lặng bỏ
+      // qua, người dùng vẫn đăng nhập được bình thường với dữ liệu máy hiện có.
+    }
+  }
+
   Future<void> _signIn(bool vi) async {
     if (!_formKey.currentState!.validate()) return;
     setState(() {
@@ -57,6 +92,7 @@ class _LoginScreenState extends State<LoginScreen> {
         email: _emailController.text.trim(),
         password: _passwordController.text,
       );
+      await _restoreCloudBackupIfAny();
       _goToMainShell();
       return;
     } on FirebaseAuthException catch (e) {
@@ -78,6 +114,7 @@ class _LoginScreenState extends State<LoginScreen> {
         setState(() => _isLoading = false);
         return;
       }
+      await _restoreCloudBackupIfAny();
       _goToMainShell();
       return;
     } on FirebaseAuthException catch (e) {

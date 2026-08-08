@@ -27,6 +27,8 @@ class ReminderProvider extends ChangeNotifier {
   bool get autoDetectEyeBreaks => _autoDetectEyeBreaks;
   bool get focusModeEnabled => _focusModeEnabled;
 
+  Future<void> reload() => _loadSavedPreferences();
+
   Future<void> _loadSavedPreferences() async {
     final prefs = await SharedPreferences.getInstance();
     _reminderMinutes = prefs.getInt(_kReminderMinutesKey) ?? _reminderMinutes;

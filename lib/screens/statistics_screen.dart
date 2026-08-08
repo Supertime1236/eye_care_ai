@@ -146,9 +146,20 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     
     final latestValue = realValues.isEmpty ? null : realValues.last;
 
-    return Material(
-      color: Theme.of(context).scaffoldBackgroundColor,
-      child: SingleChildScrollView(
+    return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        automaticallyImplyLeading: false,
+        leading: IconButton(
+          onPressed: () => Navigator.of(context).maybePop(),
+          icon: const Icon(Icons.arrow_back_rounded),
+          tooltip: strings.vi ? 'Quay lại' : 'Back',
+        ),
+      ),
+      body: SafeArea(
+        child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -407,6 +418,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
             const SizedBox(height: 16),
             const _AppUsageBreakdownCard(),
           ],
+        ),
         ),
       ),
     );

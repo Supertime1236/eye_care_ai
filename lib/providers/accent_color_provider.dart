@@ -53,6 +53,8 @@ class AccentColorProvider extends ChangeNotifier {
   AppAccentColor get choice => _choice;
   Color get seedColor => _choice.seed;
 
+  Future<void> reload() => _loadSavedPreference();
+
   Future<void> _loadSavedPreference() async {
     final prefs = await SharedPreferences.getInstance();
     final saved = prefs.getString(_kAccentPrefKey);

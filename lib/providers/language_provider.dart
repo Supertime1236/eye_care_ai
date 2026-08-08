@@ -16,6 +16,8 @@ class LanguageProvider extends ChangeNotifier {
   Locale get locale => _isVietnamese ? const Locale('vi') : const Locale('en');
   AppStrings get strings => AppStrings(_isVietnamese);
 
+  Future<void> reload() => _loadSavedPreferences();
+
   Future<void> _loadSavedPreferences() async {
     final prefs = await SharedPreferences.getInstance();
     _isVietnamese = prefs.getBool(_kVietnameseKey) ?? _isVietnamese;

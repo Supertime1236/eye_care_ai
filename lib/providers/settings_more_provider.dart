@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -7,6 +8,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/auth_service.dart';
+import '../services/cloud_backup_service.dart';
 import '../services/device_data_service.dart';
 
 /// State cho màn hình "Cài đặt thêm" (Settings > More): quyền riêng tư,
@@ -18,6 +20,9 @@ import '../services/device_data_service.dart';
 class SettingsMoreProvider extends ChangeNotifier {
   // ---- Privacy toggles ----
   static const _kDataCollectionKey = 'data_collection_enabled';
+  // "pref_" để CloudBackupService tự cuốn theo khi sao lưu (xem whitelist
+  // tiền tố trong cloud_backup_service.dart).
+  static const _kCloudBackupKey = 'pref_cloud_backup_enabled';
   bool _dataCollection = true;
   bool _cloudBackup = true;
   bool _personalizedAI = false;
@@ -30,6 +35,7 @@ class SettingsMoreProvider extends ChangeNotifier {
   Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();
     _dataCollection = prefs.getBool(_kDataCollectionKey) ?? true;
+    _cloudBackup = prefs.getBool(_kCloudBackupKey) ?? true;
     notifyListeners();
   }
 
@@ -44,7 +50,15 @@ class SettingsMoreProvider extends ChangeNotifier {
 
   void setCloudBackup(bool v) {
     _cloudBackup = v;
+    SharedPreferences.getInstance().then((prefs) {
+      prefs.setBool(_kCloudBackupKey, v);
+    });
     notifyListeners();
+    // Bật lên -> đẩy 1 bản sao lưu ngay (không chờ tới lần đồng bộ định kỳ
+    // tiếp theo), để người dùng bật xong là biết ngay dữ liệu đã lên mây.
+    if (v) {
+      unawaited(CloudBackupService.instance.pushBackup());
+    }
   }
 
   void setPersonalizedAI(bool v) {
@@ -179,11 +193,14 @@ class SettingsMoreProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Xóa tài khoản thật qua Firebase (AuthService.deleteAccount).
+  /// Xóa tài khoản thật qua Firebase (AuthService.deleteAccount) + dọn luôn
+  /// bản sao lưu trên Firestore (nếu không xoá, dữ liệu cũ sẽ mồ côi mãi vì
+  /// UID sau khi xoá tài khoản không bao giờ dùng lại được nữa).
   Future<void> deleteAccount() async {
     _isDeletingAccount = true;
     notifyListeners();
     try {
+      await CloudBackupService.instance.deleteBackup();
       await AuthService.instance.deleteAccount();
     } finally {
       _isDeletingAccount = false;

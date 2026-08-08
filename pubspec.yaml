@@ -51,7 +51,8 @@ dependencies:
   # --- Real device data sources for the Habits screen ---
   sensors_plus: ^6.0.1     # accelerometer (reading posture, sleep motion heuristic)
   geolocator: ^13.0.1      # GPS - nguồn dữ liệu duy nhất cho Outdoor time
-  light: ^5.0.0             # cảm biến ánh sáng (lux) - dùng cho tính năng cảnh báo dùng điện thoại trong bóng tối
+  light: ^5.0.0             # cảm biến ánh sáng (lux) - dùng cho tính năng cảnh báo dùng điện thoại trong bóng tối, và cho "Gợi ý độ sáng" tự động
+  screen_brightness: ^2.1.2 # đọc/chỉnh độ sáng màn hình thật - dùng cho "Gợi ý độ sáng" tự động
   app_usage: ^4.1.0        # OS screen-on time (Android only, needs Usage Access permission)
   health: ^13.3.1           # HealthKit / Health Connect (chỉ dùng cho Sleep)
   permission_handler: ^11.3.1

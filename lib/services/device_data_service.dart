@@ -379,6 +379,11 @@ class DeviceDataService {
   // người dùng xác nhận, không phải số giả định sẵn.
   static const _kBreaksCountKey = 'eye_breaks_today';
   static const _kBreaksDateKey = 'eye_breaks_date';
+  // Đếm dồn TOÀN BỘ THỜI GIAN (không reset theo ngày như 2 key ở trên) —
+  // dùng riêng cho màn hình Thành tựu (trước đây các thẻ 5 lần/15 lần nghỉ
+  // mắt bị hardcode "đã mở khoá" sẵn dù người dùng chưa làm gì; giờ tính
+  // thật dựa trên số này, người cài app mới sẽ bắt đầu từ 0).
+  static const _kBreaksTotalAllTimeKey = 'eye_breaks_total_alltime';
 
   Future<int> getEyeBreaksToday() async {
     final prefs = await SharedPreferences.getInstance();
@@ -386,11 +391,18 @@ class DeviceDataService {
     return prefs.getInt(_kBreaksCountKey) ?? 0;
   }
 
+  Future<int> getTotalEyeBreaksAllTime() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getInt(_kBreaksTotalAllTimeKey) ?? 0;
+  }
+
   Future<int> recordEyeBreak() async {
     final prefs = await SharedPreferences.getInstance();
     await _resetIfNewDayInt(prefs, _kBreaksCountKey, _kBreaksDateKey);
     final current = (prefs.getInt(_kBreaksCountKey) ?? 0) + 1;
     await prefs.setInt(_kBreaksCountKey, current);
+    final totalAllTime = (prefs.getInt(_kBreaksTotalAllTimeKey) ?? 0) + 1;
+    await prefs.setInt(_kBreaksTotalAllTimeKey, totalAllTime);
     return current;
   }
 
