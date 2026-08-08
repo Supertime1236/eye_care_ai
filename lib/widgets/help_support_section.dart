@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../config/env.dart';
 import '../providers/language_provider.dart';
 import 'faq_accordion.dart';
 import 'feedback_form.dart';
@@ -115,18 +118,59 @@ class _ContactButton extends StatelessWidget {
   }
 }
 
-class _AboutGrid extends StatelessWidget {
+class _AboutGrid extends StatefulWidget {
   const _AboutGrid();
 
-  // TODO: lấy giá trị thật từ package_info_plus / backend khi có.
-  static const _items = <MapEntry<String, String>>[
-    MapEntry('App Version', '2.4.1'),
-    MapEntry('Build Number', '241'),
-    MapEntry('Developer', 'Eye Care AI Team'),
-    MapEntry('Powered by', 'Flutter'),
-    MapEntry('AI Model', 'On-device CV + Cloud LLM'),
-    MapEntry('Firebase', 'Connected'),
-  ];
+  @override
+  State<_AboutGrid> createState() => _AboutGridState();
+}
+
+class _AboutGridState extends State<_AboutGrid> {
+  Map<String, String> _items = const <String, String>{
+    'App Version': '—',
+    'Build Number': '—',
+    'Developer': 'Eye Care AI Team',
+    'Powered by': 'Flutter',
+    'AI Model': 'On-device CV + Cloud LLM',
+  };
+
+  String? _fullCommit;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final info = await PackageInfo.fromPlatform();
+      final commit = Env.commitHash;
+      _fullCommit = commit.isEmpty ? null : commit;
+      if (!mounted) return;
+      setState(() {
+        _items = {
+          ..._items,
+          if (info.version.isNotEmpty) 'App Version': info.version,
+          if (info.buildNumber.isNotEmpty) 'Build Number': info.buildNumber,
+          if (_fullCommit != null) 'Commit': _fullCommit!.substring(0, 8),
+        };
+      });
+    } catch (_) {
+      // keep placeholder values if package info fails
+    }
+  }
+
+  Future<void> _copyCommit(BuildContext context) async {
+    final sha = _fullCommit;
+    if (sha == null) return;
+    await Clipboard.setData(ClipboardData(text: sha));
+    if (!mounted) return;
+    final strings = context.read<LanguageProvider>().strings;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(strings.vi ? 'Đã sao chép commit SHA' : 'Commit SHA copied')),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -135,23 +179,36 @@ class _AboutGrid extends StatelessWidget {
       spacing: 8,
       runSpacing: 8,
       children: [
-        for (final item in _items)
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            constraints: const BoxConstraints(minWidth: 140),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(item.key,
-                    style: TextStyle(fontSize: 11, color: onSurface.withValues(alpha: 0.6), fontWeight: FontWeight.w600)),
-                const SizedBox(height: 2),
-                Text(item.value, style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w500, color: onSurface)),
-              ],
+        for (final entry in _items.entries)
+          InkWell(
+            onTap: entry.key == 'Commit' ? () => _copyCommit(context) : null,
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              constraints: const BoxConstraints(minWidth: 140),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    entry.key,
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: onSurface.withValues(alpha: 0.6),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    entry.value,
+                    style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w500, color: onSurface),
+                  ),
+                ],
+              ),
             ),
           ),
       ],

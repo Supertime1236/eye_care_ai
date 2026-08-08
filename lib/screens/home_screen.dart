@@ -295,14 +295,17 @@ class _FeatureHubCard extends StatelessWidget {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text(feature.icon, style: const TextStyle(fontSize: 20)),
+                    AppIcon(feature.icon, size: 22, color: Theme.of(context).colorScheme.primary),
                     const SizedBox(height: 6),
                     Text(
                       feature.title,
                       textAlign: TextAlign.center,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.labelMedium?.copyWith(fontSize: 11),
+                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                        fontSize: 11,
+                        color: Theme.of(context).colorScheme.onSurface,
+                      ),
                     ),
                   ],
                 ),
@@ -1166,7 +1169,7 @@ class _SuggestionCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(12),
               ),
               alignment: Alignment.center,
-              child: AppIcon(icon, size: 22, color: AppColors.primaryBlue),
+              child: AppIcon(icon, size: 22, color: Theme.of(context).colorScheme.primary),
             ),
             const SizedBox(width: 14),
             Expanded(

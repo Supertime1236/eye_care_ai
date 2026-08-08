@@ -1,6 +1,7 @@
 name: Build APK
 
 on:
+  workflow_dispatch: {}
   push:
     branches:
       - main
@@ -25,7 +26,29 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: stable
-          cache: false
+          cache: true
+          cache-key: flutter-${{ runner.os }}-${{ hashFiles('**/pubspec.lock') }}
+
+      - name: Cache Flutter packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.pub-cache
+            .dart_tool
+          key: flutter-pub-${{ runner.os }}-${{ hashFiles('**/pubspec.lock') }}
+          restore-keys: |
+            flutter-pub-${{ runner.os }}-
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+            android/.gradle
+          key: gradle-${{ runner.os }}-${{ hashFiles('android/**/*.gradle*', 'android/gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: |
+            gradle-${{ runner.os }}-
 
       - name: Install dependencies
         run: flutter pub get
@@ -57,20 +80,14 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Build release APK
-        # --build-number gắn ĐÚNG run_number của lần chạy này làm versionCode
-        # thật của APK — bắt buộc phải có để tính năng "Kiểm tra cập nhật"
-        # trong app (lib/services/update_service.dart) so sánh được số này
-        # với tag GitHub Release "build-<run_number>" và biết máy đang chạy
-        # bản cũ hay mới. Thiếu dòng này thì mọi APK đều mang versionCode cũ
-        # cố định trong pubspec.yaml (1) và app không bao giờ phát hiện được
-        # bản mới.
-        run: flutter build apk --release --build-number=${{ github.run_number }} --dart-define=NIM_API_KEY=${{ secrets.NIM_API_KEY }}
+        run: flutter build apk --release --build-number=${{ github.run_number }} --dart-define=NIM_API_KEY=${{ secrets.NIM_API_KEY }} --dart-define=COMMIT_HASH=${{ github.sha }}
 
       - name: Rename APK
         run: |
+          SHORT_SHA=$(git rev-parse --short=8 HEAD)
           mkdir -p release
           cp build/app/outputs/flutter-apk/app-release.apk \
-            "release/eye_care_ai-${{ steps.version.outputs.version }}-build${{ github.run_number }}.apk"
+            "release/eye_care_ai-${{ steps.version.outputs.version }}-${SHORT_SHA}-build${{ github.run_number }}.apk"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4

@@ -13,9 +13,11 @@ import '../providers/profile_provider.dart';
 import '../providers/settings_provider.dart';
 import '../providers/theme_provider.dart';
 import '../services/notification_service.dart';
+import '../services/update_service.dart';
 import '../theme/app_colors.dart';
 import '../utils/app_icon.dart';
 import '../widgets/shared_widgets.dart';
+import '../widgets/update_dialog.dart';
 import 'edit_profile_screen.dart';
 import 'settings_more_page.dart';
 
@@ -373,6 +375,22 @@ class SettingsScreen extends StatelessWidget {
                       icon: '📊',
                       title: strings.dataUsagePermissions,
                       onTap: () => _showPermissionSettings(context),
+                    ),
+                    const Divider(height: 1, indent: 56),
+                    _MenuItem(
+                      icon: '🔄',
+                      title: strings.checkForUpdate,
+                      onTap: () async {
+                        final update = await UpdateService.instance.checkForUpdate();
+                        if (!context.mounted) return;
+                        if (update == null) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(strings.noUpdateAvailable)),
+                          );
+                          return;
+                        }
+                        UpdateDialog.show(context, update, strings);
+                      },
                     ),
                     const Divider(height: 1, indent: 56),
                     _MenuItem(
