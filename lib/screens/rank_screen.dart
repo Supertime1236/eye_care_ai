@@ -81,7 +81,7 @@ class _RankScreenState extends State<RankScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(tier.icon, size: 64, color: tier.color),
+                Text(tier.emoji, style: const TextStyle(fontSize: 64)),
                 const SizedBox(height: 14),
                 Text(
                   vi ? 'Lên hạng!' : 'Rank up!',
@@ -302,10 +302,9 @@ class _TierBadge extends StatelessWidget {
             ? tier.color.withValues(alpha: isCurrent ? 0.22 : 0.14)
             : Theme.of(context).colorScheme.surfaceContainerHighest,
       ),
-      child: Icon(
-        tier.icon,
-        size: isCurrent ? 34 : 24,
-        color: reached ? tier.color : Colors.grey.withValues(alpha: 0.6),
+      child: Text(
+        tier.emoji,
+        style: TextStyle(fontSize: isCurrent ? 34 : 24, color: reached ? null : Colors.grey.withValues(alpha: 0.6)),
       ),
     );
 
@@ -426,11 +425,7 @@ class _LeaderboardTile extends StatelessWidget {
             radius: 18,
             backgroundColor: entry.tier.color.withValues(alpha: 0.2),
             backgroundImage: entry.avatarUrl != null ? NetworkImage(entry.avatarUrl!) : null,
-            child: Icon(
-              entry.tier.icon,
-              size: 18,
-              color: entry.tier.color,
-            ),
+            child: entry.avatarUrl == null ? Text(entry.tier.emoji, style: const TextStyle(fontSize: 16)) : null,
           ),
           const SizedBox(width: 12),
           Expanded(
