@@ -63,6 +63,10 @@ const Map<String, IconData> _kIconMap = {
   '🎨': Icons.palette_outlined,
   '🌙': Icons.bedtime_outlined,
   '🟠': Icons.wb_sunny_outlined, // "Bộ lọc ánh sáng xanh"
+  '🤖': Icons.smart_toy_outlined,
+  '🏆': Icons.emoji_events_outlined,
+  '🏅': Icons.emoji_events_outlined,
+  '⭐': Icons.star_outline,
 };
 
 // Dùng thay cho `Text(icon, style: TextStyle(fontSize: ...))` ở mọi nơi

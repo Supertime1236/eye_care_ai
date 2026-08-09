@@ -81,7 +81,7 @@ class _RankScreenState extends State<RankScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(tier.emoji, style: const TextStyle(fontSize: 64)),
+                Icon(tier.icon, size: 64, color: tier.color),
                 const SizedBox(height: 14),
                 Text(
                   vi ? 'Lên hạng!' : 'Rank up!',
@@ -302,9 +302,10 @@ class _TierBadge extends StatelessWidget {
             ? tier.color.withValues(alpha: isCurrent ? 0.22 : 0.14)
             : Theme.of(context).colorScheme.surfaceContainerHighest,
       ),
-      child: Text(
-        tier.emoji,
-        style: TextStyle(fontSize: isCurrent ? 34 : 24, color: reached ? null : Colors.grey.withValues(alpha: 0.6)),
+      child: Icon(
+        tier.icon,
+        size: isCurrent ? 34 : 24,
+        color: reached ? tier.color : Colors.grey.withValues(alpha: 0.6),
       ),
     );
 
@@ -425,7 +426,11 @@ class _LeaderboardTile extends StatelessWidget {
             radius: 18,
             backgroundColor: entry.tier.color.withValues(alpha: 0.2),
             backgroundImage: entry.avatarUrl != null ? NetworkImage(entry.avatarUrl!) : null,
-            child: entry.avatarUrl == null ? Text(entry.tier.emoji, style: const TextStyle(fontSize: 16)) : null,
+            child: Icon(
+              entry.tier.icon,
+              size: 18,
+              color: entry.tier.color,
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -481,15 +486,12 @@ class _PositionMark extends StatelessWidget {
     switch (position) {
       case 1:
         bg = const Color(0xFFFFD54A);
-        label = '🥇';
         break;
       case 2:
         bg = const Color(0xFFC7CDD6);
-        label = '🥈';
         break;
       case 3:
         bg = const Color(0xFFD98A4B);
-        label = '🥉';
         break;
     }
 
@@ -507,7 +509,11 @@ class _PositionMark extends StatelessWidget {
       height: 28,
       alignment: Alignment.center,
       decoration: BoxDecoration(shape: BoxShape.circle, color: bg.withValues(alpha: 0.25)),
-      child: Text(label, style: const TextStyle(fontSize: 15)),
+      child: Icon(
+        Icons.emoji_events_rounded,
+        size: 15,
+        color: Theme.of(context).colorScheme.onSurface,
+      ),
     );
   }
 }

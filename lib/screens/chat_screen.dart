@@ -178,7 +178,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 borderRadius: BorderRadius.circular(12),
               ),
               child: const Center(
-                child: Text('🤖', style: TextStyle(fontSize: 20)),
+                child: Icon(Icons.smart_toy_outlined, size: 22, color: Colors.white),
               ),
             ),
             const SizedBox(width: 12),

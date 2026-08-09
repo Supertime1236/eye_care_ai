@@ -341,7 +341,7 @@ class _AchievementPageState extends State<_AchievementPage> {
     super.initState();
     _items = [
       _AchievementItem(
-        icon: '👀',
+        icon: '✅',
         title: 'Nghỉ ngơi cho mắt',
         titleEn: 'Rest for the eyes',
         description: 'Hoàn thành quy tắc 20-20-20 lần đầu.',
@@ -352,7 +352,7 @@ class _AchievementPageState extends State<_AchievementPage> {
         accent: const Color(0xFF22C55E),
       ),
       _AchievementItem(
-        icon: '🥉',
+        icon: '📊',
         title: '20-20-20 Rookie',
         titleEn: '20-20-20 Rookie',
         description: 'Hoàn thành quy tắc 20-20-20 lần đầu.',
@@ -363,7 +363,7 @@ class _AchievementPageState extends State<_AchievementPage> {
         accent: const Color(0xFFCD7C2F),
       ),
       _AchievementItem(
-        icon: '🥈',
+        icon: '📊',
         title: 'Eye Break Master',
         titleEn: 'Eye Break Master',
         description: 'Hoàn thành 5 lần nghỉ mắt.',
@@ -374,7 +374,7 @@ class _AchievementPageState extends State<_AchievementPage> {
         accent: const Color(0xFFC0C0C0),
       ),
       _AchievementItem(
-        icon: '🥇',
+        icon: '🔥',
         title: 'Blink Legend',
         titleEn: 'Blink Legend',
         description: 'Hoàn thành 15 lần nghỉ mắt.',
@@ -385,7 +385,7 @@ class _AchievementPageState extends State<_AchievementPage> {
         accent: const Color(0xFFF7C948),
       ),
       _AchievementItem(
-        icon: '👑',
+        icon: '🏆',
         title: 'Guardian of Vision',
         titleEn: 'Guardian of Vision',
         description: 'Không bỏ lỡ bất kỳ nhắc nhở nghỉ mắt nào trong 30 ngày.',
