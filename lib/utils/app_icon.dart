@@ -65,7 +65,7 @@ const Map<String, IconData> _kIconMap = {
   '🟠': Icons.wb_sunny_outlined, // "Bộ lọc ánh sáng xanh"
   '🤖': Icons.smart_toy_outlined,
   '🏆': Icons.emoji_events_outlined,
-  '🏅': Icons.emoji_events_outlined,
+  '🏅': Icons.military_tech,
   '⭐': Icons.star_outline,
 };
 
