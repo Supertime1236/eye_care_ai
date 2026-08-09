@@ -12,6 +12,7 @@ import '../services/device_data_service.dart';
 import '../theme/app_colors.dart';
 import '../utils/app_icon.dart';
 import '../theme/app_theme.dart';
+import '../widgets/setup_status_banner.dart';
 import '../widgets/shared_widgets.dart';
 import 'chat_screen.dart';
 import 'eye_break_screen.dart';
@@ -69,6 +70,7 @@ class HomeScreen extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 20),
+          const SetupStatusBanner(),
           _ScoreCard(score: habit.eyeHealthScore),
           const SizedBox(height: 18),
           _FeatureHubCard(),

@@ -201,23 +201,53 @@ class DeviceDataService {
   // bị try/catch nuốt mất, và habit Sleep luôn rơi về "không có dữ liệu".
   bool _healthConfigured = false;
 
+  // Chỉ xin quyền SLEEP_ASLEEP thôi thì bỏ sót dữ liệu: nhiều app đồng bộ
+  // giấc ngủ vào Health Connect (Samsung Health, Fitbit, Xiaomi Health...)
+  // chỉ ghi bản ghi tổng SLEEP_SESSION, KHÔNG tách nhỏ ra từng giai đoạn
+  // SLEEP_ASLEEP — nếu chỉ hỏi SLEEP_ASLEEP, những app đó sẽ luôn trả về
+  // rỗng dù người dùng rõ ràng có dữ liệu ngủ trong Health Connect.
+  static const _sleepHealthTypes = [HealthDataType.SLEEP_SESSION, HealthDataType.SLEEP_ASLEEP];
+
+  Future<void> _ensureHealthConfigured() async {
+    if (_healthConfigured) return;
+    await Health().configure();
+    _healthConfigured = true;
+  }
+
+  /// Kiểm tra xem đã có quyền Health Connect (đọc giấc ngủ) hay chưa —
+  /// KHÔNG hiện popup xin quyền, chỉ đọc trạng thái hiện tại. Dùng cho Setup
+  /// Wizard / banner trạng thái ở Home để hiện đúng "đã cấp" hay chưa.
+  Future<bool> hasSleepPermission() async {
+    try {
+      await _ensureHealthConfigured();
+      final granted = await Health().hasPermissions(_sleepHealthTypes) ?? false;
+      _sleepPermissionGranted = granted;
+      return granted;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Chủ động hiện popup xin quyền Health Connect — dùng cho bước "Giấc ngủ"
+  /// trong Setup Wizard (bấm nút "Cấp quyền"), khác với getSleepHours() ở
+  /// dưới vốn chỉ xin quyền "tiện thể" trong lúc đọc dữ liệu.
+  Future<bool> requestSleepPermission() async {
+    try {
+      await _ensureHealthConfigured();
+      final granted = await Health().requestAuthorization(_sleepHealthTypes);
+      _sleepPermissionGranted = granted;
+      return granted;
+    } catch (_) {
+      return false;
+    }
+  }
+
   // ---------------- Sleep: HealthKit (iOS) / Health Connect (Android) ----------------
   Future<double?> getSleepHours() async {
     try {
+      await _ensureHealthConfigured();
       final health = Health();
-      if (!_healthConfigured) {
-        await health.configure();
-        _healthConfigured = true;
-      }
-      // Chỉ xin quyền SLEEP_ASLEEP thôi thì bỏ sót dữ liệu: nhiều app đồng
-      // bộ giấc ngủ vào Health Connect (Samsung Health, Fitbit, Xiaomi
-      // Health...) chỉ ghi bản ghi tổng SLEEP_SESSION, KHÔNG tách nhỏ ra
-      // từng giai đoạn SLEEP_ASLEEP — nếu chỉ hỏi SLEEP_ASLEEP, những app đó
-      // sẽ luôn trả về rỗng dù người dùng rõ ràng có dữ liệu ngủ trong Health
-      // Connect. Xin quyền cả 2 loại, rồi ưu tiên SLEEP_SESSION (tổng thời
-      // gian ngủ, đã được app nguồn tính sẵn) nếu có, để tránh cộng dồn
-      // trùng lặp giữa SLEEP_SESSION và các bản ghi SLEEP_ASLEEP con của nó.
-      final types = [HealthDataType.SLEEP_SESSION, HealthDataType.SLEEP_ASLEEP];
+      final types = _sleepHealthTypes;
 
       if (_sleepPermissionGranted == null) {
         final alreadyGranted = await health.hasPermissions(types) ?? false;

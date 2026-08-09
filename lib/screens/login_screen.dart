@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/language_provider.dart';
+import '../providers/setup_provider.dart';
 import '../services/auth_service.dart';
 import '../theme/app_colors.dart';
 import '../utils/app_icon.dart';
@@ -10,6 +11,7 @@ import '../theme/app_theme.dart';
 import '../widgets/shared_widgets.dart';
 import 'main_shell.dart';
 import 'register_screen.dart';
+import 'setup_wizard_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -41,9 +43,26 @@ class _LoginScreenState extends State<LoginScreen> {
   // không phụ thuộc vào việc widget cha có tự rebuild hay không.
   void _goToMainShell() {
     if (!mounted) return;
+    // Đăng nhập xong không quay lại _AppGate (nơi có logic kiểm tra Setup
+    // Wizard) mà điều hướng thẳng — nên phải tự kiểm tra lại ở đây, nếu
+    // không Setup Wizard sẽ không bao giờ hiện được cho người dùng vừa
+    // đăng nhập lần đầu.
+    final setup = context.read<SetupProvider>();
+    final target = setup.wizardCompleted ? const MainShell() : const SetupWizardScreen();
     Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => const MainShell()),
+      MaterialPageRoute(builder: (_) => target),
       (route) => false,
+    );
+  }
+
+  // "Bỏ qua, dùng thử trước" (chế độ khách) — cùng logic gating với
+  // _goToMainShell(), chỉ khác là KHÔNG đăng nhập trước đó.
+  void _skipLoginForNow() {
+    if (!mounted) return;
+    final setup = context.read<SetupProvider>();
+    final target = setup.wizardCompleted ? const MainShell() : const SetupWizardScreen();
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(builder: (_) => target),
     );
   }
 
@@ -222,12 +241,10 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   // Bỏ qua đăng nhập lần đầu: vào thẳng app ở chế độ khách,
                   // vẫn có thể đăng nhập sau này trong Settings/Edit profile.
+                  // Vẫn phải qua Setup Wizard nếu chưa hoàn tất — chế độ
+                  // khách không có nghĩa là bỏ qua luôn bước xin quyền.
                   TextButton(
-                    onPressed: _isLoading
-                        ? null
-                        : () => Navigator.of(context).pushReplacement(
-                              MaterialPageRoute(builder: (_) => const MainShell()),
-                            ),
+                    onPressed: _isLoading ? null : _skipLoginForNow,
                     child: Text(
                       strings.vi ? 'Bỏ qua, dùng thử trước' : 'Skip for now',
                       style: const TextStyle(color: AppColors.textMuted),

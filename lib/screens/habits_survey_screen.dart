@@ -7,10 +7,12 @@ import '../providers/auth_provider.dart';
 import '../providers/habit_provider.dart';
 import '../providers/language_provider.dart';
 import '../providers/settings_provider.dart';
+import '../providers/setup_provider.dart';
 import '../theme/app_colors.dart';
 import '../widgets/shared_widgets.dart';
 import 'login_screen.dart';
 import 'main_shell.dart';
+import 'setup_wizard_screen.dart';
 
 // HabitsSurveyScreen: khảo sát từng câu một (giống dạng wizard/onboarding),
 // so sánh câu trả lời với thông số tiêu chuẩn, và cho phép áp dụng ngay các
@@ -765,14 +767,22 @@ class _HabitsSurveyScreenState extends State<HabitsSurveyScreen> {
                     if (!context.mounted) return;
                     if (widget.mandatory) {
                       // Sau khảo sát bắt buộc: nếu đã đăng nhập thì vào thẳng
-                      // MainShell, còn chưa thì phải qua màn Đăng nhập trước
-                      // (đúng như luồng _AppGate mô tả), thay vì luôn nhảy
-                      // thẳng vào MainShell bất kể trạng thái đăng nhập.
+                      // MainShell (hoặc Setup Wizard nếu chưa hoàn tất) — còn
+                      // chưa đăng nhập thì phải qua màn Đăng nhập trước (đúng
+                      // như luồng _AppGate mô tả), thay vì luôn nhảy thẳng vào
+                      // MainShell bất kể trạng thái đăng nhập/thiết lập.
                       final isLoggedIn = context.read<AuthProvider>().isLoggedIn;
+                      final setup = context.read<SetupProvider>();
+                      Widget next;
+                      if (!isLoggedIn) {
+                        next = const LoginScreen();
+                      } else if (!setup.wizardCompleted) {
+                        next = const SetupWizardScreen();
+                      } else {
+                        next = const MainShell();
+                      }
                       Navigator.of(context).pushReplacement(
-                        MaterialPageRoute(
-                          builder: (_) => isLoggedIn ? const MainShell() : const LoginScreen(),
-                        ),
+                        MaterialPageRoute(builder: (_) => next),
                       );
                     } else {
                       Navigator.of(context).pop();
