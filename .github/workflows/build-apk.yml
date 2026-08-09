@@ -100,6 +100,12 @@ jobs:
         with:
           tag_name: build-${{ github.run_number }}
           name: "v${{ steps.version.outputs.version }} (build ${{ github.run_number }})"
-          body: "APK build from commit ${{ github.sha }}"
+          body: |
+            **Commit:** ${{ github.sha }}
+            **Author:** ${{ github.event.head_commit.author.name }}
+            **Message:**
+            > ${{ github.event.head_commit.message }}
+            
+            APK build from this commit.
           prerelease: true
           files: release/*.apk
