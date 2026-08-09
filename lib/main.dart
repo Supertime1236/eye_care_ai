@@ -230,11 +230,20 @@ class _AppGateState extends State<_AppGate> {
   late final Future<bool> _consentGivenFuture;
   AuthProvider? _authProvider;
 
+  static Future<bool> _timeoutFuture(Duration duration) => Future.delayed(duration, () => false);
+
   @override
   void initState() {
     super.initState();
-    _surveyCompletedFuture = DeviceDataService.instance.isSurveyCompleted();
-    _consentGivenFuture = AnalyticsService.instance.init().then((_) => AnalyticsService.instance.consentGiven);
+    _surveyCompletedFuture = DeviceDataService.instance
+        .isSurveyCompleted()
+        .timeout(const Duration(seconds: 8))
+        .catchError((_) => false);
+    _consentGivenFuture = AnalyticsService.instance
+        .init()
+        .then((_) => AnalyticsService.instance.consentGiven)
+        .timeout(const Duration(seconds: 8))
+        .catchError((_) => false);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       NotificationService.instance.requestDeferredSystemPermissions();
     });
