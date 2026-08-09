@@ -187,7 +187,7 @@ class AppStrings {
   String get eyeCareSettingFeet => vi ? 'Feet' : 'Feet';
   String get eyeCareSettingInch => vi ? 'Inch' : 'Inch';
   String get achievementBadges => vi ? 'Thành tựu' : 'Achievements';
-  String get rank => vi ? 'Xếp hạng' : 'Rank';
+  String get ranking => vi ? 'Xếp hạng' : 'Ranking';
   String get achievementTitle => vi ? 'Thành tựu của bạn' : 'Your achievements';
   String get achievementUnlocked => vi ? 'Đã mở khóa' : 'Unlocked';
   String get achievementLocked => vi ? 'Chưa mở khóa' : 'Locked';

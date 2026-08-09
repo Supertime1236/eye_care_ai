@@ -225,7 +225,7 @@ class _FeatureHubCard extends StatelessWidget {
     final features = [
       _FeatureItem(icon: '🏆', title: strings.achievementBadges, route: const _AchievementPage()),
       _FeatureItem(icon: '📊', title: strings.statistics, route: const StatisticsScreen()),
-      _FeatureItem(icon: '🏅', title: strings.rank, route: const RankScreen()),
+      _FeatureItem(icon: '🏅', title: strings.ranking, route: const RankScreen()),
       _FeatureItem(icon: '🧪', title: strings.eyeTest, route: const _EyeTestPage()),
       _FeatureItem(icon: '✅', title: strings.habits, route: const HabitsScreen()),
       _FeatureItem(icon: '☕', title: strings.eyeBreakTitle, route: const EyeBreakScreen()),
@@ -548,7 +548,7 @@ class _AchievementPageState extends State<_AchievementPage> {
                                 : null,
                           ),
                           alignment: Alignment.center,
-                          child: Text(item.icon, style: const TextStyle(fontSize: 24)),
+                          child: AppIcon(item.icon, size: 24, color: Theme.of(context).colorScheme.primary),
                         ),
                       ),
                       const SizedBox(width: 14),

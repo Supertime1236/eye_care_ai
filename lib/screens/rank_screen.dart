@@ -139,7 +139,7 @@ class _RankScreenState extends State<RankScreen> {
           icon: const Icon(Icons.arrow_back_rounded),
           tooltip: vi ? 'Quay lại' : 'Back',
         ),
-        title: Text(vi ? 'Xếp hạng' : 'Rank'),
+        title: Text(vi ? 'Xếp hạng' : 'Ranking'),
       ),
       body: RefreshIndicator(
         onRefresh: () async {
@@ -264,7 +264,7 @@ class _LeagueBanner extends StatelessWidget {
                 Icon(Icons.emoji_events_rounded, size: 16, color: tier.color),
                 const SizedBox(width: 6),
                 Text(
-                  vi ? 'Hạng #${rank.myRank} trên bảng xếp hạng' : 'Rank #${rank.myRank} on the leaderboard',
+                  vi ? 'Hạng #${rank.myRank} trên bảng xếp hạng' : 'Ranking #${rank.myRank} on the leaderboard',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600),
                 ),
               ],
