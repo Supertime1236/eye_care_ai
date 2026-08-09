@@ -47,9 +47,20 @@ void _openEyeBreakScreenFromNotification() {
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
+  // Khởi tạo Firebase/Notification có thể treo vô hạn (config thiếu trên bản
+  // cài mới, platform channel chưa sẵn sàng lúc khởi động lạnh) → bọc timeout
+  // để app LUÔN thoát khỏi splash, kể cả khi dịch vụ phụ trợ lỗi.
+  try {
+    await Firebase.initializeApp().timeout(const Duration(seconds: 10));
+  } catch (_) {
+    // App vẫn chạy không cần Firebase (analytics/auth tạm vô hiệu).
+  }
   NotificationService.instance.onBreakReminderTapped = _openEyeBreakScreenFromNotification;
-  await NotificationService.instance.initialize();
+  try {
+    await NotificationService.instance.initialize().timeout(const Duration(seconds: 8));
+  } catch (_) {
+    // Báo thức nghỉ mắt có thể khởi tạo lại sau khi vào app.
+  }
 
   // Trường hợp app đã bị TẮT HẲN (không chỉ thu nhỏ) và người dùng mở lại
   // bằng cách nhấn vào thông báo "Đến giờ nghỉ mắt": onDidReceiveNotification

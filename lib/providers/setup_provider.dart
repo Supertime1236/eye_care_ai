@@ -53,8 +53,16 @@ class SetupProvider extends ChangeNotifier {
   }
 
   Future<void> _init() async {
-    final prefs = await SharedPreferences.getInstance();
-    _wizardCompleted = prefs.getBool(_kWizardCompletedKey) ?? false;
+    try {
+      final prefs = await SharedPreferences.getInstance().timeout(
+        const Duration(seconds: 5),
+        onTimeout: () => throw Exception('SharedPreferences timeout'),
+      );
+      _wizardCompleted = prefs.getBool(_kWizardCompletedKey) ?? false;
+    } catch (_) {
+      // I/O khởi động lạnh có thể stall → rơi về mặc định an toàn, không treo splash.
+      _wizardCompleted = false;
+    }
 
     try {
       await refreshStatus().timeout(const Duration(seconds: 6));
