@@ -15,9 +15,9 @@ import '../providers/theme_provider.dart';
 import '../services/notification_service.dart';
 import '../services/update_service.dart';
 import '../theme/app_colors.dart';
-import '../utils/app_icon.dart';
 import '../widgets/shared_widgets.dart';
 import '../widgets/update_dialog.dart';
+import '../widgets/smart_brightness_dialog.dart';
 import 'edit_profile_screen.dart';
 import 'settings_more_page.dart';
 
@@ -214,10 +214,9 @@ class SettingsScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 20),
-              // 📱 Màn hình: gộp mọi cài đặt ảnh hưởng trực tiếp tới ánh sáng/độ
-              // sáng màn hình vào 1 chỗ — tách riêng khỏi "Tùy chọn" chung ở trên
-              // vì đây đều là các cài đặt liên quan tới MẮT (mỏi mắt do màn hình
-              // quá sáng/quá xanh), không phải tùy chọn hiển thị đơn thuần.
+              // 📱 Màn hình: các cài đặt ảnh hưởng trực tiếp tới ánh sáng màn
+              // hình — tách riêng khỏi "Tùy chọn" chung ở trên vì đây đều là
+              // cài đặt liên quan tới MẮT (mỏi mắt do sáng/tối không phù hợp).
               Text(strings.screenSection, style: Theme.of(context).textTheme.titleSmall),
               const SizedBox(height: 10),
               SectionCard(
@@ -229,17 +228,7 @@ class SettingsScreen extends StatelessWidget {
                       title: strings.brightnessTips,
                       subtitle: strings.brightnessTipsSubtitle,
                       valueLabel: '',
-                      onTap: () => _showBrightnessTipsDialog(context, strings),
-                    ),
-                    const Divider(height: 1, indent: 56),
-                    _BlueLightFilterTile(theme: theme, strings: strings),
-                    const Divider(height: 1, indent: 56),
-                    _InlineToggleRow(
-                      icon: isDark ? '🌙' : '☀️',
-                      title: strings.darkMode,
-                      subtitle: strings.darkModeSubtitle,
-                      value: isDark,
-                      onChanged: theme.toggleDarkMode,
+                      onTap: () => SmartBrightnessDialog.show(context, strings),
                     ),
                     const Divider(height: 1, indent: 56),
                     _ListTileOption(
@@ -650,6 +639,7 @@ class _MenuItem extends StatelessWidget {
         child: Row(
           children: [
             AppIcon(icon, size: 22, color: Theme.of(context).colorScheme.primary),
+            Text(icon, style: const TextStyle(fontSize: 22)),
             const SizedBox(width: 12),
             Expanded(
               child: Text(
@@ -753,6 +743,7 @@ class _ListTileOption extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               AppIcon(icon, size: 22, color: Theme.of(context).colorScheme.primary),
+              Text(icon, style: const TextStyle(fontSize: 22)),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -793,6 +784,7 @@ class _ListTileOption extends StatelessWidget {
         child: Row(
           children: [
             AppIcon(icon, size: 22, color: Theme.of(context).colorScheme.primary),
+            Text(icon, style: const TextStyle(fontSize: 22)),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -1048,32 +1040,6 @@ Future<void> _showGuardianEmailDialog(BuildContext context, SettingsProvider set
       );
     }
   }
-}
-
-Future<void> _showBrightnessTipsDialog(BuildContext context, AppStrings strings) async {
-  await showDialog<void>(
-    context: context,
-    builder: (context) {
-      return AlertDialog(
-        title: Row(
-          children: [
-            const AppIcon('💡', size: 22, color: AppColors.primaryBlue),
-            const SizedBox(width: 10),
-            Expanded(child: Text(strings.brightnessTips)),
-          ],
-        ),
-        content: SingleChildScrollView(
-          child: Text(strings.brightnessTipsBody, style: Theme.of(context).textTheme.bodyMedium),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(strings.vi ? 'Đã hiểu' : 'Got it'),
-          ),
-        ],
-      );
-    },
-  );
 }
 
 Future<void> _showThemeDialog(BuildContext context, ThemeProvider theme, AppStrings strings) async {
@@ -1484,10 +1450,9 @@ class _PermissionTile extends StatelessWidget {
               borderRadius: BorderRadius.circular(12),
             ),
             child: Center(
-              child: AppIcon(
+              child: Text(
                 icon,
-                size: 22,
-                color: isGranted ? Colors.green : Colors.orange,
+                style: const TextStyle(fontSize: 22),
               ),
             ),
           ),

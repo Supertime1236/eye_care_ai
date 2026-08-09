@@ -67,6 +67,8 @@ const Map<String, IconData> _kIconMap = {
   '🏆': Icons.emoji_events_outlined,
   '🏅': Icons.military_tech,
   '⭐': Icons.star_outline,
+  '🔔': Icons.notifications_outlined,
+  '🔧': Icons.build_outlined,
 };
 
 // Dùng thay cho `Text(icon, style: TextStyle(fontSize: ...))` ở mọi nơi

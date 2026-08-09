@@ -420,6 +420,23 @@ class NotificationService {
   }
 
 
+  // Yêu cầu quyền hiển thị thông báo (Android 13+ cần popup thật, các bản
+  // cũ hơn/iOS thường tự cấp) — dùng riêng cho bước "Thông báo" trong Setup
+  // Wizard, tách khỏi initialize() vì initialize() chạy quá sớm trong
+  // main() (trước runApp), lúc đó gọi lại không hiện popup được nếu quyền
+  // đã bị từ chối trước đó (chỉ hỏi được đúng 1 lần theo vòng đời OS).
+  Future<bool> requestNotificationPermission() async {
+    final androidPlugin =
+        notifications.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+    if (androidPlugin != null) {
+      final granted = await androidPlugin.requestNotificationsPermission();
+      return granted ?? await androidPlugin.areNotificationsEnabled() ?? false;
+    }
+    final iosPlugin =
+        notifications.resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>();
+    return await iosPlugin?.requestPermissions(alert: true, badge: true, sound: true) ?? true;
+  }
+
   // dùng để UI hiện gợi ý bật quyền này nếu bị tắt (khác với lúc mới cài,
   // requestExactAlarmsPermission() chỉ tự hỏi đúng 1 lần).
   Future<bool> canScheduleExactAlarms() async {

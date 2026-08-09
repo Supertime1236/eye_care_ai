@@ -123,7 +123,19 @@ class HabitProvider extends ChangeNotifier {
   List<AppUsageBreakdownEntry> appUsageBreakdown = [];
 
   int get eyeHealthScore => habitsCompletionPercent;
-  double get screenTimeHours => habits.firstWhere((h) => h.id == 'phone').current;
+  double get screenTimeHours => totalScreenTimeHoursToday;
+
+  // Tổng thời gian dùng điện thoại THẬT của hôm nay, lấy TRỰC TIẾP từ tổng
+  // appUsageBreakdown (KHÔNG qua clamp) — dùng riêng cho việc HIỂN THỊ (thẻ
+  // Trang chủ, biểu đồ Thống kê) để luôn khớp 100% với thẻ "Sử dụng theo ứng
+  // dụng" (cũng cộng từ đúng list này). `habits[phone].current` vẫn bị clamp
+  // về tối đa target*2 (xem _applyHabitValue) — clamp đó CHỈ nên ảnh hưởng
+  // thanh tiến độ/vòng tròn hoàn thành habit (progress bar không thể vẽ quá
+  // 100%*2 một cách hợp lý), không được lẫn vào số giờ hiển thị thật. Trước
+  // đây `screenTimeHours` đọc thẳng `current` đã bị clamp, nên khi người
+  // dùng tự đặt mục tiêu thấp (ví dụ 3h) mà dùng máy nhiều hơn target*2, số
+  // hiển thị bị "ăn bớt" so với tổng thật ở thẻ Sử dụng theo ứng dụng.
+  double totalScreenTimeHoursToday = 0;
   double get outdoorHours => habits.firstWhere((h) => h.id == 'outdoor').current / 60;
   int get breakCount => habits.firstWhere((h) => h.id == 'breaks').current.round();
 
@@ -202,6 +214,9 @@ class HabitProvider extends ChangeNotifier {
     appUsageBreakdown = results[0] as List<AppUsageBreakdownEntry>;
     final totalUsageSeconds = appUsageBreakdown.fold<int>(0, (sum, e) => sum + e.usage.inSeconds);
     final phoneHours = appUsageBreakdown.isEmpty ? null : totalUsageSeconds / 3600.0;
+    // Cập nhật biến hiển thị KHÔNG bị clamp — luôn = đúng tổng của
+    // appUsageBreakdown, cùng 1 con số với thẻ "Sử dụng theo ứng dụng".
+    totalScreenTimeHoursToday = phoneHours ?? 0;
 
     // 'reading' giờ là "Eye Test Count" — tính năng đang phát triển, chưa có
     // nguồn dữ liệu thật nên không gọi getReadingMinutesToday()/áp giá trị

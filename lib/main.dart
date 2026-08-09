@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import 'providers/accent_color_provider.dart';
 import 'providers/auth_provider.dart';
+import 'providers/auto_brightness_provider.dart';
 import 'providers/chat_provider.dart';
 import 'providers/font_provider.dart';
 import 'providers/habit_provider.dart';
@@ -13,12 +14,14 @@ import 'providers/rank_provider.dart';
 import 'providers/reminder_provider.dart';
 import 'providers/settings_more_provider.dart';
 import 'providers/settings_provider.dart';
+import 'providers/setup_provider.dart';
 import 'providers/theme_provider.dart';
 import 'screens/consent_screen.dart';
 import 'screens/eye_break_screen.dart';
 import 'screens/habits_survey_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/main_shell.dart';
+import 'screens/setup_wizard_screen.dart';
 import 'services/analytics_service.dart';
 import 'services/device_data_service.dart';
 import 'services/notification_service.dart';
@@ -61,6 +64,7 @@ Future<void> main() async {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
+        ChangeNotifierProvider(create: (_) => AutoBrightnessProvider()),
         ChangeNotifierProvider(create: (_) => FontProvider()),
         ChangeNotifierProvider(create: (_) => AccentColorProvider()),
         ChangeNotifierProvider(create: (_) => LanguageProvider()),
@@ -73,6 +77,7 @@ Future<void> main() async {
         ChangeNotifierProvider(create: (_) => RankProvider()),
         ChangeNotifierProvider(create: (_) => ChatProvider()),
         ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(create: (_) => SetupProvider()),
         ChangeNotifierProxyProvider<AuthProvider, ProfileProvider>(
           create: (_) => ProfileProvider(),
           update: (_, auth, profile) => profile!..syncFromUser(auth.user),
@@ -287,7 +292,16 @@ class _AppGateState extends State<_AppGate> {
                 context.read<HabitProvider>().setSurveyCompleted(true);
               });
               final isLoggedIn = context.read<AuthProvider>().isLoggedIn;
-              return isLoggedIn ? const MainShell() : const LoginScreen();
+              if (!isLoggedIn) return const LoginScreen();
+
+              // Đã đăng nhập -> trước khi vào MainShell, kiểm tra đã hoàn
+              // tất/bỏ qua First-Time Setup Wizard hay chưa. SetupProvider tự
+              // đọc SharedPreferences bất đồng bộ lúc khởi tạo (loading=true
+              // ban đầu) nên phải watch() để _AppGate build lại đúng lúc nó
+              // đọc xong, tránh nháy màn hình MainShell/Wizard sai 1 khung hình.
+              final setup = context.watch<SetupProvider>();
+              if (setup.loading) return const AppLoadingSkeleton();
+              return setup.wizardCompleted ? const MainShell() : const SetupWizardScreen();
             }
             return const HabitsSurveyScreen(mandatory: true);
           },

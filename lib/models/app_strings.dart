@@ -102,6 +102,12 @@ class AppStrings {
         return vi ? 'Theo hệ thống' : 'System';
     }
   }
+  // Tự động điều chỉnh độ sáng (liên tục theo cảm biến, khác "Gợi ý độ
+  // sáng" ở trên vốn chỉ áp 1 lần khi người dùng tự bấm).
+  String get autoBrightnessTitle => vi ? 'Tự động điều chỉnh độ sáng' : 'Auto-adjust brightness';
+  String get autoBrightnessSubtitle => vi
+      ? 'Tăng/giảm độ sáng màn hình liên tục theo ánh sáng môi trường xung quanh'
+      : 'Continuously raises/lowers screen brightness to match the light around you';
   String get metricUnits => vi ? 'Đơn vị mét' : 'Metric Units';
   String get imperialUnits => vi ? 'Đơn vị Anh' : 'Imperial Units';
   String get metricUnitsSubtitle => vi ? 'Xem centimet và giờ' : 'Centimeters, hours';
@@ -633,6 +639,48 @@ class AppStrings {
       ? 'Chưa có nguồn dữ liệu — cần cấp quyền xem thời gian sử dụng'
       : 'No data source yet — grant usage access to enable this';
   String get grantUsageAccess => vi ? 'Cấp quyền xem thời gian sử dụng' : 'Grant usage access';
+
+  // ---------------- First-Time Setup Wizard ----------------
+  String get setupWizardTitle => vi ? 'Thiết lập ban đầu' : 'Initial Setup';
+  String get setupWelcomeTitle => vi ? 'Chào mừng đến với EyeCare AI 👋' : 'Welcome to EyeCare AI 👋';
+  String get setupWelcomeBody => vi
+      ? 'Cấp vài quyền dưới đây để app theo dõi thói quen dùng điện thoại, nhắc bạn nghỉ mắt đúng lúc và đọc được giấc ngủ — chỉ mất khoảng 1 phút. Bước nào cũng có thể bỏ qua và cấp lại sau trong Cài đặt.'
+      : 'Grant a few permissions below so the app can track your phone habits, remind you to rest your eyes on time, and read your sleep data — takes about a minute. Every step can be skipped and granted later in Settings.';
+  String get setupGetStarted => vi ? 'Bắt đầu' : 'Get started';
+  String get setupSkipStep => vi ? 'Bỏ qua' : 'Skip';
+  String get setupNextStep => vi ? 'Tiếp theo' : 'Next';
+  String get setupGrantButton => vi ? 'Cấp quyền' : 'Grant permission';
+  String get setupGranted => vi ? 'Đã cấp quyền' : 'Granted';
+  String get setupFinish => vi ? 'Bắt đầu sử dụng' : 'Start using the app';
+  String get setupDoneTitle => vi ? 'Xong rồi! 🎉' : "All set! 🎉";
+  String setupDoneBody(int granted, int total) => vi
+      ? 'Bạn đã cấp $granted/$total quyền. Bạn có thể vào Cài đặt để cấp nốt các quyền còn thiếu bất cứ lúc nào.'
+      : "You've granted $granted/$total permissions. You can finish the rest anytime from Settings.";
+
+  String get setupStepUsageTitle => vi ? 'Thời gian sử dụng điện thoại' : 'Phone usage access';
+  String get setupStepUsageBody => vi
+      ? 'Cho phép app đọc thời gian dùng điện thoại để tính habit "Thời gian màn hình", điểm sức khỏe mắt và biểu đồ Thống kê. Bạn sẽ được đưa tới màn hình Cài đặt hệ thống, tìm "EyeCare AI" và bật lên.'
+      : 'Lets the app read your screen time to power the "Phone Usage" habit, your eye-health score, and the Statistics charts. You\'ll be taken to a system settings screen — find "EyeCare AI" and turn it on.';
+
+  String get setupStepNotificationsTitle => vi ? 'Thông báo' : 'Notifications';
+  String get setupStepNotificationsBody => vi
+      ? 'Để app nhắc bạn nghỉ mắt theo quy tắc 20-20-20 đúng giờ, kể cả khi không mở app.'
+      : 'So the app can remind you to take 20-20-20 eye breaks on time, even when the app is closed.';
+
+  String get setupStepSleepTitle => vi ? 'Giấc ngủ (Health Connect)' : 'Sleep (Health Connect)';
+  String get setupStepSleepBody => vi
+      ? 'Đọc dữ liệu giấc ngủ từ Health Connect (đồng hồ thông minh, Samsung Health, Fitbit...) để tự động điền habit "Giấc ngủ" — không cần nhập tay mỗi ngày. Cần cài app Health Connect nếu máy chưa có.'
+      : 'Reads sleep data from Health Connect (smartwatch, Samsung Health, Fitbit...) to auto-fill the "Sleep" habit — no manual entry needed. Requires the Health Connect app if not already installed.';
+
+  String get setupStepFocusModeTitle => vi ? 'Chế độ Tập trung' : 'Focus Mode';
+  String get setupStepFocusModeBody => vi
+      ? 'Cho phép app tạm chặn thông báo từ app khác trong lúc đang đếm ngược giữa 2 lần nghỉ mắt, giúp bạn không bị làm phiền/giật mình.'
+      : 'Lets the app briefly block other notifications while counting down between eye breaks, so you\'re not interrupted.';
+
+  String get setupBannerTitle => vi ? 'Hoàn tất thiết lập' : 'Finish setup';
+  String setupBannerSubtitle(int granted, int total) =>
+      vi ? 'Đã cấp $granted/$total quyền' : '$granted/$total permissions granted';
+  String get setupBannerAction => vi ? 'Tiếp tục' : 'Continue';
 
   // ---------------- Change target sheet ----------------
   String get changeTargetButton => vi ? 'Đổi mục tiêu' : 'Change Target';
