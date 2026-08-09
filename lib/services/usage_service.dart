@@ -69,4 +69,18 @@ class UsageService {
       return {};
     }
   }
+
+  /// Ước lượng số phút ngủ đêm qua từ Usage Events (lần cuối dùng máy tối
+  /// qua -> lần đầu dùng máy sáng nay) — THAY THẾ Health Connect đã bị bỏ.
+  /// Trả về null nếu không đủ dữ liệu tin cậy (ví dụ không mở máy buổi sáng
+  /// trong khung giờ dự kiến, hoặc chưa có quyền Usage Access).
+  static Future<int?> getSleepEstimateMinutes() async {
+    try {
+      final Map<dynamic, dynamic> data =
+          await _channel.invokeMethod("getSleepEstimate");
+      return data['sleepMinutes'] as int?;
+    } on PlatformException {
+      return null;
+    }
+  }
 }

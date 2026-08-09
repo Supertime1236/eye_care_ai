@@ -17,6 +17,7 @@ import '../theme/app_colors.dart';
 import '../widgets/shared_widgets.dart';
 import '../widgets/smart_brightness_dialog.dart';
 import 'edit_profile_screen.dart';
+import 'login_screen.dart';
 import 'settings_more_page.dart';
 
 // SettingsScreen là màn hình cài đặt chính của ứng dụng.
@@ -368,7 +369,17 @@ class SettingsScreen extends StatelessWidget {
                       icon: '🚪',
                       title: strings.signOut,
                       color: AppColors.error,
-                      onTap: () => context.read<AuthProvider>().signOut(),
+                      // Chuyển hướng THẲNG sang LoginScreen, không trông chờ
+                      // _AppGate tự rebuild theo AuthProvider (đúng cơ chế
+                      // mong manh từng gây bug hệt vậy ở màn đăng nhập).
+                      onTap: () async {
+                        await context.read<AuthProvider>().signOut();
+                        if (!context.mounted) return;
+                        Navigator.of(context).pushAndRemoveUntil(
+                          MaterialPageRoute(builder: (_) => const LoginScreen()),
+                          (route) => false,
+                        );
+                      },
                     ),
                   ],
                 ),

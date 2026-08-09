@@ -57,7 +57,8 @@ dependencies:
   light: ^5.0.0             # cảm biến ánh sáng (lux) - dùng cho cảnh báo dùng điện thoại trong bóng tối + tự động điều chỉnh độ sáng
   screen_brightness: ^2.1.1 # chỉnh độ sáng màn hình theo lux đọc được từ cảm biến ánh sáng
   app_usage: ^4.1.0        # OS screen-on time (Android only, needs Usage Access permission)
-  health: ^13.3.1           # HealthKit / Health Connect (chỉ dùng cho Sleep)
+  # health package đã BỊ BỎ — Sleep giờ ước lượng từ Usage Events (xem
+  # UsageStatsHandler.getSleepEstimate()), không cần Health Connect nữa.
   permission_handler: ^11.3.1
   shared_preferences: ^2.3.3 # persists today's accumulated minutes across app restarts
   android_intent_plus: ^5.2.0 # mở thẳng màn hình cấp quyền Usage Access

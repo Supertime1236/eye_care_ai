@@ -4,11 +4,12 @@ import 'dart:io';
 import 'package:android_intent_plus/android_intent.dart';
 import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:health/health.dart';
 import 'package:light/light.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import 'usage_service.dart';
 
 // Một dòng dữ liệu sử dụng của MỘT app trong ngày hôm nay, dùng cho biểu đồ
 // tròn "App Usage Breakdown" ở trang Thống kê.
@@ -188,102 +189,21 @@ class DeviceDataService {
     }
   }
 
-  // Chỉ xin quyền Health Connect MỘT LẦN trong suốt vòng đời app — trước đây
-  // getSleepHours() gọi requestAuthorization() mỗi lần refreshHabitsFromDevice()
-  // chạy (tức mỗi vài giây do timer poll ở MainShell), khiến log
-  // "Permission launcher not found" bị spam liên tục và tốn tài nguyên hỏi
-  // quyền lặp lại vô ích dù đã được cấp/từ chối từ trước.
-  bool? _sleepPermissionGranted;
-  // health package v10+ (đang dùng v13.3.1) BẮT BUỘC phải gọi configure()
-  // đúng 1 lần trước khi gọi BẤT KỲ method nào khác (hasPermissions,
-  // requestAuthorization, getHealthDataFromTypes) — thiếu bước này là lý do
-  // Health Connect "không hoạt động": mọi lệnh gọi phía dưới đều throw ngay,
-  // bị try/catch nuốt mất, và habit Sleep luôn rơi về "không có dữ liệu".
-  bool _healthConfigured = false;
-
-  // Chỉ xin quyền SLEEP_ASLEEP thôi thì bỏ sót dữ liệu: nhiều app đồng bộ
-  // giấc ngủ vào Health Connect (Samsung Health, Fitbit, Xiaomi Health...)
-  // chỉ ghi bản ghi tổng SLEEP_SESSION, KHÔNG tách nhỏ ra từng giai đoạn
-  // SLEEP_ASLEEP — nếu chỉ hỏi SLEEP_ASLEEP, những app đó sẽ luôn trả về
-  // rỗng dù người dùng rõ ràng có dữ liệu ngủ trong Health Connect.
-  static const _sleepHealthTypes = [HealthDataType.SLEEP_SESSION, HealthDataType.SLEEP_ASLEEP];
-
-  Future<void> _ensureHealthConfigured() async {
-    if (_healthConfigured) return;
-    await Health().configure();
-    _healthConfigured = true;
-  }
-
-  /// Kiểm tra xem đã có quyền Health Connect (đọc giấc ngủ) hay chưa —
-  /// KHÔNG hiện popup xin quyền, chỉ đọc trạng thái hiện tại. Dùng cho Setup
-  /// Wizard / banner trạng thái ở Home để hiện đúng "đã cấp" hay chưa.
-  Future<bool> hasSleepPermission() async {
-    try {
-      await _ensureHealthConfigured();
-      final granted = await Health().hasPermissions(_sleepHealthTypes) ?? false;
-      _sleepPermissionGranted = granted;
-      return granted;
-    } catch (_) {
-      return false;
-    }
-  }
-
-  /// Chủ động hiện popup xin quyền Health Connect — dùng cho bước "Giấc ngủ"
-  /// trong Setup Wizard (bấm nút "Cấp quyền"), khác với getSleepHours() ở
-  /// dưới vốn chỉ xin quyền "tiện thể" trong lúc đọc dữ liệu.
-  Future<bool> requestSleepPermission() async {
-    try {
-      await _ensureHealthConfigured();
-      final granted = await Health().requestAuthorization(_sleepHealthTypes);
-      _sleepPermissionGranted = granted;
-      return granted;
-    } catch (_) {
-      return false;
-    }
-  }
-
-  // ---------------- Sleep: HealthKit (iOS) / Health Connect (Android) ----------------
+  // ---------------- Sleep: ước lượng từ Usage Events ----------------
+  // BỎ Health Connect (package `health`) — không phải máy nào cũng cài đặt
+  // sẵn Health Connect, và nó đòi thêm 1 quyền riêng gây phiền cho 1 tính
+  // năng phụ. Thay bằng suy luận từ chính Usage Access đã xin ở bước đầu
+  // tiên (xem UsageStatsHandler.getSleepEstimate() phía native): lấy mốc
+  // dùng máy lần cuối tối qua + lần đầu sáng nay, hiệu số 2 mốc đó xấp xỉ
+  // thời gian ngủ. Đây là SUY LUẬN dựa trên thói quen dùng điện thoại,
+  // KHÔNG phải đo giấc ngủ thật (không bắt được giấc ngủ trưa, không phát
+  // hiện nếu người dùng thức nhưng không đụng máy) — độ chính xác thấp hơn
+  // cảm biến chuyên dụng, nhưng không cần thêm quyền nào cả.
   Future<double?> getSleepHours() async {
     try {
-      await _ensureHealthConfigured();
-      final health = Health();
-      final types = _sleepHealthTypes;
-
-      if (_sleepPermissionGranted == null) {
-        final alreadyGranted = await health.hasPermissions(types) ?? false;
-        _sleepPermissionGranted = alreadyGranted || await health.requestAuthorization(types);
-      }
-      // Lưu ý: nếu người dùng từ chối lúc đầu rồi sau đó tự vào Cài đặt hệ
-      // thống cấp quyền Health Connect thủ công, app cần được khởi động lại
-      // mới nhận biết được (đổi lấy việc không phải spam hỏi quyền mỗi vài
-      // giây — đánh đổi hợp lý).
-      if (_sleepPermissionGranted != true) return null;
-
-      // Giấc ngủ có thể bắt đầu từ tối hôm trước và kết thúc sáng hôm nay —
-      // nới khung truy vấn ra 20 tiếng thay vì chỉ "hôm nay" để không bỏ sót.
-      final now = DateTime.now();
-      final yesterday = now.subtract(const Duration(hours: 20));
-      final points = await health.getHealthDataFromTypes(
-        types: types,
-        startTime: yesterday,
-        endTime: now,
-      );
-      if (points.isEmpty) return null;
-
-      final sessionPoints = points.where((p) => p.type == HealthDataType.SLEEP_SESSION).toList();
-      final relevantPoints = sessionPoints.isNotEmpty
-          ? sessionPoints
-          : points.where((p) => p.type == HealthDataType.SLEEP_ASLEEP).toList();
-      if (relevantPoints.isEmpty) return null;
-
-      final totalMinutes = relevantPoints.fold<int>(0, (sum, p) {
-        final value = p.value;
-        if (value is NumericHealthValue) {
-          return sum + value.numericValue.round();
-        }
-        return sum + p.dateTo.difference(p.dateFrom).inMinutes;
-      });
-      return totalMinutes / 60.0;
+      final minutes = await UsageService.getSleepEstimateMinutes();
+      if (minutes == null) return null;
+      return minutes / 60.0;
     } catch (_) {
       return null;
     }

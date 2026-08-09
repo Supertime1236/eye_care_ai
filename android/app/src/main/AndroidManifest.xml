@@ -10,8 +10,9 @@
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <!-- Reading Time / Sleep habits: accelerometer-based stillness heuristic -->
     <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
-    <!-- Sleep habit: Health Connect (Android's successor to Google Fit) -->
-    <uses-permission android:name="android.permission.health.READ_SLEEP" />
+    <!-- android.permission.health.READ_SLEEP đã BỊ XOÁ — không dùng Health
+         Connect nữa, Sleep giờ ước lượng từ Usage Events (Usage Access đã
+         xin ở permission đầu tiên, không cần quyền riêng cho Sleep nữa). -->
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"/>
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
     <!-- Break Reminder: Android 13+ yêu cầu xin quyền runtime để hiện thông báo -->
@@ -110,11 +111,6 @@
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
-        </intent>
-        <!-- Needed so the app can detect/launch Health Connect for sleep data -->
-        <package android:name="com.google.android.apps.healthdata" />
-        <intent>
-            <action android:name="androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE" />
         </intent>
         <!-- Feedback via Email (Help & Support): needed so url_launcher can find a mail app -->
         <intent>

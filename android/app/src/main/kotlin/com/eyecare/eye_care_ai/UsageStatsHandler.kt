@@ -9,6 +9,7 @@ import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import android.app.usage.UsageStatsManager
+import android.app.usage.UsageEvents
 import java.util.Calendar
 import android.content.pm.PackageManager
 class UsageStatsHandler(
@@ -54,6 +55,14 @@ class UsageStatsHandler(
             }
             "getWeeklyUsage" -> {
                 result.success(getWeeklyUsage())
+            }
+
+            "getSleepEstimate" -> {
+                try {
+                    result.success(getSleepEstimate())
+                } catch (e: Exception) {
+                    result.error("USAGE_ERROR", e.message, null)
+                }
             }
 
             else -> result.notImplemented()
@@ -296,5 +305,84 @@ class UsageStatsHandler(
         }
 
         return result
+    }
+
+    /**
+     * ƯỚC LƯỢNG GIỜ NGỦ TỪ USAGE EVENTS — thay cho Health Connect (đã bị bỏ,
+     * không phải máy nào cũng cài, và bắt cấp thêm 1 quyền riêng gây phiền).
+     *
+     * Cách làm: quét raw UsageEvents.MOVE_TO_FOREGROUND (mỗi lần người dùng
+     * mở/chuyển tới 1 app tính là "màn hình đang hoạt động") trong khung giờ
+     * từ 12:00 trưa HÔM QUA tới hiện tại — đủ rộng để bắt được cả người ngủ
+     * muộn lẫn dậy sớm.
+     *   - "Đêm qua dùng máy lần cuối" = sự kiện MUỘN NHẤT nằm trong khung
+     *     "tối" (18:00 hôm qua -> 04:00 hôm nay).
+     *   - "Sáng nay dùng máy lần đầu" = sự kiện SỚM NHẤT nằm trong khung
+     *     "sáng" (04:00 -> 12:00 hôm nay) và PHẢI sau mốc "đêm qua" ở trên.
+     * Đây là suy luận (không phải đo trực tiếp giấc ngủ), có thể sai nếu
+     * người dùng KHÔNG chạm máy trong lúc thức (đọc sách giấy...) hoặc có
+     * chạm máy trong lúc mất ngủ giữa đêm — nên FE nên hiển thị rõ đây là
+     * "ước lượng", không phải số đo chính xác.
+     */
+    private fun getSleepEstimate(): Map<String, Any?> {
+        if (!checkUsagePermission()) {
+            throw Exception("Usage permission not granted")
+        }
+
+        val usageManager =
+            context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
+
+        val now = Calendar.getInstance()
+
+        val todayNoon = (now.clone() as Calendar).apply {
+            set(Calendar.HOUR_OF_DAY, 12); set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+        }
+        // Nếu bây giờ đã qua 12h trưa, mốc bắt đầu quét là 12h trưa HÔM NAY;
+        // nếu chưa (đang là buổi sáng), lùi về 12h trưa HÔM QUA để vẫn bắt
+        // được toàn bộ đêm qua.
+        val queryStart = if (now.after(todayNoon)) todayNoon else (todayNoon.clone() as Calendar).apply {
+            add(Calendar.DAY_OF_YEAR, -1)
+        }
+
+        val nightStart = (queryStart.clone() as Calendar).apply {
+            set(Calendar.HOUR_OF_DAY, 18); set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+        }
+        val nightEnd = (nightStart.clone() as Calendar).apply { add(Calendar.DAY_OF_YEAR, 1); set(Calendar.HOUR_OF_DAY, 4) }
+        val morningStart = nightEnd
+        val morningEnd = (morningStart.clone() as Calendar).apply { set(Calendar.HOUR_OF_DAY, 12) }
+
+        val events: UsageEvents = usageManager.queryEvents(queryStart.timeInMillis, now.timeInMillis)
+        val event = UsageEvents.Event()
+
+        var lastNightUsage: Long? = null
+        var firstMorningUsage: Long? = null
+
+        while (events.hasNextEvent()) {
+            events.getNextEvent(event)
+            if (event.eventType != UsageEvents.Event.MOVE_TO_FOREGROUND) continue
+            val t = event.timeStamp
+
+            if (t in nightStart.timeInMillis until nightEnd.timeInMillis) {
+                if (lastNightUsage == null || t > lastNightUsage!!) lastNightUsage = t
+            } else if (t in morningStart.timeInMillis..morningEnd.timeInMillis) {
+                if (firstMorningUsage == null || t < firstMorningUsage!!) firstMorningUsage = t
+            }
+        }
+
+        var sleepMinutes: Long? = null
+        if (lastNightUsage != null && firstMorningUsage != null && firstMorningUsage!! > lastNightUsage!!) {
+            val minutes = (firstMorningUsage!! - lastNightUsage!!) / 60000
+            // Chặn giá trị vô lý (>16h hoặc <1h) — coi như không đủ tin cậy
+            // để hiển thị, tốt hơn là hiện số sai lệch nặng.
+            if (minutes in 60..960) sleepMinutes = minutes
+        }
+
+        return mapOf(
+            "lastNightUsage" to lastNightUsage,
+            "firstMorningUsage" to firstMorningUsage,
+            "sleepMinutes" to sleepMinutes
+        )
     }
 }

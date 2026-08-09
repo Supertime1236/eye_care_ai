@@ -671,10 +671,25 @@ class AppStrings {
       ? 'Để app nhắc bạn nghỉ mắt theo quy tắc 20-20-20 đúng giờ, kể cả khi không mở app.'
       : 'So the app can remind you to take 20-20-20 eye breaks on time, even when the app is closed.';
 
-  String get setupStepSleepTitle => vi ? 'Giấc ngủ (Health Connect)' : 'Sleep (Health Connect)';
-  String get setupStepSleepBody => vi
-      ? 'Đọc dữ liệu giấc ngủ từ Health Connect (đồng hồ thông minh, Samsung Health, Fitbit...) để tự động điền habit "Giấc ngủ" — không cần nhập tay mỗi ngày. Cần cài app Health Connect nếu máy chưa có.'
-      : 'Reads sleep data from Health Connect (smartwatch, Samsung Health, Fitbit...) to auto-fill the "Sleep" habit — no manual entry needed. Requires the Health Connect app if not already installed.';
+  String get setupStepLocationTitle => vi ? 'Vị trí (GPS)' : 'Location (GPS)';
+  String get setupStepLocationBody => vi
+      ? 'Dùng vị trí để ước lượng thời gian bạn ở ngoài trời — 1 trong 5 thói quen tốt cho mắt app theo dõi. Chỉ dùng lúc app đang mở, không theo dõi liên tục nền.'
+      : 'Uses your location to estimate time spent outdoors — one of the 5 eye-health habits the app tracks. Only used while the app is open, not tracked continuously in the background.';
+
+  String get setupStepActivityTitle => vi ? 'Nhận diện hoạt động' : 'Activity recognition';
+  String get setupStepActivityBody => vi
+      ? 'Giúp app phân biệt lúc bạn đang di chuyển/vận động với lúc ngồi yên nhìn màn hình, để tính habit chính xác hơn.'
+      : 'Helps the app tell moving/active moments apart from sitting still looking at the screen, for more accurate habit tracking.';
+
+  String get setupStepFullScreenTitle => vi ? 'Popup hết giờ nghỉ mắt' : 'Eye-break pop-up alert';
+  String get setupStepFullScreenBody => vi
+      ? 'Trên Android 14+, cần bật riêng "Hiển thị toàn màn hình" thì thông báo hết giờ nghỉ mắt mới bung ra như báo thức, thay vì chỉ nằm im trong thanh thông báo.'
+      : 'On Android 14+, "Display over other apps" must be turned on separately for the eye-break alert to pop up like an alarm, instead of just sitting quietly in the notification shade.';
+
+  String get setupStepBatteryTitle => vi ? 'Chạy nền không giới hạn' : 'Unrestricted background run';
+  String get setupStepBatteryBody => vi
+      ? 'Nhiều hãng máy (Xiaomi/OPPO/Vivo/Samsung...) tự tắt app đứng yên trong nền để tiết kiệm pin, khiến báo thức nghỉ mắt bị trễ hoặc im lặng. Loại trừ app khỏi tối ưu hoá pin để tránh việc này.'
+      : 'Many phone makers (Xiaomi/OPPO/Vivo/Samsung...) freeze idle background apps to save battery, causing eye-break alerts to be delayed or silent. Exclude the app from battery optimization to prevent this.';
 
   String get setupStepFocusModeTitle => vi ? 'Chế độ Tập trung' : 'Focus Mode';
   String get setupStepFocusModeBody => vi
