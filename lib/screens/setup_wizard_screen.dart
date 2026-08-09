@@ -4,20 +4,24 @@ import 'package:provider/provider.dart';
 import '../models/app_strings.dart';
 import '../providers/language_provider.dart';
 import '../providers/setup_provider.dart';
-import '../services/device_data_service.dart';
 import '../services/focus_mode_service.dart';
 import '../services/notification_service.dart';
 import '../services/usage_service.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_theme.dart';
 import '../utils/app_icon.dart';
+import '../utils/permission_helper.dart';
 
 /// First-Time Setup Wizard — chuỗi màn hình xin quyền TUẦN TỰ (usage access
-/// -> notifications -> sleep/Health Connect -> focus mode), hiện đúng 1 lần
-/// sau khi đăng nhập lần đầu (xem main.dart _AppGate). Mỗi bước quyền đều
-/// có thể "Bỏ qua" — không có bước nào là điều kiện bắt buộc để vào app,
-/// khác với HabitsSurveyScreen(mandatory: true). Quyền bỏ qua ở đây vẫn có
-/// thể cấp lại sau qua banner ở Home (xem widgets/setup_status_banner.dart).
+/// -> notifications -> vị trí -> hoạt động -> popup toàn màn hình -> chạy
+/// nền -> focus mode), hiện đúng 1 lần sau khi đăng nhập lần đầu (xem
+/// main.dart _AppGate). Mỗi bước quyền đều có thể "Bỏ qua" — không có bước
+/// nào là điều kiện bắt buộc để vào app, khác với
+/// HabitsSurveyScreen(mandatory: true). Quyền bỏ qua ở đây vẫn có thể cấp
+/// lại sau qua banner ở Home (xem widgets/setup_status_banner.dart).
+///
+/// BỎ bước "Giấc ngủ" (Health Connect) — Sleep giờ suy ra từ chính Usage
+/// Access ở bước đầu, không cần quyền riêng nữa (xem device_data_service.dart).
 class SetupWizardScreen extends StatefulWidget {
   const SetupWizardScreen({super.key});
 
@@ -30,11 +34,12 @@ class _SetupWizardScreenState extends State<SetupWizardScreen> with WidgetsBindi
   int _pageIndex = 0;
   bool _requesting = false;
 
-  // Usage Access và Focus Mode là quyền "đặc biệt" của Android — không có
-  // popup xin quyền tại chỗ, phải đưa người dùng SANG màn hình Cài đặt hệ
-  // thống rồi họ tự bật, sau đó quay lại app. Lúc quay lại (didChangeApp
-  // LifecycleState resumed) là thời điểm duy nhất biết được họ vừa bật hay
-  // chưa -> phải refresh lại trạng thái ngay lúc đó.
+  // Usage Access, Popup toàn màn hình, Chạy nền, và Focus Mode là quyền
+  // "đặc biệt" của Android — không có popup xin quyền tại chỗ, phải đưa
+  // người dùng SANG màn hình Cài đặt hệ thống rồi họ tự bật, sau đó quay
+  // lại app. Lúc quay lại (didChangeAppLifecycleState resumed) là thời
+  // điểm duy nhất biết được họ vừa bật hay chưa -> phải refresh lại trạng
+  // thái ngay lúc đó.
   late final List<_StepConfig> _steps = [
     _StepConfig(
       id: SetupStepId.usageAccess,
@@ -52,11 +57,34 @@ class _SetupWizardScreenState extends State<SetupWizardScreen> with WidgetsBindi
       onGrant: () => NotificationService.instance.requestNotificationPermission(),
     ),
     _StepConfig(
-      id: SetupStepId.sleep,
-      emoji: '😴',
-      title: (s) => s.setupStepSleepTitle,
-      body: (s) => s.setupStepSleepBody,
-      onGrant: () => DeviceDataService.instance.requestSleepPermission(),
+      id: SetupStepId.location,
+      emoji: '📍',
+      title: (s) => s.setupStepLocationTitle,
+      body: (s) => s.setupStepLocationBody,
+      onGrant: () => PermissionHelper.requestLocationPermission(),
+    ),
+    _StepConfig(
+      id: SetupStepId.activityRecognition,
+      emoji: '🏃',
+      title: (s) => s.setupStepActivityTitle,
+      body: (s) => s.setupStepActivityBody,
+      onGrant: () => PermissionHelper.requestActivityPermission(),
+    ),
+    _StepConfig(
+      id: SetupStepId.fullScreenIntent,
+      emoji: '⏰',
+      title: (s) => s.setupStepFullScreenTitle,
+      body: (s) => s.setupStepFullScreenBody,
+      onGrant: () => NotificationService.instance.openFullScreenIntentSettings(),
+      opensExternalSettings: true,
+    ),
+    _StepConfig(
+      id: SetupStepId.batteryOptimization,
+      emoji: '🔋',
+      title: (s) => s.setupStepBatteryTitle,
+      body: (s) => s.setupStepBatteryBody,
+      onGrant: () => NotificationService.instance.requestIgnoreBatteryOptimizations(),
+      opensExternalSettings: true,
     ),
     _StepConfig(
       id: SetupStepId.focusMode,

@@ -7,6 +7,7 @@ import '../providers/profile_provider.dart';
 import '../services/auth_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/shared_widgets.dart';
+import 'login_screen.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
@@ -71,10 +72,21 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     }
   }
 
+  // BUG ĐÃ SỬA: trước đây dùng popUntil(isFirst) rồi TRÔNG CHỜ _AppGate tự
+  // rebuild để hiện LoginScreen — đúng cơ chế mong manh từng gây bug hệt
+  // vậy ở màn đăng nhập (AuthProvider.notifyListeners() chạy đúng nhưng
+  // _AppGate không luôn rebuild kịp trên 1 số máy/thời điểm, xem log trước
+  // đó: "Notifying auth state listeners about a sign-out event" bắn ra
+  // nhiều lần liên tiếp vì người dùng bấm lại nút do không thấy chuyển
+  // màn). Giờ chuyển hướng THẲNG sang LoginScreen, không phụ thuộc widget
+  // cha có tự rebuild hay không.
   Future<void> _signOut() async {
     await AuthService.instance.signOut();
     if (!mounted) return;
-    Navigator.of(context).popUntil((route) => route.isFirst);
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
+      (route) => false,
+    );
   }
 
   @override
