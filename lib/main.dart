@@ -279,7 +279,6 @@ class _AppGateState extends State<_AppGate> {
   }
 
   void _onAuthChanged() {
-    print('ECAI: AuthProvider changed isLoggedIn=${_authProvider?.isLoggedIn}');
     if (mounted) setState(() {});
   }
 
@@ -291,49 +290,38 @@ class _AppGateState extends State<_AppGate> {
 
   @override
   Widget build(BuildContext context) {
-    print('ECAI: _AppGate build (consent/survey gate)');
     return FutureBuilder<bool>(
       future: _consentGivenFuture,
       builder: (context, consentSnapshot) {
         if (!consentSnapshot.hasData) {
-          print('ECAI: consent future not resolved');
           return const AppLoadingSkeleton();
         }
         // Consent not given → show consent screen
         if (consentSnapshot.data != true) {
-          print('ECAI: consent=false -> ConsentScreen');
           return const ConsentScreen();
         }
-        print('ECAI: consent=true');
         // Consent given → check survey
         return FutureBuilder<bool>(
           future: _surveyCompletedFuture,
           builder: (context, snapshot) {
             if (!snapshot.hasData) {
-              print('ECAI: survey future not resolved');
               return const AppLoadingSkeleton();
             }
             if (snapshot.data == true) {
-              print('ECAI: surveyCompleted=true');
               WidgetsBinding.instance.addPostFrameCallback((_) {
                 context.read<HabitProvider>().setSurveyCompleted(true);
               });
               final isLoggedIn = context.read<AuthProvider>().isLoggedIn;
-              print('ECAI: isLoggedIn=$isLoggedIn');
               if (!isLoggedIn) {
-                print('ECAI: -> LoginScreen');
                 return const LoginScreen();
               }
 
               final setup = context.watch<SetupProvider>();
               if (setup.loading) {
-                print('ECAI: setup.loading=true -> skeleton');
                 return const AppLoadingSkeleton();
               }
-              print('ECAI: wizardCompleted=${setup.wizardCompleted} loading=${setup.loading}');
               return setup.wizardCompleted ? const MainShell() : const SetupWizardScreen();
             }
-            print('ECAI: surveyCompleted=false -> HabitsSurveyScreen');
             return const HabitsSurveyScreen(mandatory: true);
           },
         );

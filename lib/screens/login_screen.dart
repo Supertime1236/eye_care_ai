@@ -61,7 +61,6 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!mounted) return;
     final setup = context.read<SetupProvider>();
     final target = setup.wizardCompleted ? const MainShell() : const SetupWizardScreen();
-    print('ECAI: LoginScreen skip -> wizardCompleted=${setup.wizardCompleted}, target=${target.runtimeType}');
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(builder: (_) => target),
     );
