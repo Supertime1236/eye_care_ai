@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../models/app_strings.dart';
+import '../providers/auth_provider.dart';
 import '../providers/language_provider.dart';
 import '../providers/setup_provider.dart';
 import '../services/focus_mode_service.dart';
@@ -11,6 +12,8 @@ import '../theme/app_colors.dart';
 import '../theme/app_theme.dart';
 import '../utils/app_icon.dart';
 import '../utils/permission_helper.dart';
+import 'login_screen.dart';
+import 'main_shell.dart';
 
 /// First-Time Setup Wizard — chuỗi màn hình xin quyền TUẦN TỰ (usage access
 /// -> notifications -> vị trí -> hoạt động -> popup toàn màn hình -> chạy
@@ -202,18 +205,25 @@ class _SetupWizardScreenState extends State<SetupWizardScreen> with WidgetsBindi
   }
 }
 
-// Sau khi đánh dấu wizardCompleted, cần 1 lần rebuild _AppGate để nó tự
-// chuyển sang MainShell (thay vì Navigator.push thêm 1 route MainShell mới
-// chồng lên, gây trùng lặp Provider/Timer) — cách gọn nhất là pop về root
-// và để _AppGate (đang lắng nghe SetupProvider) tự vẽ lại đúng màn hình.
+// Sau khi đánh dấu wizardCompleted, thay thẳng toàn bộ stack điều hướng bằng
+// màn hình đích (LoginScreen nếu khách / MainShell nếu đã đăng nhập) thay vì
+// pop về root — pushReplacement ở _skipLoginForNow/_finish đã làm wizard và
+// bridge trở thành route root, nên popUntil(route.isFirst) chỉ tự pop ===
+// KHÔNG LÀM GÌ, để lại bridge (CircularProgressIndicator) mắc kẹt vĩnh viễn
+// (bug spinner sau wizard, xác nhận bằng log ECAI build 48).
 class _WizardExitBridge extends StatelessWidget {
   const _WizardExitBridge();
 
   @override
   Widget build(BuildContext context) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      print('ECAI: _WizardExitBridge build -> popUntil first');
-      Navigator.of(context).popUntil((route) => route.isFirst);
+      print('ECAI: _WizardExitBridge build -> replace stack with target');
+      final isLoggedIn = context.read<AuthProvider>().isLoggedIn;
+      print('ECAI: _WizardExitBridge isLoggedIn=$isLoggedIn');
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => isLoggedIn ? const MainShell() : const LoginScreen()),
+        (route) => false,
+      );
     });
     return const Scaffold(body: Center(child: CircularProgressIndicator()));
   }
