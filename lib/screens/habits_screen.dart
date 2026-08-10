@@ -586,7 +586,7 @@ class _ChangeTargetSheetState extends State<_ChangeTargetSheet> {
               padding: const EdgeInsets.only(bottom: 12),
               child: Row(
                 children: [
-                  Text(h.icon, style: const TextStyle(fontSize: 20)),
+                  AppIcon(h.icon, size: 20, color: Theme.of(context).colorScheme.primary),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(strings.habitTitle(h.id), style: Theme.of(context).textTheme.bodyMedium),

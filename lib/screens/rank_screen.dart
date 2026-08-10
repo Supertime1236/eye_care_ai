@@ -139,7 +139,7 @@ class _RankScreenState extends State<RankScreen> {
           icon: const Icon(Icons.arrow_back_rounded),
           tooltip: vi ? 'Quay lại' : 'Back',
         ),
-        title: Text(vi ? 'Xếp hạng' : 'Rank'),
+        title: Text(vi ? 'Xếp hạng' : 'Ranking'),
       ),
       body: RefreshIndicator(
         onRefresh: () async {
@@ -264,7 +264,7 @@ class _LeagueBanner extends StatelessWidget {
                 Icon(Icons.emoji_events_rounded, size: 16, color: tier.color),
                 const SizedBox(width: 6),
                 Text(
-                  vi ? 'Hạng #${rank.myRank} trên bảng xếp hạng' : 'Rank #${rank.myRank} on the leaderboard',
+                  vi ? 'Hạng #${rank.myRank} trên bảng xếp hạng' : 'Ranking #${rank.myRank} on the leaderboard',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600),
                 ),
               ],
@@ -481,15 +481,12 @@ class _PositionMark extends StatelessWidget {
     switch (position) {
       case 1:
         bg = const Color(0xFFFFD54A);
-        label = '🥇';
         break;
       case 2:
         bg = const Color(0xFFC7CDD6);
-        label = '🥈';
         break;
       case 3:
         bg = const Color(0xFFD98A4B);
-        label = '🥉';
         break;
     }
 
@@ -507,7 +504,11 @@ class _PositionMark extends StatelessWidget {
       height: 28,
       alignment: Alignment.center,
       decoration: BoxDecoration(shape: BoxShape.circle, color: bg.withValues(alpha: 0.25)),
-      child: Text(label, style: const TextStyle(fontSize: 15)),
+      child: Icon(
+        Icons.emoji_events_rounded,
+        size: 15,
+        color: Theme.of(context).colorScheme.onSurface,
+      ),
     );
   }
 }

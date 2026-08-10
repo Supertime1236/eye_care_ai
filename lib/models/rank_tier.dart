@@ -40,6 +40,17 @@ class RankTier {
   String name(bool vi) => vi ? nameVi : nameEn;
   String title(bool vi) => vi ? titleVi : titleEn;
   String congrats(bool vi) => vi ? congratsVi : congratsEn;
+
+  IconData get icon => switch (id) {
+        'unranked' => Icons.emoji_events_outlined,
+        'bronze' => Icons.workspace_premium,
+        'silver' => Icons.verified_outlined,
+        'gold' => Icons.star_outline,
+        'platinum' => Icons.diamond_outlined,
+        'diamond' => Icons.diamond_outlined,
+        'master' => Icons.workspace_premium,
+        _ => Icons.emoji_events_outlined,
+      };
 }
 
 /// Toàn bộ hệ thống bậc xếp hạng, xếp từ THẤP -> CAO theo minStreakDays.

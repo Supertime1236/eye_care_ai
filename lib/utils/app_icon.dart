@@ -48,6 +48,7 @@ const Map<String, IconData> _kIconMap = {
   '📍': Icons.location_on_outlined,
   '🛡️': Icons.shield_outlined,
   '🚪': Icons.logout_outlined,
+  '🔄': Icons.refresh_outlined,
   '🔤': Icons.text_fields_outlined,
   '🔋': Icons.battery_charging_full_outlined,
   '📋': Icons.assignment_outlined,
@@ -58,10 +59,15 @@ const Map<String, IconData> _kIconMap = {
   '🌐': Icons.language_outlined,
   '❓': Icons.help_outline,
   '🚀': Icons.rocket_launch_outlined,
+  '👤': Icons.account_circle_outlined,
   '📧': Icons.email_outlined,
   '🎨': Icons.palette_outlined,
   '🌙': Icons.bedtime_outlined,
   '🟠': Icons.wb_sunny_outlined, // "Bộ lọc ánh sáng xanh"
+  '🤖': Icons.smart_toy_outlined,
+  '🏆': Icons.emoji_events_outlined,
+  '🏅': Icons.military_tech,
+  '⭐': Icons.star_outline,
   '🔔': Icons.notifications_outlined,
   '🔧': Icons.build_outlined,
 };

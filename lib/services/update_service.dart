@@ -34,11 +34,11 @@ class UpdateService {
 
   // TODO: điền đúng chủ repo GitHub đang publish APK (xem link repo trên
   // GitHub của bạn, dạng https://github.com/<owner>/<repo>).
-  static const String githubOwner = 'Supertime1236';
+  static const String githubOwner = 'ThongAccount';
   static const String githubRepo = 'eye_care_ai';
 
   static const String _latestReleaseUrl =
-      'https://api.github.com/repos/$githubOwner/$githubRepo/releases/latest';
+      'https://api.github.com/repos/$githubOwner/$githubRepo/releases?per_page=1';
 
   final Dio _dio = Dio(BaseOptions(
     connectTimeout: const Duration(seconds: 15),
@@ -52,17 +52,21 @@ class UpdateService {
     if (!Platform.isAndroid) return null; // sideload APK chỉ áp dụng cho Android
 
     try {
-      final response = await _dio.get<Map<String, dynamic>>(
+      final response = await _dio.get(
         _latestReleaseUrl,
         options: Options(headers: {'Accept': 'application/vnd.github+json'}),
       );
-      final data = response.data;
+      final raw = response.data;
+      if (raw == null) return null;
+
+      final data = raw is List ? (raw.firstOrNull as Map<String, dynamic>?) : raw as Map<String, dynamic>?;
       if (data == null) return null;
 
       final tag = (data['tag_name'] ?? '').toString(); // "build-42"
       final match = RegExp(r'build-(\d+)').firstMatch(tag);
       if (match == null) return null;
-      final latestBuildNumber = int.parse(match.group(1)!);
+      final latestBuildNumber = int.tryParse(match.group(1) ?? '') ?? 0;
+      if (latestBuildNumber <= 0) return null;
 
       final assets = (data['assets'] as List?) ?? [];
       final apkAsset = assets.cast<Map<String, dynamic>>().firstWhere(

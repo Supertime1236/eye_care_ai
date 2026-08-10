@@ -11,6 +11,7 @@ import '../theme/app_colors.dart';
 import '../theme/app_theme.dart';
 import '../utils/app_icon.dart';
 import '../utils/permission_helper.dart';
+import 'main_shell.dart';
 
 /// First-Time Setup Wizard — chuỗi màn hình xin quyền TUẦN TỰ (usage access
 /// -> notifications -> vị trí -> hoạt động -> popup toàn màn hình -> chạy
@@ -199,17 +200,27 @@ class _SetupWizardScreenState extends State<SetupWizardScreen> with WidgetsBindi
   }
 }
 
-// Sau khi đánh dấu wizardCompleted, cần 1 lần rebuild _AppGate để nó tự
-// chuyển sang MainShell (thay vì Navigator.push thêm 1 route MainShell mới
-// chồng lên, gây trùng lặp Provider/Timer) — cách gọn nhất là pop về root
-// và để _AppGate (đang lắng nghe SetupProvider) tự vẽ lại đúng màn hình.
+// Sau khi đánh dấu wizardCompleted, thay thẳng toàn bộ stack điều hướng bằng
+// MainShell thay vì pop về root. Hai lý do:
+//  1. pushReplacement ở _skipLoginForNow/_finish đã làm wizard và bridge trở
+//     thành route root — popUntil(route.isFirst) chỉ tự pop === KHÔNG LÀM GÌ,
+//     để lại bridge (CircularProgressIndicator) mắc kẹt vĩnh viễn (bug spinner
+//     sau wizard, xác nhận bằng ECAI log build 48).
+//  2. Người dùng đã đi qua cổng đăng nhập TRƯỚC wizard rồi (đăng nhập thật
+//     hoặc "Bỏ qua, dùng thử trước") — quay lại LoginScreen sau wizard là
+//     màn đăng nhập THỨ HAI (bug user báo: "2 signins"). Đích đúng sau
+//     wizard LUÔN là MainShell: khách chạy local (cloud backup tự bỏ qua khi
+//     chưa đăng nhập), người đăng nhập rồi thì đã có session Firebase.
 class _WizardExitBridge extends StatelessWidget {
   const _WizardExitBridge();
 
   @override
   Widget build(BuildContext context) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Navigator.of(context).popUntil((route) => route.isFirst);
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const MainShell()),
+        (route) => false,
+      );
     });
     return const Scaffold(body: Center(child: CircularProgressIndicator()));
   }

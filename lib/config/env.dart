@@ -3,4 +3,9 @@ class Env {
     'NIM_API_KEY',
     defaultValue: '',
   );
+
+  static const commitHash = String.fromEnvironment(
+    'COMMIT_HASH',
+    defaultValue: '',
+  );
 }
