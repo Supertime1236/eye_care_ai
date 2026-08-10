@@ -78,7 +78,7 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
   Future<void> _checkForAppUpdate({bool manual = false, BuildContext? context}) async {
     debugPrint('ECAI: _checkForAppUpdate START manual=$manual');
     final update = await UpdateService.instance.checkForUpdate();
-    debugPrint('ECAI: _checkForAppUpdate result=${update != null ? 'update-v${update.version}' : 'none'}'}
+    debugPrint('ECAI: _checkForAppUpdate done manual=$manual update=${update == null ? 'none' : update.versionName}');
     final target = context ?? this.context;
     if (!manual) {
       if (update == null || !mounted) return;
