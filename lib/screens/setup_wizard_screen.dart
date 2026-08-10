@@ -129,12 +129,15 @@ class _SetupWizardScreenState extends State<SetupWizardScreen> with WidgetsBindi
   }
 
   Future<void> _finish() async {
+    debugPrint('ECAI: Wizard _finish() called');
     final setup = context.read<SetupProvider>();
     await setup.markWizardCompleted();
+    debugPrint('ECAI: Wizard markWizardCompleted() awaited');
     if (!mounted) return;
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(builder: (_) => const _WizardExitBridge()),
     );
+    debugPrint('ECAI: Wizard pushed _WizardExitBridge');
   }
 
   @override
@@ -209,6 +212,7 @@ class _WizardExitBridge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      debugPrint('ECAI: _WizardExitBridge build -> popUntil first');
       Navigator.of(context).popUntil((route) => route.isFirst);
     });
     return const Scaffold(body: Center(child: CircularProgressIndicator()));

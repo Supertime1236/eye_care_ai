@@ -53,14 +53,17 @@ class SetupProvider extends ChangeNotifier {
   }
 
   Future<void> _init() async {
+    debugPrint('ECAI: SetupProvider._init() START');
     try {
       final prefs = await SharedPreferences.getInstance().timeout(
         const Duration(seconds: 5),
         onTimeout: () => throw Exception('SharedPreferences timeout'),
       );
       _wizardCompleted = prefs.getBool(_kWizardCompletedKey) ?? false;
-    } catch (_) {
+      debugPrint('ECAI: prefs OK wizardCompleted=$_wizardCompleted');
+    } catch (e) {
       // I/O khởi động lạnh có thể stall → rơi về mặc định an toàn, không treo splash.
+      debugPrint('ECAI: prefs FAILED/fallback: $e');
       _wizardCompleted = false;
     }
 
@@ -77,6 +80,7 @@ class SetupProvider extends ChangeNotifier {
     }
 
     _loading = false;
+    debugPrint('ECAI: SetupProvider._init() DONE loading=$_loading wizardCompleted=$_wizardCompleted granted=$grantedCount/$totalCount');
     notifyListeners();
   }
 
@@ -93,6 +97,7 @@ class SetupProvider extends ChangeNotifier {
   /// Cài đặt) — luôn coi là "đã cấp" (true), tile chỉ mang tính "Quản lý"
   /// để mở đúng màn cài đặt cho người dùng tự kiểm tra/bật tay.
   Future<void> refreshStatus() async {
+    debugPrint('ECAI: refreshStatus() START');
     try {
       late final Future<bool> notificationFuture;
       if (Platform.isAndroid) {
@@ -116,16 +121,20 @@ class SetupProvider extends ChangeNotifier {
       _status[SetupStepId.fullScreenIntent] = true;
       _status[SetupStepId.batteryOptimization] = true;
       _status[SetupStepId.focusMode] = results[4];
+      debugPrint('ECAI: refreshStatus() OK usage=${results[0]} notif=${results[1]} loc=${results[2]} act=${results[3]} focus=${results[4]}');
       notifyListeners();
-    } catch (_) {
+    } catch (e) {
+      debugPrint('ECAI: refreshStatus() FAILED: $e');
       notifyListeners();
     }
   }
 
   Future<void> markWizardCompleted() async {
+    debugPrint('ECAI: markWizardCompleted() called');
     _wizardCompleted = true;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_kWizardCompletedKey, true);
+    debugPrint('ECAI: markWizardCompleted() persisted');
     notifyListeners();
   }
 }

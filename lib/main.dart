@@ -279,6 +279,7 @@ class _AppGateState extends State<_AppGate> {
   }
 
   void _onAuthChanged() {
+    debugPrint('ECAI: AuthProvider changed isLoggedIn=${_authProvider?.isLoggedIn}');
     if (mounted) setState(() {});
   }
 
@@ -290,39 +291,49 @@ class _AppGateState extends State<_AppGate> {
 
   @override
   Widget build(BuildContext context) {
+    debugPrint('ECAI: _AppGate build (consent/survey gate)');
     return FutureBuilder<bool>(
       future: _consentGivenFuture,
       builder: (context, consentSnapshot) {
         if (!consentSnapshot.hasData) {
+          debugPrint('ECAI: consent future not resolved');
           return const AppLoadingSkeleton();
         }
         // Consent not given → show consent screen
         if (consentSnapshot.data != true) {
+          debugPrint('ECAI: consent=false -> ConsentScreen');
           return const ConsentScreen();
         }
+        debugPrint('ECAI: consent=true');
         // Consent given → check survey
         return FutureBuilder<bool>(
           future: _surveyCompletedFuture,
           builder: (context, snapshot) {
             if (!snapshot.hasData) {
+              debugPrint('ECAI: survey future not resolved');
               return const AppLoadingSkeleton();
             }
             if (snapshot.data == true) {
+              debugPrint('ECAI: surveyCompleted=true');
               WidgetsBinding.instance.addPostFrameCallback((_) {
                 context.read<HabitProvider>().setSurveyCompleted(true);
               });
               final isLoggedIn = context.read<AuthProvider>().isLoggedIn;
-              if (!isLoggedIn) return const LoginScreen();
+              debugPrint('ECAI: isLoggedIn=$isLoggedIn');
+              if (!isLoggedIn) {
+                debugPrint('ECAI: -> LoginScreen');
+                return const LoginScreen();
+              }
 
-              // Đã đăng nhập -> trước khi vào MainShell, kiểm tra đã hoàn
-              // tất/bỏ qua First-Time Setup Wizard hay chưa. SetupProvider tự
-              // đọc SharedPreferences bất đồng bộ lúc khởi tạo (loading=true
-              // ban đầu) nên phải watch() để _AppGate build lại đúng lúc nó
-              // đọc xong, tránh nháy màn hình MainShell/Wizard sai 1 khung hình.
               final setup = context.watch<SetupProvider>();
-              if (setup.loading) return const AppLoadingSkeleton();
+              if (setup.loading) {
+                debugPrint('ECAI: setup.loading=true -> skeleton');
+                return const AppLoadingSkeleton();
+              }
+              debugPrint('ECAI: wizardCompleted=${setup.wizardCompleted} loading=${setup.loading}');
               return setup.wizardCompleted ? const MainShell() : const SetupWizardScreen();
             }
+            debugPrint('ECAI: surveyCompleted=false -> HabitsSurveyScreen');
             return const HabitsSurveyScreen(mandatory: true);
           },
         );

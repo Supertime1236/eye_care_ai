@@ -47,6 +47,7 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
+    debugPrint('ECAI: MainShell.initState() START');
     WidgetsBinding.instance.addObserver(this);
     final habit = context.read<HabitProvider>();
     habit.startHabitTracking();
@@ -58,6 +59,7 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
       _refreshHabitsAndSyncRank();
     });
     _cloudBackupTimer = Timer.periodic(_cloudBackupInterval, (_) => _pushCloudBackupIfEnabled());
+    debugPrint('ECAI: MainShell.initState() DONE');
   }
 
   // Chỉ đẩy lên Firestore khi người dùng đã bật "Sao lưu trên đám mây" ở
@@ -74,7 +76,9 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
   // đặt trong Timer.periodic như refresh habit ở trên), tránh phiền người
   // dùng bằng dialog bật lên lặp lại giữa lúc họ đang dùng app.
   Future<void> _checkForAppUpdate({bool manual = false, BuildContext? context}) async {
+    debugPrint('ECAI: _checkForAppUpdate START manual=$manual');
     final update = await UpdateService.instance.checkForUpdate();
+    debugPrint('ECAI: _checkForAppUpdate result=${update != null ? 'update-v${update.version}' : 'none'}'}
     final target = context ?? this.context;
     if (!manual) {
       if (update == null || !mounted) return;
@@ -127,10 +131,13 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
   // nơi refresh habit đều cần rank cập nhật theo, tránh quên đồng bộ ở một
   // trong các điểm gọi (initState, poll timer, resume từ nền).
   Future<void> _refreshHabitsAndSyncRank() async {
+    debugPrint('ECAI: MainShell._refreshHabitsAndSyncRank START');
     final habit = context.read<HabitProvider>();
     await habit.refreshHabitsFromDevice();
+    debugPrint('ECAI: MainShell.refreshHabitsFromDevice DONE, updating rank');
     if (!mounted) return;
     context.read<RankProvider>().updateStreak(habit.streakDays);
+    debugPrint('ECAI: MainShell._refreshHabitsAndSyncRank DONE');
   }
 
   @override
