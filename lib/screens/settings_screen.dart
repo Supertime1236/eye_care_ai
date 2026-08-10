@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../utils/app_icon.dart';
 import '../utils/permission_helper.dart';
 
 import '../models/app_strings.dart';
@@ -423,7 +424,7 @@ class _ToggleTile extends StatelessWidget {
       child: SectionCard(
         child: Row(
           children: [
-            Text(icon, style: const TextStyle(fontSize: 22)),
+            AppIcon(icon, size: 22),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -522,7 +523,7 @@ class _MenuItem extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         child: Row(
           children: [
-            Text(icon, style: const TextStyle(fontSize: 22)),
+            AppIcon(icon, size: 22),
             const SizedBox(width: 12),
             Expanded(
               child: Text(
@@ -625,7 +626,7 @@ class _ListTileOption extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(icon, style: const TextStyle(fontSize: 22)),
+              AppIcon(icon, size: 22),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -665,7 +666,7 @@ class _ListTileOption extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         child: Row(
           children: [
-            Text(icon, style: const TextStyle(fontSize: 22)),
+            AppIcon(icon, size: 22),
             const SizedBox(width: 12),
             Expanded(
               child: Column(

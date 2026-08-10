@@ -59,6 +59,7 @@ const Map<String, IconData> _kIconMap = {
   '🌐': Icons.language_outlined,
   '❓': Icons.help_outline,
   '🚀': Icons.rocket_launch_outlined,
+  '👤': Icons.account_circle_outlined,
   '📧': Icons.email_outlined,
   '🎨': Icons.palette_outlined,
   '🌙': Icons.bedtime_outlined,
