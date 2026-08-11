@@ -91,7 +91,7 @@ class HomeScreen extends StatelessWidget {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     alignment: Alignment.center,
-                    child: const AppIcon('📋', size: 20, color: AppColors.primaryBlue),
+                    child: const AppIcon('📋', size: 20, color: Colors.white),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -227,7 +227,7 @@ class _FeatureHubCard extends StatelessWidget {
     final features = [
       _FeatureItem(icon: '🏆', title: strings.achievementBadges, route: const _AchievementPage()),
       _FeatureItem(icon: '📊', title: strings.statistics, route: const StatisticsScreen()),
-      _FeatureItem(icon: '🏅', title: strings.rank, route: const RankScreen()),
+      _FeatureItem(icon: '🏅', title: strings.ranking, route: const RankScreen()),
       _FeatureItem(icon: '🧪', title: strings.eyeTest, route: const _EyeTestPage()),
       _FeatureItem(icon: '✅', title: strings.habits, route: const HabitsScreen()),
       _FeatureItem(icon: '☕', title: strings.eyeBreakTitle, route: const EyeBreakScreen()),
@@ -297,14 +297,17 @@ class _FeatureHubCard extends StatelessWidget {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text(feature.icon, style: const TextStyle(fontSize: 20)),
+                    AppIcon(feature.icon, size: 22, color: Theme.of(context).colorScheme.primary),
                     const SizedBox(height: 6),
                     Text(
                       feature.title,
                       textAlign: TextAlign.center,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.labelMedium?.copyWith(fontSize: 11),
+                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                        fontSize: 11,
+                        color: Theme.of(context).colorScheme.onSurface,
+                      ),
                     ),
                   ],
                 ),
@@ -345,7 +348,7 @@ class _AchievementPageState extends State<_AchievementPage> {
 
     return [
       _AchievementItem(
-        icon: '👀',
+        icon: '✅',
         title: 'Nghỉ ngơi cho mắt',
         titleEn: 'Rest for the eyes',
         description: 'Hoàn thành quy tắc 20-20-20 lần đầu.',
@@ -355,7 +358,7 @@ class _AchievementPageState extends State<_AchievementPage> {
         accent: const Color(0xFF22C55E),
       ),
       _AchievementItem(
-        icon: '🥉',
+        icon: '📊',
         title: '20-20-20 Rookie',
         titleEn: '20-20-20 Rookie',
         description: 'Hoàn thành quy tắc 20-20-20 lần đầu.',
@@ -365,7 +368,7 @@ class _AchievementPageState extends State<_AchievementPage> {
         accent: const Color(0xFFCD7C2F),
       ),
       _AchievementItem(
-        icon: '🥈',
+        icon: '📊',
         title: 'Eye Break Master',
         titleEn: 'Eye Break Master',
         description: 'Hoàn thành 5 lần nghỉ mắt.',
@@ -375,7 +378,7 @@ class _AchievementPageState extends State<_AchievementPage> {
         accent: const Color(0xFFC0C0C0),
       ),
       _AchievementItem(
-        icon: '🥇',
+        icon: '🔥',
         title: 'Blink Legend',
         titleEn: 'Blink Legend',
         description: 'Hoàn thành 15 lần nghỉ mắt.',
@@ -385,7 +388,7 @@ class _AchievementPageState extends State<_AchievementPage> {
         accent: const Color(0xFFF7C948),
       ),
       _AchievementItem(
-        icon: '👑',
+        icon: '🏆',
         title: 'Guardian of Vision',
         titleEn: 'Guardian of Vision',
         description: 'Không bỏ lỡ bất kỳ nhắc nhở nghỉ mắt nào trong 30 ngày.',
@@ -532,7 +535,7 @@ class _AchievementPageState extends State<_AchievementPage> {
                                 : null,
                           ),
                           alignment: Alignment.center,
-                          child: Text(item.icon, style: const TextStyle(fontSize: 24)),
+                          child: AppIcon(item.icon, size: 24, color: Theme.of(context).colorScheme.primary),
                         ),
                       ),
                       const SizedBox(width: 14),
@@ -996,7 +999,7 @@ class _MiniResultCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          AppIcon(icon, size: 22, color: AppColors.primaryBlue),
+          AppIcon(icon, size: 22, color: Theme.of(context).colorScheme.primary),
           const SizedBox(height: 10),
           Text(label, style: Theme.of(context).textTheme.labelMedium),
           const SizedBox(height: 6),
@@ -1108,7 +1111,7 @@ class _StatTile extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          AppIcon(icon, size: 22, color: AppColors.primaryBlue),
+          AppIcon(icon, size: 22, color: Theme.of(context).colorScheme.primary),
           const SizedBox(height: 8),
           Text(
             value,
@@ -1156,7 +1159,7 @@ class _SuggestionCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(12),
               ),
               alignment: Alignment.center,
-              child: AppIcon(icon, size: 22, color: AppColors.primaryBlue),
+              child: AppIcon(icon, size: 22, color: Theme.of(context).colorScheme.primary),
             ),
             const SizedBox(width: 14),
             Expanded(
@@ -1197,7 +1200,7 @@ class _SuggestionCard extends StatelessWidget {
                     height: 48,
                     decoration: BoxDecoration(color: color.withValues(alpha: 0.12), shape: BoxShape.circle),
                     alignment: Alignment.center,
-                    child: AppIcon(icon, size: 24, color: AppColors.primaryBlue),
+                    child: AppIcon(icon, size: 24, color: Theme.of(context).colorScheme.primary),
                   ),
                   const SizedBox(width: 14),
                   Expanded(

@@ -30,13 +30,6 @@ enum SetupStepId {
   focusMode,
 }
 
-/// Theo dõi tiến độ First-Time Setup Wizard (đã hoàn tất/bỏ qua hẳn chưa) +
-/// trạng thái CÒN SỐNG của từng quyền — vì quyền hệ thống có thể bị người
-/// dùng bật/tắt lại bất cứ lúc nào ngoài luồng của app (trong Cài đặt máy),
-/// nên KHÔNG lưu trạng thái "đã cấp" vào SharedPreferences, mà luôn hỏi lại
-/// hệ thống mỗi lần refreshStatus() — chỉ mỗi việc "đã hoàn tất/bỏ qua
-/// wizard lần đầu hay chưa" mới cần nhớ lâu dài (để không ép xem wizard lại
-/// mỗi lần mở app).
 class SetupProvider extends ChangeNotifier {
   static const _kWizardCompletedKey = 'pref_setup_wizard_completed';
 
@@ -52,7 +45,7 @@ class SetupProvider extends ChangeNotifier {
   Map<SetupStepId, bool> get status => Map.unmodifiable(_status);
 
   int get grantedCount => _status.values.where((v) => v).length;
-  int get totalCount => _status.length;
+  int get totalCount => SetupStepId.values.length;
   bool get allGranted => grantedCount == totalCount;
 
   SetupProvider() {
@@ -60,17 +53,33 @@ class SetupProvider extends ChangeNotifier {
   }
 
   Future<void> _init() async {
-    final prefs = await SharedPreferences.getInstance();
-    _wizardCompleted = prefs.getBool(_kWizardCompletedKey) ?? false;
-    await refreshStatus();
+    try {
+      final prefs = await SharedPreferences.getInstance().timeout(
+        const Duration(seconds: 5),
+        onTimeout: () => throw Exception('SharedPreferences timeout'),
+      );
+      _wizardCompleted = prefs.getBool(_kWizardCompletedKey) ?? false;
+    } catch (e) {
+      // I/O khởi động lạnh có thể stall → rơi về mặc định an toàn, không treo splash.
+      _wizardCompleted = false;
+    }
+
+    try {
+      await refreshStatus().timeout(const Duration(seconds: 6));
+    } catch (_) {
+      _status[SetupStepId.usageAccess] = false;
+      _status[SetupStepId.notifications] = false;
+      _status[SetupStepId.location] = false;
+      _status[SetupStepId.activityRecognition] = false;
+      _status[SetupStepId.fullScreenIntent] = true;
+      _status[SetupStepId.batteryOptimization] = true;
+      _status[SetupStepId.focusMode] = false;
+    }
+
     _loading = false;
     notifyListeners();
   }
 
-  /// Nạp lại từ SharedPreferences — dùng sau khi CloudBackupService khôi
-  /// phục dữ liệu tài khoản (không phục hồi trạng thái quyền hệ thống, vì
-  /// quyền luôn gắn với THIẾT BỊ chứ không phải tài khoản — chỉ cần đọc lại
-  /// cờ wizardCompleted).
   Future<void> reload() => _init();
 
   bool isGranted(SetupStepId id) => _status[id] ?? false;
@@ -84,23 +93,33 @@ class SetupProvider extends ChangeNotifier {
   /// Cài đặt) — luôn coi là "đã cấp" (true), tile chỉ mang tính "Quản lý"
   /// để mở đúng màn cài đặt cho người dùng tự kiểm tra/bật tay.
   Future<void> refreshStatus() async {
-    final results = await Future.wait<bool>([
-      UsageService.hasPermission(),
-      Platform.isAndroid
-          ? Permission.notification.status.then((s) => s.isGranted)
-          : Future.value(true),
-      PermissionHelper.checkLocationPermission(),
-      PermissionHelper.checkActivityPermission(),
-      FocusModeService.instance.hasAccess(),
-    ]);
-    _status[SetupStepId.usageAccess] = results[0];
-    _status[SetupStepId.notifications] = results[1];
-    _status[SetupStepId.location] = results[2];
-    _status[SetupStepId.activityRecognition] = results[3];
-    _status[SetupStepId.fullScreenIntent] = true;
-    _status[SetupStepId.batteryOptimization] = true;
-    _status[SetupStepId.focusMode] = results[4];
-    notifyListeners();
+    try {
+      late final Future<bool> notificationFuture;
+      if (Platform.isAndroid) {
+        notificationFuture = Permission.notification.status.then((s) => s.isGranted);
+      } else {
+        notificationFuture = Future.value(true);
+      }
+
+      final results = await Future.wait<bool>([
+        UsageService.hasPermission(),
+        notificationFuture,
+        PermissionHelper.checkLocationPermission(),
+        PermissionHelper.checkActivityPermission(),
+        FocusModeService.instance.hasAccess(),
+      ]).timeout(const Duration(seconds: 6));
+
+      _status[SetupStepId.usageAccess] = results[0];
+      _status[SetupStepId.notifications] = results[1];
+      _status[SetupStepId.location] = results[2];
+      _status[SetupStepId.activityRecognition] = results[3];
+      _status[SetupStepId.fullScreenIntent] = true;
+      _status[SetupStepId.batteryOptimization] = true;
+      _status[SetupStepId.focusMode] = results[4];
+      notifyListeners();
+    } catch (e) {
+      notifyListeners();
+    }
   }
 
   Future<void> markWizardCompleted() async {

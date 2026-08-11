@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.0.0+1
+version: 1.2.1+alpha
 
 environment:
   sdk: ^3.12.2
@@ -32,15 +32,11 @@ dependencies:
     sdk: flutter
   url_launcher: ^6.3.1
   share_plus: ^10.1.4
-  path_provider: ^2.1.5  
-  # lucide_icons đã bị BỎ — không tương thích Flutter SDK mới (IconData giờ
-  # là `final class`, lucide_icons 0.257.0 viết theo kiểu `extends IconData`
-  # nên build release bị lỗi "can't be extended outside of its library").
-  # Dùng thẳng bộ Icons.* có sẵn trong Flutter, không cần package ngoài.
+  path_provider: ^2.1.5
   google_fonts: ^6.2.1
   fl_chart: ^0.70.2
   provider: ^6.1.2
-  
+
   flutter_local_notifications: ^19.4.0
   timezone: ^0.10.1
   dio: ^5.9.0

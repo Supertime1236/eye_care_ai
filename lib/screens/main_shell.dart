@@ -73,12 +73,26 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
   // lib/services/update_service.dart) — chỉ hỏi 1 LẦN mỗi lần mở app (không
   // đặt trong Timer.periodic như refresh habit ở trên), tránh phiền người
   // dùng bằng dialog bật lên lặp lại giữa lúc họ đang dùng app.
-  Future<void> _checkForAppUpdate() async {
+  Future<void> _checkForAppUpdate({bool manual = false, BuildContext? context}) async {
     final update = await UpdateService.instance.checkForUpdate();
-    if (update == null || !mounted) return;
-    final strings = context.read<LanguageProvider>().strings;
+    final target = context ?? this.context;
+    if (!manual) {
+      if (update == null || !mounted) return;
+      final strings = target.read<LanguageProvider>().strings;
+      if (!mounted) return;
+      UpdateDialog.show(target, update, strings);
+      return;
+    }
+
     if (!mounted) return;
-    UpdateDialog.show(context, update, strings);
+    final strings = target.read<LanguageProvider>().strings;
+    if (update == null) {
+      ScaffoldMessenger.of(target).showSnackBar(
+        SnackBar(content: Text(strings.updateCheckFailed)),
+      );
+      return;
+    }
+    UpdateDialog.show(target, update, strings);
   }
 
   @override
