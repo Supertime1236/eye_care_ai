@@ -345,29 +345,6 @@ class AppStrings {
   String get eyeTestNeedBreakShort => vi ? 'Nghỉ mắt' : 'Take a break';
   String get eyeTestRetake => vi ? 'Làm lại' : 'Retake';
 
-  // ---------------- Kiểm tra mắt nhanh (bản đơn giản, 3 bước, không cần
-  // camera) — dùng ở _EyeTestPage trong home_screen.dart, khác với bộ Tumbling
-  // E dùng camera đo khoảng cách ở trên. ----------------
-  String get quickEyeCheck => vi ? 'Kiểm tra mắt nhanh' : 'Quick eye check';
-  String get eyeTestStep1Title => vi ? 'Nhìn vào chữ bên dưới' : 'Look at the letter below';
-  String get eyeTestStep1Subtitle => vi
-      ? 'Giữ điện thoại cách mắt khoảng 30-40cm. Bạn có đọc rõ chữ "E" không?'
-      : 'Hold your phone about 30-40cm from your eyes. Can you read the "E" clearly?';
-  String get eyeTestStep2Title => vi ? 'Tiếp tục với chữ này' : 'Now try this letter';
-  String get eyeTestStep2Subtitle => vi
-      ? 'Vẫn giữ nguyên khoảng cách. Bạn có đọc rõ chữ "A" không?'
-      : 'Keep the same distance. Can you read the "A" clearly?';
-  String get eyeTestStep3Title => vi ? 'Nghỉ mắt 20 giây' : 'Rest your eyes for 20 seconds';
-  String get eyeTestStep3Subtitle => vi
-      ? 'Nhìn ra xa khoảng 6 mét trong lúc đếm ngược, rồi cho biết mắt bạn cảm thấy thế nào.'
-      : 'Look at something ~6 meters away while the countdown runs, then tell us how your eyes feel.';
-  String get startCountdown => vi ? 'Bắt đầu đếm ngược' : 'Start countdown';
-  String get countdownRunning => vi ? 'Đang đếm ngược...' : 'Counting down...';
-  String get eyeFeelsFine => vi ? 'Mắt thấy ổn' : 'Eyes feel fine';
-  String get eyeFeelsTired => vi ? 'Mắt thấy mỏi' : 'Eyes feel tired';
-  String get canReadClearly => vi ? 'Đọc rõ' : 'Read clearly';
-  String get notClear => vi ? 'Không rõ' : 'Not clear';
-
   // ---------------- Eye Break reminder screen ----------------
   String get eyeBreakTitle => vi ? 'Nhắc nghỉ mắt' : 'Eye Break Reminder';
   String get eyeBreakSubtitle => vi
