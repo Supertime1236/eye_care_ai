@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.2.1+alpha
+version: 1.0.0+1
 
 environment:
   sdk: ^3.12.2
@@ -32,11 +32,15 @@ dependencies:
     sdk: flutter
   url_launcher: ^6.3.1
   share_plus: ^10.1.4
-  path_provider: ^2.1.5
+  path_provider: ^2.1.5  
+  # lucide_icons đã bị BỎ — không tương thích Flutter SDK mới (IconData giờ
+  # là `final class`, lucide_icons 0.257.0 viết theo kiểu `extends IconData`
+  # nên build release bị lỗi "can't be extended outside of its library").
+  # Dùng thẳng bộ Icons.* có sẵn trong Flutter, không cần package ngoài.
   google_fonts: ^6.2.1
   fl_chart: ^0.70.2
   provider: ^6.1.2
-
+  
   flutter_local_notifications: ^19.4.0
   timezone: ^0.10.1
   dio: ^5.9.0
@@ -49,6 +53,8 @@ dependencies:
 
   # --- Real device data sources for the Habits screen ---
   sensors_plus: ^6.0.1     # accelerometer (reading posture, sleep motion heuristic)
+  camera: ^0.11.0+2         # camera trước (selfie) để đo khoảng cách mắt-màn hình lúc kiểm tra thị lực
+  google_mlkit_face_detection: ^0.13.1 # nhận diện vị trí 2 mắt trên khung hình camera
   geolocator: ^13.0.1      # GPS - nguồn dữ liệu duy nhất cho Outdoor time
   light: ^5.0.0             # cảm biến ánh sáng (lux) - dùng cho cảnh báo dùng điện thoại trong bóng tối + tự động điều chỉnh độ sáng
   screen_brightness: ^2.1.1 # chỉnh độ sáng màn hình theo lux đọc được từ cảm biến ánh sáng
