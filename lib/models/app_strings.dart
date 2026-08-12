@@ -300,7 +300,6 @@ class AppStrings {
         ];
 
   String get eyeTest => vi ? 'Kiểm tra mắt' : 'Eye Test';
-  String get quickEyeCheck => vi ? 'Kiểm tra nhanh mắt' : 'Quick eye check';
   String get stepLabel => vi ? 'Bước' : 'Step';
   String get canReadClearly => vi ? 'Đọc rõ' : 'Clear';
   String get notClear => vi ? 'Không rõ' : 'Not clear';
