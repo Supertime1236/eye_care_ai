@@ -63,10 +63,6 @@ class AppStrings {
   String get themeSubtitle => vi ? 'Sáng, tối hoặc theo máy' : 'Light, dark, or match device';
   String get screenSection => vi ? 'Màn hình' : 'Screen';
 
-  // Độ sáng thông minh: đọc cảm biến ánh sáng môi trường (lux) + độ sáng màn
-  // hình hiện tại, rồi đề xuất 1 nút bấm để tự chỉnh độ sáng hệ thống khớp
-  // với môi trường xung quanh — xem lib/widgets/smart_brightness_dialog.dart
-  // (trước đây mục này chỉ là 1 dialog tip tĩnh, không làm được gì thật).
   String get brightnessTips => vi ? 'Gợi ý độ sáng' : 'Brightness Tips';
   String get brightnessTipsSubtitle =>
       vi ? 'Tự động chỉnh độ sáng theo môi trường' : 'Auto-adjust brightness to match your surroundings';
@@ -118,10 +114,10 @@ class AppStrings {
   String get imperialUnitsSubtitle => vi ? 'Xem inch và giờ' : 'Inches, hours';
   String get measurementUnits => vi ? 'Đơn vị đo lường' : 'Measurement Units';
   String get dateTime => vi ? 'Ngày & Giờ' : 'Date & Time';
-  String get metricMeters => vi ? 'Metric (Meters) / Mét' : 'Metric (Meters) / Mét';
-  String get imperialFeet => vi ? 'Imperial (Feet)' : 'Imperial (Feet)';
-  String get hour12 => vi ? '12-hour Clock / Định dạng 12 giờ' : '12-hour Clock / Định dạng 12 giờ';
-  String get hour24 => vi ? '24-hour Clock / Định dạng 24 giờ' : '24-hour Clock / Định dạng 24 giờ';
+  String get metricMeters => vi ? 'Mét' : 'Meters';
+  String get imperialFeet => vi ? 'Feet' : 'Imperial (Feet)';
+  String get hour12 => vi ? 'Định dạng 12 giờ' : '12-hour Clock';
+  String get hour24 => vi ? 'Định dạng 24 giờ' : '24-hour Clock';
   String get language => vi ? 'Ngôn ngữ' : 'Language';
   String get selectOption => vi ? 'Chọn lựa' : 'Select option';
   String get chooseValue => vi ? 'Chọn giá trị' : 'Choose value';
@@ -197,7 +193,7 @@ class AppStrings {
   String get eyeCareSettingFeet => vi ? 'Feet' : 'Feet';
   String get eyeCareSettingInch => vi ? 'Inch' : 'Inch';
   String get achievementBadges => vi ? 'Thành tựu' : 'Achievements';
-  String get rank => vi ? 'Xếp hạng' : 'Rank';
+  String get ranking => vi ? 'Xếp hạng' : 'Ranking';
   String get achievementTitle => vi ? 'Thành tựu của bạn' : 'Your achievements';
   String get achievementUnlocked => vi ? 'Đã mở khóa' : 'Unlocked';
   String get achievementLocked => vi ? 'Chưa mở khóa' : 'Locked';
@@ -504,7 +500,7 @@ class AppStrings {
       case 'sleep':
         return vi ? 'Health Connect hoặc nhập tay' : 'Health Connect or manual entry';
       case 'outdoor':
-        return vi ? 'Định vị GPS' : 'GPS location';
+        return vi ? 'GPS + cảm biến ánh sáng' : 'GPS + light sensor';
       case 'breaks':
         return vi ? 'Nhận diện ánh nhìn qua camera trước' : 'Front camera gaze detection';
       default:
