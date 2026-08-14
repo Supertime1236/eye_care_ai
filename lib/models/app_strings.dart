@@ -317,6 +317,7 @@ class AppStrings {
   String get eyeTestFaceNotDetected => vi ? 'Chưa thấy rõ khuôn mặt' : 'Face not detected';
   String get eyeTestTooClose => vi ? 'Đang quá gần — lùi điện thoại ra một chút' : 'Too close — move the phone a bit further away';
   String get eyeTestTooFar => vi ? 'Đang quá xa — đưa điện thoại lại gần một chút' : 'Too far — bring the phone a bit closer';
+  String get eyeTestPausedTitle => vi ? 'Đã tạm dừng bài kiểm tra' : 'Test paused';
   String get eyeTestStart => vi ? 'Bắt đầu kiểm tra' : 'Start test';
   String get eyeTestDisclaimer => vi
       ? 'Đây là công cụ sàng lọc nhanh tại nhà, không thay thế khám mắt chuyên khoa. Nếu nghi ngờ có vấn đề về thị lực, hãy gặp bác sĩ nhãn khoa.'

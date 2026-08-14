@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
 
@@ -82,6 +83,61 @@ class _EyeTestScreenState extends State<EyeTestScreen> {
   static const double _kIdealMinCm = 30;
   static const double _kIdealMaxCm = 55;
 
+  // Camera có đang thực sự chạy hay không (đã cấp quyền + khởi động thành
+  // công) — dùng để phân biệt "chưa đo được vì camera chưa sẵn sàng/không
+  // khả dụng" (KHÔNG chặn bài test) với "camera đang chạy nhưng sai khoảng
+  // cách" (CÓ chặn, theo đúng yêu cầu).
+  bool _cameraActive = false;
+  // Tạm dừng bài test khi sai khoảng cách quá 700ms liên tục (debounce —
+  // tránh chớp tắt overlay liên tục chỉ vì 1 khung hình đo trượt thoáng qua,
+  // ví dụ lúc chớp mắt/quay đầu đổi hướng giữa 2 câu hỏi).
+  bool _showDistancePause = false;
+  Timer? _distanceDebounceTimer;
+
+  // Thông báo lớn giữa màn hình khi vừa chuyển sang vòng test mới (mắt
+  // phải/mắt trái/tương phản) — hiện vài giây rồi tự ẩn, để người dùng chỉ
+  // cần LIẾC 1 lần biết đang test gì, không phải đọc chữ hướng dẫn suốt
+  // trong lúc làm bài (khác bản trước: title/subtitle nằm cố định phía trên
+  // D-pad, chiếm chỗ và bắt đọc liên tục).
+  bool _showAnnouncement = false;
+  Timer? _announcementTimer;
+
+  void _announce() {
+    _announcementTimer?.cancel();
+    setState(() => _showAnnouncement = true);
+    _announcementTimer = Timer(const Duration(milliseconds: 1800), () {
+      if (mounted) setState(() => _showAnnouncement = false);
+    });
+  }
+
+  void _handleDistanceUpdate(double? cm) {
+    setState(() => _liveDistanceCm = cm);
+    if (!_cameraActive) return; // camera chưa chạy -> không có gì để chặn
+
+    final ok = cm != null && cm >= _kIdealMinCm && cm <= _kIdealMaxCm;
+    if (ok) {
+      _distanceDebounceTimer?.cancel();
+      if (_showDistancePause) setState(() => _showDistancePause = false);
+    } else {
+      _distanceDebounceTimer?.cancel();
+      _distanceDebounceTimer = Timer(const Duration(milliseconds: 700), () {
+        if (mounted) setState(() => _showDistancePause = true);
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _distanceDebounceTimer?.cancel();
+    _announcementTimer?.cancel();
+    // Dừng camera hẳn khi rời màn kiểm tra mắt — đây là nơi DUY NHẤT chịu
+    // trách nhiệm dừng, vì camera được dùng XUYÊN SUỐT nhiều bước (giới
+    // thiệu -> mắt phải -> mắt trái -> tương phản), không dừng theo widget
+    // con nào cả.
+    DistanceService.instance.stop();
+    super.dispose();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -123,6 +179,7 @@ class _EyeTestScreenState extends State<EyeTestScreen> {
       _wrongAtThisSize = 0;
       _currentDirection = _Direction.values[_random.nextInt(4)];
     });
+    _announce();
   }
 
   void _answerAcuity(_Direction picked) {
@@ -175,6 +232,7 @@ class _EyeTestScreenState extends State<EyeTestScreen> {
       _contrastIndex = 0;
       _currentDirection = _Direction.values[_random.nextInt(4)];
     });
+    _announce();
   }
 
   void _answerContrast(_Direction picked) {
@@ -197,7 +255,12 @@ class _EyeTestScreenState extends State<EyeTestScreen> {
     setState(() {
       _contrastLevel = levelReached;
       _phase = _Phase.result;
+      _showDistancePause = false;
     });
+    _distanceDebounceTimer?.cancel();
+    // Đã xong bài test -> không cần đo khoảng cách nữa, dừng camera ngay,
+    // không để chạy ngầm vô ích lúc người dùng đang xem kết quả.
+    DistanceService.instance.stop();
     final percent = _overallPercent();
     _saveResult(percent);
   }
@@ -210,6 +273,8 @@ class _EyeTestScreenState extends State<EyeTestScreen> {
   }
 
   void _resetTest() {
+    _distanceDebounceTimer?.cancel();
+    _announcementTimer?.cancel();
     setState(() {
       _phase = _Phase.intro;
       _sizeIndex = 0;
@@ -219,6 +284,10 @@ class _EyeTestScreenState extends State<EyeTestScreen> {
       _contrastIndex = 0;
       _contrastLevel = null;
       _currentDirection = null;
+      _cameraActive = false;
+      _showDistancePause = false;
+      _showAnnouncement = false;
+      _liveDistanceCm = null;
     });
   }
 
@@ -268,7 +337,8 @@ class _EyeTestScreenState extends State<EyeTestScreen> {
           _LiveDistanceMeter(
             idealMinCm: _kIdealMinCm,
             idealMaxCm: _kIdealMaxCm,
-            onDistanceChanged: (cm) => setState(() => _liveDistanceCm = cm),
+            onDistanceChanged: _handleDistanceUpdate,
+            onActiveChanged: (active) => setState(() => _cameraActive = active),
           ),
           const SizedBox(height: 24),
           if (_history.isNotEmpty) _buildHistoryPreview(context, strings),
@@ -341,25 +411,12 @@ class _EyeTestScreenState extends State<EyeTestScreen> {
   // ---------------- Vòng đo thị lực (dùng chung cho 2 mắt) ----------------
   Widget _buildAcuityRound(BuildContext context, AppStrings strings, {required bool isRight}) {
     final size = _kAcuitySizes[_sizeIndex];
-    return SingleChildScrollView(
+    final content = SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Text(
-            isRight ? strings.eyeTestRightEyeTitle : strings.eyeTestLeftEyeTitle,
-            style: Theme.of(context).textTheme.headlineSmall,
-          ),
           const SizedBox(height: 8),
-          // useHandCover: chuỗi có sẵn trong app, dùng đúng ngữ cảnh che 1
-          // mắt bằng tay — trước đây chưa được dùng ở đâu cả.
-          Text(
-            strings.useHandCover,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-          ),
-          const SizedBox(height: 6),
           Text(
             '${strings.stepLabel} ${_sizeIndex + 1}/${_kAcuitySizes.length}',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textMuted),
@@ -377,25 +434,28 @@ class _EyeTestScreenState extends State<EyeTestScreen> {
         ],
       ),
     );
+    return _wrapWithDistanceGate(
+      context,
+      strings,
+      content,
+      // useHandCover: chuỗi có sẵn trong app, dùng đúng ngữ cảnh che 1 mắt
+      // bằng tay — giờ chỉ hiện THOÁNG QUA trong overlay thông báo, không
+      // còn nằm cố định phía trên bắt đọc suốt lúc làm bài.
+      announceTitle: isRight ? strings.eyeTestRightEyeTitle : strings.eyeTestLeftEyeTitle,
+      announceSubtitle: strings.useHandCover,
+      announceIcon: Icons.visibility_rounded,
+    );
   }
 
   // ---------------- Vòng đo độ nhạy tương phản ----------------
   Widget _buildContrastRound(BuildContext context, AppStrings strings) {
     final opacity = _kContrastLevels[_contrastIndex];
-    return SingleChildScrollView(
+    final content = SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Text(strings.eyeTestContrastTitle, style: Theme.of(context).textTheme.headlineSmall),
           const SizedBox(height: 8),
-          Text(
-            strings.eyeTestContrastBody,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-          ),
-          const SizedBox(height: 6),
           Text(
             '${strings.stepLabel} ${_contrastIndex + 1}/${_kContrastLevels.length}',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textMuted),
@@ -413,7 +473,157 @@ class _EyeTestScreenState extends State<EyeTestScreen> {
         ],
       ),
     );
+    return _wrapWithDistanceGate(
+      context,
+      strings,
+      content,
+      announceTitle: strings.eyeTestContrastTitle,
+      announceSubtitle: strings.eyeTestContrastBody,
+      announceIcon: Icons.contrast_rounded,
+    );
   }
+
+  // Bọc nội dung 1 vòng test bằng: (1) badge góc trên-phải hiện khoảng cách
+  // hiện tại nếu camera đang chạy, (2) lớp phủ toàn màn hình CHẶN thao tác +
+  // tạm dừng bài test khi sai khoảng cách quá 700ms liên tục, (3) thông báo
+  // LỚN GIỮA MÀN HÌNH hiện ~1.8s lúc vừa vào vòng test mới rồi tự ẩn — thay
+  // cho việc bắt đọc title/subtitle cố định suốt lúc làm bài. Nếu camera
+  // không khả dụng (_cameraActive == false), không hiện gì thêm cả — đúng
+  // hành vi cũ, không ép buộc phải có camera mới làm được bài test.
+  Widget _wrapWithDistanceGate(
+    BuildContext context,
+    AppStrings strings,
+    Widget content, {
+    required String announceTitle,
+    required String announceSubtitle,
+    required IconData announceIcon,
+  }) {
+    return Stack(
+      children: [
+        // IgnorePointer khi đang tạm dừng HOẶC đang hiện thông báo mở đầu —
+        // cả 2 trường hợp đều chưa nên cho bấm D-pad.
+        IgnorePointer(
+          ignoring: _showDistancePause || _showAnnouncement,
+          child: content,
+        ),
+        if (_cameraActive)
+          Positioned(
+            top: 8,
+            right: 8,
+            child: _buildDistanceBadge(context),
+          ),
+        // Thông báo LỚN GIỮA MÀN HÌNH lúc vừa vào vòng test — chỉ hiện khi
+        // KHÔNG bị chặn bởi cảnh báo khoảng cách (ưu tiên cảnh báo khoảng
+        // cách hơn, vì đó là vấn đề CẦN XỬ LÝ NGAY, còn thông báo mở đầu chỉ
+        // mang tính thông tin).
+        if (_showAnnouncement && !_showDistancePause)
+          Positioned.fill(
+            child: AnimatedOpacity(
+              opacity: _showAnnouncement ? 1 : 0,
+              duration: const Duration(milliseconds: 250),
+              child: Container(
+                color: Theme.of(context).scaffoldBackgroundColor,
+                child: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 32),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 88,
+                          height: 88,
+                          decoration: BoxDecoration(
+                            color: AppColors.testAccent.withValues(alpha: 0.12),
+                            shape: BoxShape.circle,
+                          ),
+                          alignment: Alignment.center,
+                          child: Icon(announceIcon, size: 40, color: AppColors.testAccent),
+                        ),
+                        const SizedBox(height: 20),
+                        Text(
+                          announceTitle,
+                          style: Theme.of(context).textTheme.headlineSmall,
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          announceSubtitle,
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                              ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        if (_showDistancePause)
+          Positioned.fill(
+            child: Container(
+              color: Colors.black.withValues(alpha: 0.75),
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 32),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.pause_circle_filled_rounded, color: AppColors.error, size: 48),
+                      const SizedBox(height: 16),
+                      Text(
+                        strings.eyeTestPausedTitle,
+                        style: Theme.of(context)
+                            .textTheme
+                            .titleMedium
+                            ?.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        _liveDistanceCm == null
+                            ? strings.eyeTestFaceNotDetected
+                            : (_liveDistanceCm! < _kIdealMinCm ? strings.eyeTestTooClose : strings.eyeTestTooFar),
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.white70),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildDistanceBadge(BuildContext context) {
+    final ok = _liveDistanceCm != null && _liveDistanceCm! >= _kIdealMinCm && _liveDistanceCm! <= _kIdealMaxCm;
+    final color = _liveDistanceCm == null ? AppColors.textMuted : (ok ? AppColors.success : AppColors.error);
+    final label = _liveDistanceCm == null ? '—' : '${_liveDistanceCm!.round()}cm';
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withValues(alpha: 0.5)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 6),
+          Text(label, style: Theme.of(context).textTheme.labelMedium?.copyWith(color: color, fontWeight: FontWeight.w700)),
+        ],
+      ),
+    );
+  }
+
 
   Widget _buildTumblingE(BuildContext context, {required double size, required double opacity}) {
     // Chữ "E" mặc định mở về bên PHẢI -> xoay theo góc tương ứng từng hướng.
@@ -631,20 +841,22 @@ class _MiniResultCard extends StatelessWidget {
   }
 }
 
-// Đồng hồ đo khoảng cách mắt-màn hình TRỰC TIẾP bằng camera trước — chỉ
-// hoạt động khi widget này còn nằm trong cây (tức chỉ lúc đang ở màn giới
-// thiệu bài test). Tự dừng camera ngay khi bị gỡ khỏi cây (dispose), không
-// chạy ngầm lãng phí pin/vi phạm riêng tư lúc đang làm bài test thật.
+// Panel đo khoảng cách mắt-màn hình TRỰC TIẾP bằng camera trước — hiện ở
+// màn giới thiệu (dạng panel to, có xin quyền). Camera do CHA (_EyeTestScreenState)
+// khởi động lúc widget này chạy xong và DỪNG lúc rời khỏi toàn bộ màn kiểm
+// tra (không dừng theo riêng widget này) để dùng xuyên suốt cả bài test.
 class _LiveDistanceMeter extends StatefulWidget {
   const _LiveDistanceMeter({
     required this.idealMinCm,
     required this.idealMaxCm,
     required this.onDistanceChanged,
+    required this.onActiveChanged,
   });
 
   final double idealMinCm;
   final double idealMaxCm;
   final void Function(double? cm) onDistanceChanged;
+  final void Function(bool active) onActiveChanged;
 
   @override
   State<_LiveDistanceMeter> createState() => _LiveDistanceMeterState();
@@ -699,6 +911,7 @@ class _LiveDistanceMeterState extends State<_LiveDistanceMeter> {
       return;
     }
     setState(() => _state = _MeterState.running);
+    widget.onActiveChanged(true);
     DistanceService.instance.distanceStream.listen((cm) {
       if (!mounted) return;
       setState(() => _distanceCm = cm);
@@ -708,8 +921,11 @@ class _LiveDistanceMeterState extends State<_LiveDistanceMeter> {
 
   @override
   void dispose() {
-    DistanceService.instance.stop();
-    widget.onDistanceChanged(null);
+    // KHÔNG dừng camera ở đây nữa — bài test còn tiếp tục dùng camera này ở
+    // các bước sau (đo mắt phải/trái/tương phản), _LiveDistanceMeter chỉ là
+    // panel HIỂN THỊ + XIN QUYỀN ở màn giới thiệu, không phải chủ sở hữu
+    // vòng đời camera. _EyeTestScreenState (cha) chịu trách nhiệm dừng hẳn
+    // camera khi rời màn kiểm tra hoặc khi đã có kết quả.
     super.dispose();
   }
 

@@ -10,7 +10,7 @@ import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 /// gian thực).
 ///
 /// CÁCH TÍNH (không cần hiệu chỉnh riêng từng máy):
-///   1. ML Kit tìm 2 điểm mốc MẮT TRÁI/MẮT PHẢI trên khung hình camera.
+///   1. ML Kit tìm khuôn mặt + 2 điểm mốc MẮT TRÁI/MẮT PHẢI trên khung hình.
 ///   2. Khoảng cách 2 mắt tính bằng PIXEL trên ảnh, so với khoảng cách 2
 ///      đồng tử TRUNG BÌNH của người trưởng thành (~6.3cm, số liệu nhân
 ///      trắc học phổ biến) để suy ra khoảng cách thật bằng công thức tam
@@ -19,6 +19,19 @@ import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 ///   3. `tiêu_cự_px` ước lượng từ độ rộng ảnh + góc nhìn (FOV) ngang giả
 ///      định ~70° — thông số phổ biến của camera trước điện thoại, KHÔNG
 ///      đọc được chính xác tuyệt đối qua Flutter cho mọi máy.
+///
+/// BUG ĐÃ SỬA ("Face not detected" dù mặt rõ ràng trong khung hình): trước
+/// đây dùng `FaceDetectorMode.fast` + BẮT BUỘC phải có đủ landmark mắt trái
+/// VÀ mắt phải mới tính — nhưng ở chế độ `fast`, ML Kit ưu tiên tốc độ nên
+/// landmark mắt RẤT HAY bị null dù bounding box khuôn mặt vẫn nhận diện
+/// đúng (đặc biệt khi đầu hơi nghiêng hoặc ánh sáng không lý tưởng), khiến
+/// app báo "không thấy mặt" liên tục dù mặt rõ ràng đang trong khung hình.
+/// Giờ đổi sang `FaceDetectorMode.accurate` (đánh đổi chậm hơn 1 chút để
+/// đổi lấy landmark ổn định hơn nhiều) VÀ thêm phương án DỰ PHÒNG: nếu vẫn
+/// thiếu landmark mắt, dùng luôn ĐỘ RỘNG KHUÔN MẶT (bounding box) so với độ
+/// rộng khuôn mặt trung bình (~14cm) để ước lượng khoảng cách — kém chính
+/// xác hơn dùng khoảng cách 2 mắt một chút, nhưng vẫn tốt hơn nhiều so với
+/// báo "không phát hiện được" khi thực ra đã thấy mặt.
 ///
 /// GIỚI HẠN THỰC TẾ CẦN BIẾT: đây là ước lượng dựa trên số đo trung bình
 /// dân số + giả định góc nhìn camera — sai số thực tế có thể dao động
@@ -30,6 +43,7 @@ class DistanceService {
   static final instance = DistanceService._();
 
   static const double _kInterpupillaryDistanceCm = 6.3;
+  static const double _kAverageFaceWidthCm = 14.0;
   static const double _kAssumedHorizontalFovDegrees = 70;
 
   CameraController? _controller;
@@ -74,7 +88,9 @@ class DistanceService {
       _faceDetector = FaceDetector(
         options: FaceDetectorOptions(
           enableLandmarks: true,
-          performanceMode: FaceDetectorMode.fast,
+          // Chậm hơn "fast" một chút nhưng landmark mắt ổn định hơn HẲN —
+          // xem giải thích chi tiết ở doc comment class phía trên.
+          performanceMode: FaceDetectorMode.accurate,
         ),
       );
 
@@ -115,29 +131,36 @@ class DistanceService {
         return;
       }
       final face = faces.first;
-      final leftEye = face.landmarks[FaceLandmarkType.leftEye];
-      final rightEye = face.landmarks[FaceLandmarkType.rightEye];
-      if (leftEye == null || rightEye == null) {
-        // Một số góc nghiêng mặt không cho ra đủ 2 mốc mắt -> tạm coi như
-        // chưa đo được, KHÔNG dùng bounding box thay thế (kém chính xác hơn
-        // nhiều vì bounding box phụ thuộc góc nghiêng đầu).
-        _distanceController.add(null);
-        return;
-      }
-
-      final dx = (leftEye.position.x - rightEye.position.x).toDouble();
-      final dy = (leftEye.position.y - rightEye.position.y).toDouble();
-      final eyeDistancePx = math.sqrt(dx * dx + dy * dy);
-      if (eyeDistancePx < 1) {
-        _distanceController.add(null);
-        return;
-      }
-
       final imageWidthPx = image.width.toDouble();
       final fovRad = _kAssumedHorizontalFovDegrees * math.pi / 180;
       final focalLengthPx = (imageWidthPx / 2) / math.tan(fovRad / 2);
 
-      final distanceCm = (_kInterpupillaryDistanceCm * focalLengthPx) / eyeDistancePx;
+      final leftEye = face.landmarks[FaceLandmarkType.leftEye];
+      final rightEye = face.landmarks[FaceLandmarkType.rightEye];
+
+      double? distanceCm;
+      if (leftEye != null && rightEye != null) {
+        // Cách chính, chính xác hơn: dựa trên khoảng cách 2 mắt.
+        final dx = (leftEye.position.x - rightEye.position.x).toDouble();
+        final dy = (leftEye.position.y - rightEye.position.y).toDouble();
+        final eyeDistancePx = math.sqrt(dx * dx + dy * dy);
+        if (eyeDistancePx >= 1) {
+          distanceCm = (_kInterpupillaryDistanceCm * focalLengthPx) / eyeDistancePx;
+        }
+      }
+      if (distanceCm == null) {
+        // Dự phòng: đã thấy khuôn mặt (bounding box) nhưng thiếu landmark
+        // mắt -> ước lượng bằng độ rộng khuôn mặt thay vì báo "không thấy".
+        final faceWidthPx = face.boundingBox.width;
+        if (faceWidthPx >= 1) {
+          distanceCm = (_kAverageFaceWidthCm * focalLengthPx) / faceWidthPx;
+        }
+      }
+
+      if (distanceCm == null) {
+        _distanceController.add(null);
+        return;
+      }
       // Giới hạn khoảng hợp lý (10cm-150cm) — ngoài khoảng này gần như chắc
       // chắn là nhiễu/đo sai, không phải người dùng thật sự đứng xa/gần vậy.
       if (distanceCm < 10 || distanceCm > 150) {
