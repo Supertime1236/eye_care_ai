@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -23,6 +25,7 @@ import 'screens/login_screen.dart';
 import 'screens/main_shell.dart';
 import 'screens/setup_wizard_screen.dart';
 import 'services/analytics_service.dart';
+import 'services/dark_room_background_service.dart';
 import 'services/device_data_service.dart';
 import 'services/notification_service.dart';
 import 'theme/app_theme.dart';
@@ -61,6 +64,13 @@ Future<void> main() async {
   } catch (_) {
     // Báo thức nghỉ mắt có thể khởi tạo lại sau khi vào app.
   }
+  // Đăng ký kiểm tra "dùng điện thoại trong bóng tối" chạy NỀN ĐỊNH KỲ (mỗi
+  // ~15 phút, kể cả khi app đã đóng hẳn) — không await/không có timeout
+  // riêng: đây chỉ là ĐĂNG KÝ lịch với hệ thống (rất nhanh), KHÔNG phải bản
+  // thân việc kiểm tra (việc đó chạy sau, trong isolate riêng của
+  // WorkManager) — lỗi ở đây (ví dụ thiết bị không hỗ trợ) không được làm
+  // chậm/kẹt màn hình khởi động app.
+  unawaited(DarkRoomBackgroundService.register());
 
   // Trường hợp app đã bị TẮT HẲN (không chỉ thu nhỏ) và người dùng mở lại
   // bằng cách nhấn vào thông báo "Đến giờ nghỉ mắt": onDidReceiveNotification
