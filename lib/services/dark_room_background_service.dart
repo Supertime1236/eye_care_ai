@@ -41,11 +41,8 @@ class DarkRoomBackgroundService {
       _darkRoomUniqueTaskName,
       darkRoomBackgroundTaskName,
       frequency: const Duration(minutes: 15), // tối thiểu của Android WorkManager, không thể nhanh hơn.
-      existingWorkPolicy: ExistingWorkPolicy.keep,
-      constraints: Constraints(
-        requiresBatteryNotLow: false,
-        networkType: NetworkType.not_required,
-      ),
+      existingWorkPolicy: ExistingPeriodicWorkPolicy.keep,
+      constraints: Constraints(requiresBatteryNotLow: false),
     );
   }
 
