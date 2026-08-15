@@ -251,8 +251,6 @@ class _AppGateState extends State<_AppGate> {
   late final Future<bool> _consentGivenFuture;
   AuthProvider? _authProvider;
 
-  static Future<bool> _timeoutFuture(Duration duration) => Future.delayed(duration, () => false);
-
   @override
   void initState() {
     super.initState();
