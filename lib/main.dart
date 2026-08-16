@@ -319,8 +319,16 @@ class _AppGateState extends State<_AppGate> {
               WidgetsBinding.instance.addPostFrameCallback((_) {
                 context.read<HabitProvider>().setSurveyCompleted(true);
               });
-              final isLoggedIn = context.read<AuthProvider>().isLoggedIn;
-              if (!isLoggedIn) {
+              final authProvider = context.read<AuthProvider>();
+              // Đợi Firebase Auth khôi phục xong phiên đăng nhập cũ (xem
+              // giải thích ở AuthProvider.authReady) trước khi quyết định
+              // hiện LoginScreen — nếu không, người dùng ĐÃ đăng nhập từ
+              // trước vẫn có thể bị "chớp" ra màn đăng nhập oan mỗi lần mở
+              // app do đọc currentUser quá sớm.
+              if (!authProvider.authReady) {
+                return const AppLoadingSkeleton();
+              }
+              if (!authProvider.isLoggedIn) {
                 return const LoginScreen();
               }
 
