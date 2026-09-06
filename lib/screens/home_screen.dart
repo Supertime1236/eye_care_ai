@@ -678,6 +678,61 @@ class _ScoreCard extends StatelessWidget {
 
   final HabitProvider habit;
 
+  // Hiện bottom sheet giải thích cách tính chuỗi ngày — dùng CHUNG cho cả
+  // trường hợp streak = 0 (người dùng chưa biết bắt đầu từ đâu) lẫn > 0
+  // (muốn biết vì sao chuỗi không tăng/bị đứt), nên badge streak LUÔN hiện
+  // và LUÔN chạm được, không còn ẩn khi = 0 như trước.
+  void _showStreakExplanation(BuildContext context) {
+    final strings = context.read<LanguageProvider>().strings;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Text('🔥', style: TextStyle(fontSize: 22)),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        strings.streakExplainTitle,
+                        style: Theme.of(sheetContext).textTheme.titleMedium,
+                      ),
+                    ),
+                    Text(
+                      '${habit.streakDays}',
+                      style: Theme.of(sheetContext).textTheme.titleMedium?.copyWith(
+                            color: Theme.of(sheetContext).colorScheme.primary,
+                            fontWeight: FontWeight.w700,
+                          ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  strings.streakExplainBody,
+                  style: Theme.of(sheetContext).textTheme.bodyMedium?.copyWith(
+                        color: AppColors.textSecondary,
+                        height: 1.5,
+                      ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final strings = context.watch<LanguageProvider>().strings;
@@ -757,8 +812,10 @@ class _ScoreCard extends StatelessWidget {
                               ],
                             ),
                           ),
-                        if (habit.streakDays > 0)
-                          Container(
+                        InkWell(
+                          borderRadius: BorderRadius.circular(20),
+                          onTap: () => _showStreakExplanation(context),
+                          child: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                             decoration: BoxDecoration(
                               color: Colors.white.withValues(alpha: 0.2),
@@ -776,9 +833,16 @@ class _ScoreCard extends StatelessWidget {
                                         fontWeight: FontWeight.w700,
                                       ),
                                 ),
+                                const SizedBox(width: 2),
+                                Icon(
+                                  Icons.info_outline_rounded,
+                                  size: 11,
+                                  color: Colors.white.withValues(alpha: 0.75),
+                                ),
                               ],
                             ),
                           ),
+                        ),
                       ],
                     ),
                   ],
@@ -808,6 +872,9 @@ class _ScoreCard extends StatelessWidget {
             percent: habit.distanceScore,
             noDataLabel: strings.scoreFactorNoData,
             explanation: strings.scoreFactorDistanceExplain,
+            // Đang thử nghiệm — xem comment trong HabitProvider.refresh():
+            // giá trị vẫn đo/hiện ở đây nhưng KHÔNG được cộng vào điểm tổng.
+            isExperimental: true,
           ),
           _ScoreFactorRow(
             icon: '🌙',
@@ -847,6 +914,7 @@ class _ScoreFactorRow extends StatelessWidget {
     required this.percent,
     required this.noDataLabel,
     required this.explanation,
+    this.isExperimental = false,
   });
 
   final String icon;
@@ -858,6 +926,12 @@ class _ScoreFactorRow extends StatelessWidget {
   // mình không đủ rõ ràng người dùng tính bằng cách nào (dựa vào camera/cảm
   // biến ánh sáng, không trực quan như thời gian màn hình hay giấc ngủ).
   final String explanation;
+  // true = yếu tố đang THỬ NGHIỆM (hiện tại chỉ có "Khoảng cách") — vẫn đo
+  // và hiện % như bình thường, nhưng gắn thêm nhãn nhỏ để người dùng biết
+  // giá trị này KHÔNG được cộng vào điểm sức khỏe mắt tổng (xem
+  // HabitProvider.refresh()), tránh thắc mắc vì sao 100% mà điểm không tăng
+  // tương ứng.
+  final bool isExperimental;
 
   void _showExplanation(BuildContext context) {
     final strings = context.read<LanguageProvider>().strings;
@@ -895,6 +969,23 @@ class _ScoreFactorRow extends StatelessWidget {
                     ),
                   ],
                 ),
+                if (isExperimental) ...[
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: AppColors.warning.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      '🧪 ${strings.experimentalTag}',
+                      style: Theme.of(sheetContext).textTheme.labelSmall?.copyWith(
+                            color: AppColors.warning,
+                            fontWeight: FontWeight.w700,
+                          ),
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 12),
                 Text(
                   explanation,
@@ -926,7 +1017,7 @@ class _ScoreFactorRow extends StatelessWidget {
             Text(icon, style: const TextStyle(fontSize: 15)),
             const SizedBox(width: 8),
             SizedBox(
-              width: 88,
+              width: 78,
               child: Text(
                 label,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -936,6 +1027,10 @@ class _ScoreFactorRow extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
               ),
             ),
+            if (isExperimental) ...[
+              const Text('🧪', style: TextStyle(fontSize: 11)),
+              const SizedBox(width: 4),
+            ],
             Icon(
               Icons.info_outline_rounded,
               size: 13,

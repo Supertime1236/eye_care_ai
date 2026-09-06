@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class ReminderProvider extends ChangeNotifier {
   static const _kReminderMinutesKey = 'pref_reminder_minutes';
+  static const _kReminderActiveKey = 'pref_eye_break_reminder_active';
   // Chế độ THỤ ĐỘNG (Cách 1 trong tài liệu tham khảo): khi người dùng khoá
   // màn hình / rời app từ 20 giây trở lên, tự động tính là 1 lần nghỉ mắt —
   // phù hợp với thói quen của thanh thiếu niên (hay tự nhiên úp điện thoại
@@ -53,10 +54,14 @@ class ReminderProvider extends ChangeNotifier {
   Future<void> _loadSavedPreferences() async {
     final prefs = await SharedPreferences.getInstance();
     _reminderMinutes = prefs.getInt(_kReminderMinutesKey) ?? _reminderMinutes;
-    _autoDetectEyeBreaks = prefs.getBool(_kAutoDetectKey) ?? _autoDetectEyeBreaks;
+    _isEyeBreakReminderActive = prefs.getBool(_kReminderActiveKey) ?? false;
+    _autoDetectEyeBreaks =
+        prefs.getBool(_kAutoDetectKey) ?? _autoDetectEyeBreaks;
     _focusModeEnabled = prefs.getBool(_kFocusModeKey) ?? _focusModeEnabled;
-    _unlimitedOverrideToday = prefs.getString(_kUnlimitedOverrideDateKey) == _todayKey();
-    _waterReminderEnabled = prefs.getBool(_kWaterReminderKey) ?? _waterReminderEnabled;
+    _unlimitedOverrideToday =
+        prefs.getString(_kUnlimitedOverrideDateKey) == _todayKey();
+    _waterReminderEnabled =
+        prefs.getBool(_kWaterReminderKey) ?? _waterReminderEnabled;
     notifyListeners();
   }
 
@@ -97,8 +102,10 @@ class ReminderProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  void toggleEyeBreakReminder(bool active) {
+  Future<void> toggleEyeBreakReminder(bool active) async {
     _isEyeBreakReminderActive = active;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_kReminderActiveKey, active);
     notifyListeners();
   }
 }

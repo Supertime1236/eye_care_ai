@@ -44,6 +44,11 @@ class AppStrings {
   // camera nên chưa đo được Khoảng cách/Môi trường lần nào trong hôm nay.
   String get scoreFactorNoData => vi ? 'Chưa có dữ liệu' : 'No data yet';
 
+  // Nhãn nhỏ gắn cạnh yếu tố đang trong giai đoạn thử nghiệm (hiện tại là
+  // "Khoảng cách" — đo bằng camera, độ chính xác chưa ổn định trên nhiều
+  // dòng máy nên tạm thời KHÔNG cộng vào điểm tổng, xem HabitProvider).
+  String get experimentalTag => vi ? 'Thử nghiệm' : 'Experimental';
+
   // Giải thích cách tính từng yếu tố — hiện khi người dùng chạm vào 1 dòng
   // trong _ScoreCard (xem _ScoreFactorRow trong home_screen.dart), vì tên
   // ngắn gọn như "Khoảng cách"/"Môi trường" một mình không đủ rõ % này được
@@ -53,8 +58,8 @@ class AppStrings {
       ? 'So sánh tổng thời gian dùng điện thoại hôm nay với mục tiêu bạn đặt trong phần Thói quen. Dùng càng gần hoặc ít hơn mục tiêu, điểm càng cao.'
       : 'Compares your total phone screen time today against the target you set in Habits. The closer to or under target, the higher the score.';
   String get scoreFactorDistanceExplain => vi
-      ? 'App dùng camera trước để ước lượng khoảng cách từ mắt bạn đến màn hình theo từng đợt lấy mẫu trong ngày. % này là tỉ lệ số lần đo được khoảng cách an toàn (≥30cm) trên tổng số lần đo. Cần cấp quyền camera để đo được.'
-      : 'The app uses the front camera to estimate the distance from your eyes to the screen, sampled periodically throughout the day. This % is the share of samples where the distance was safe (≥30cm). Camera permission is required for this to work.';
+      ? 'App dùng camera trước để ước lượng khoảng cách từ mắt bạn đến màn hình theo từng đợt lấy mẫu trong ngày. % này là tỉ lệ số lần đo được khoảng cách an toàn (≥30cm) trên tổng số lần đo. Cần cấp quyền camera để đo được. Tính năng đang trong giai đoạn THỬ NGHIỆM nên hiện chưa được cộng vào điểm sức khỏe mắt tổng.'
+      : 'The app uses the front camera to estimate the distance from your eyes to the screen, sampled periodically throughout the day. This % is the share of samples where the distance was safe (≥30cm). Camera permission is required for this to work. This feature is currently EXPERIMENTAL, so it does not yet count toward your overall eye health score.';
   String get scoreFactorEnvironmentExplain => vi
       ? 'App dùng cảm biến ánh sáng của máy để đo độ sáng xung quanh theo từng đợt lấy mẫu trong ngày. % này là tỉ lệ số lần đo được ánh sáng đủ tốt (không quá tối, không quá chói) trên tổng số lần đo.'
       : 'The app uses your device\'s light sensor to measure ambient brightness, sampled periodically throughout the day. This % is the share of samples where lighting was good (not too dark, not too glaring).';
@@ -62,8 +67,8 @@ class AppStrings {
       ? 'Tính theo số lần bạn nghỉ mắt thật sự (bấm "Đã nghỉ mắt" khi có thông báo nhắc) so với số lần nhắc nghỉ mắt trong hôm nay.'
       : 'Based on how many break reminders you actually completed (tapped "Eye rest done") compared to how many reminders fired today.';
   String get scoreFactorSleepExplain => vi
-      ? 'So sánh số giờ ngủ bạn ghi nhận đêm qua với mục tiêu giờ ngủ bạn đặt trong phần Thói quen.'
-      : 'Compares your logged sleep hours last night against the sleep target you set in Habits.';
+      ? 'Số giờ ngủ được ước lượng từ khoảng thời gian giữa lần cuối dùng điện thoại tối hôm qua và lần đầu dùng máy sáng nay (hoặc số giờ bạn tự nhập tay nếu ước lượng không có/không đúng). So sánh số giờ này với mục tiêu giờ ngủ bạn đặt trong phần Thói quen.'
+      : 'Sleep hours are estimated from the gap between your last phone use last night and your first phone use this morning (or the hours you entered manually if the estimate is unavailable/inaccurate). Compares this against the sleep target you set in Habits.';
 
   String get screenTime => vi ? 'Thời gian màn hình' : 'Screen Time';
   String get outdoor => vi ? 'Ngoài trời' : 'Outdoor';
@@ -86,6 +91,18 @@ class AppStrings {
   String get eyeTestRemindersSubtitle => vi ? 'Nhắc kiểm tra thị lực hàng tuần' : 'Weekly vision screening alerts';
   String get habitTracking => vi ? 'Theo dõi thói quen' : 'Habit Tracking';
   String get habitTrackingSubtitle => vi ? 'Nhắc nhở hoàn thành thói quen hàng ngày' : 'Daily habit completion nudges';
+
+  // Nội dung THẬT SỰ hiện trên thông báo hệ thống (khác với title/subtitle ở
+  // trên chỉ hiện trong danh sách cài đặt) — xem NotificationService.
+  // scheduleWeeklyEyeTestReminder / scheduleDailyHabitReminder.
+  String get eyeTestReminderNotifTitle => vi ? '👁️ Đến giờ kiểm tra mắt' : '👁️ Time for your eye check';
+  String get eyeTestReminderNotifBody => vi
+      ? 'Đã một tuần trôi qua — dành 2 phút kiểm tra thị lực nhanh trong app nhé.'
+      : 'A week has passed — take 2 minutes for a quick vision check in the app.';
+  String get habitReminderNotifTitle => vi ? '✅ Đừng quên thói quen hôm nay' : '✅ Don\'t forget today\'s habits';
+  String get habitReminderNotifBody => vi
+      ? 'Xem lại và đánh dấu các thói quen chăm sóc mắt bạn đã hoàn thành hôm nay.'
+      : 'Check off the eye-care habits you\'ve completed today.';
   String get aiTips => vi ? 'Mẹo AI' : 'AI Tips';
   String get aiTipsSubtitle => vi ? 'Gợi ý chăm sóc mắt cá nhân' : 'Personalized eye health suggestions';
 
@@ -320,9 +337,17 @@ class AppStrings {
 
   // Nhập tay giờ ngủ (fallback khi Health Connect không có dữ liệu)
   String get manualSleepTitle => vi ? 'Nhập giờ ngủ đêm qua' : 'Log last night\'s sleep';
+  // SỬA MÔ TẢ: bản cũ ghi sai là lấy dữ liệu từ "Health Connect" — thực tế
+  // app KHÔNG dùng Health Connect cho giấc ngủ. Số giờ ngủ được ƯỚC LƯỢNG từ
+  // khoảng cách giữa lần cuối chạm máy tối hôm qua (sau 18h) và lần đầu chạm
+  // máy sáng nay (trước 12h trưa) — xem UsageStatsHandler.getSleepEstimate()
+  // phía native. Đây là suy luận gián tiếp (không đo giấc ngủ thật), nên có
+  // thể sai nếu bạn không chạm máy rõ ràng ở 2 đầu đêm/sáng (đọc sách giấy
+  // trước khi ngủ, dùng đồng hồ báo thức riêng...) — khi đó có thể tự nhập
+  // tay bằng ô bên dưới để thay thế ước lượng tự động.
   String get manualSleepDesc => vi
-      ? 'Chưa tìm thấy dữ liệu ngủ từ Health Connect. Bạn có thể tự nhập số giờ đã ngủ.'
-      : 'No sleep data found from Health Connect. You can enter your sleep hours manually.';
+      ? 'Số giờ ngủ được ước lượng dựa trên khoảng thời gian từ lần cuối bạn dùng điện thoại tối qua đến lần đầu dùng máy sáng nay — không phải đo giấc ngủ trực tiếp nên có thể chưa chính xác. Nếu thấy sai, bạn có thể tự nhập số giờ đã ngủ bên dưới.'
+      : 'Sleep hours are estimated from the gap between your last phone use last night and your first phone use this morning — not a direct sleep measurement, so it may be inaccurate. If it looks wrong, you can enter your actual sleep hours below.';
   String get save => vi ? 'Lưu' : 'Save';
 
   List<String> get quickPrompts => vi
@@ -455,16 +480,34 @@ class AppStrings {
   String get surveyEntryButton => vi ? 'Bắt đầu' : 'Start';
   String get surveyTitle => vi ? 'Khảo sát sức khỏe mắt' : 'Eye Health Survey';
   String get surveyAgeQuestion => vi ? 'Bạn thuộc nhóm tuổi nào?' : 'Which age group are you in?';
+  String get surveyAgeHelper => vi
+      ? 'Trẻ em/thiếu niên cần nhiều thời gian ngoài trời và ngủ nhiều hơn để mắt phát triển khỏe mạnh.'
+      : 'Children/teens need more outdoor time and sleep for healthy eye development.';
   String get surveyScreenQuestion =>
       vi ? 'Trung bình bạn dùng điện thoại/máy tính bao nhiêu giờ mỗi ngày?' : 'On average, how many hours a day do you use screens?';
+  String get surveyScreenHelper => vi
+      ? 'Bao gồm cả công việc lẫn giải trí. Ước lượng gần đúng là được, không cần chính xác tuyệt đối.'
+      : 'Include both work and leisure. A rough estimate is fine — no need to be exact.';
   String get surveyOutdoorQuestion =>
       vi ? 'Bạn hoạt động ngoài trời bao nhiêu phút mỗi ngày?' : 'How many minutes a day do you spend outdoors?';
+  String get surveyOutdoorHelper => vi
+      ? 'Ánh sáng tự nhiên ngoài trời giúp giảm nguy cơ cận thị — kể cả đi bộ, chơi thể thao hay chỉ ngồi ngoài ban công.'
+      : 'Natural outdoor light helps lower myopia risk — includes walking, sports, or just sitting on a balcony.';
   String get surveyDistanceQuestion =>
       vi ? 'Khoảng cách mắt tới màn hình/sách khi đọc (cm)?' : 'Your typical eye-to-screen/book distance (cm)?';
+  String get surveyDistanceHelper => vi
+      ? 'Không chắc chắn số cm? Đo nhanh bằng cẳng tay: từ khuỷu tay tới đầu ngón tay thường khoảng 40cm.'
+      : 'Not sure of the exact number? A quick trick: your forearm (elbow to fingertip) is roughly 40cm.';
   String get surveySleepQuestion =>
       vi ? 'Bạn ngủ trung bình mấy giờ mỗi đêm?' : 'How many hours do you usually sleep per night?';
+  String get surveySleepHelper => vi
+      ? 'Ngủ đủ giấc giúp mắt phục hồi, giảm khô mắt và mỏi mắt vào ban ngày.'
+      : 'Enough sleep helps your eyes recover and reduces dryness and strain during the day.';
   String get surveyBreaksQuestion =>
       vi ? 'Bạn nghỉ mắt (nhìn xa) bao nhiêu lần mỗi ngày?' : 'How many times a day do you rest your eyes (look away)?';
+  String get surveyBreaksHelper => vi
+      ? 'Theo quy tắc 20-20-20: cứ 20 phút nhìn màn hình thì nghỉ mắt 20 giây, nhìn xa 6 mét — không nhớ chính xác thì cứ ước lượng.'
+      : 'Following the 20-20-20 rule: every 20 minutes on screen, rest 20 seconds looking 20 feet away — just estimate if unsure.';
   String get surveySubmit => vi ? 'Xem kết quả' : 'See results';
   String get surveyResultsTitle => vi ? 'Lộ trình của bạn' : 'Your roadmap';
   String get surveyResultsSubtitle => vi
@@ -713,6 +756,16 @@ class AppStrings {
   String get habitCompletion => vi ? 'Hoàn thành thói quen' : 'Habit Completion';
   String get streak => vi ? 'Chuỗi' : 'Streak';
   String get dayStreak => vi ? 'ngày liên tiếp' : 'day streak';
+
+  // Giải thích cách tính chuỗi ngày (streak) — hiện trong bottom sheet khi
+  // người dùng chạm vào badge 🔥 ở Trang chủ hoặc icon thông tin ở màn Xếp
+  // hạng. Thêm vì trước đây không có nơi nào giải thích "vì sao chuỗi không
+  // tăng"/"làm sao để tăng chuỗi", trong khi điều kiện thật (điểm sức khỏe
+  // mắt phải đạt từ 80/100 trở lên trong ngày) không hiển nhiên chút nào.
+  String get streakExplainTitle => vi ? 'Chuỗi ngày chăm mắt' : 'Eye-care streak';
+  String get streakExplainBody => vi
+      ? 'Mỗi ngày Điểm sức khỏe mắt (xem thẻ điểm ở Trang chủ) đạt từ 80/100 trở lên, chuỗi sẽ tự tăng thêm 1 ngày. Nếu một ngày điểm dưới 80 (hoặc bạn không mở app hôm đó), chuỗi sẽ bị đứt và về lại 0 vào ngày hôm sau.\n\nĐể giữ điểm cao, hãy chú ý các yếu tố trong thẻ điểm: dùng điện thoại không vượt mục tiêu, ngủ đủ giờ, hoàn thành đủ số lần nghỉ mắt, và giữ môi trường đủ sáng. Chạm vào từng yếu tố trong thẻ điểm để xem cách tính chi tiết.'
+      : 'Any day your Eye Health Score (see the score card on Home) reaches 80/100 or higher, your streak automatically goes up by 1 day. If a day scores below 80 (or you don\'t open the app that day), the streak breaks and resets to 0 the next day.\n\nTo keep your score high, watch the factors in the score card: stay within your phone usage target, get enough sleep, complete enough eye breaks, and keep your surroundings well lit. Tap each factor in the score card to see exactly how it\'s calculated.';
 
   // ---------------- App usage breakdown (Statistics pie chart) ----------------
   String get appUsageBreakdownTitle => vi ? 'Sử dụng theo ứng dụng' : 'App Usage Breakdown';

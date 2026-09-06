@@ -27,7 +27,8 @@ class EyeBreakScreen extends StatefulWidget {
   State<EyeBreakScreen> createState() => _EyeBreakScreenState();
 }
 
-class _EyeBreakScreenState extends State<EyeBreakScreen> with WidgetsBindingObserver {
+class _EyeBreakScreenState extends State<EyeBreakScreen>
+    with WidgetsBindingObserver {
   Timer? _countdownTimer;
   int _secondsRemaining = 0;
   bool _breakPromptShowing = false;
@@ -103,7 +104,8 @@ class _EyeBreakScreenState extends State<EyeBreakScreen> with WidgetsBindingObse
   // hiển thị SAI, lệch hẳn với báo thức thật đang chạy. Tính lại mốc giờ kế
   // tiếp THẬT (dựa trên mốc bắt đầu + interval) để đồng bộ đúng.
   Future<void> _syncWithRealNextFireTime() async {
-    final realNext = await NotificationService.instance.getNextRepeatingFireAt();
+    final realNext = await NotificationService.instance
+        .getNextRepeatingFireAt();
     if (!mounted) return;
     if (realNext != null) {
       _endAt = realNext;
@@ -117,16 +119,17 @@ class _EyeBreakScreenState extends State<EyeBreakScreen> with WidgetsBindingObse
   Future<void> _loadSavedReminder() async {
     final reminder = context.read<ReminderProvider>();
     final endAt = await DeviceDataService.instance.loadBreakReminderEnd();
-    final interval = await DeviceDataService.instance.loadBreakReminderIntervalMinutes();
+    final interval = await DeviceDataService.instance
+        .loadBreakReminderIntervalMinutes();
     if (endAt != null && interval != null) {
       final now = DateTime.now();
       final secondsLeft = endAt.difference(now).inSeconds;
       _endAt = endAt;
       _intervalMinutes = interval;
       if (secondsLeft > 0) {
-        reminder.toggleEyeBreakReminder(true);
+        await reminder.toggleEyeBreakReminder(true);
         _secondsRemaining = secondsLeft;
-        _scheduleRepeatingAlarm(interval);
+        await _scheduleRepeatingAlarm(interval);
         _startCountdown(reminder);
         _updateOngoingNotification();
       } else {
@@ -153,22 +156,30 @@ class _EyeBreakScreenState extends State<EyeBreakScreen> with WidgetsBindingObse
   // tục dù đã đủ, kích hoạt "không giới hạn" cho hết ngày hôm nay luôn.
   Future<void> _startFromButton(ReminderProvider reminder) async {
     final habitProvider = context.read<HabitProvider>();
-    final target = habitProvider.habits.firstWhere((h) => h.id == 'breaks').target;
-    if (habitProvider.eyeBreaksTakenToday >= target && !reminder.unlimitedOverrideToday) {
+    final target = habitProvider.habits
+        .firstWhere((h) => h.id == 'breaks')
+        .target;
+    if (habitProvider.eyeBreaksTakenToday >= target &&
+        !reminder.unlimitedOverrideToday) {
       await reminder.activateUnlimitedForToday();
     }
-    _startReminder(reminder);
+    await _startReminder(reminder);
   }
 
-  void _startReminder(ReminderProvider reminder) {
+  Future<void> _startReminder(ReminderProvider reminder) async {
     _countdownTimer?.cancel();
-    final endAt = DateTime.now().add(Duration(minutes: reminder.reminderMinutes));
+    final endAt = DateTime.now().add(
+      Duration(minutes: reminder.reminderMinutes),
+    );
     _endAt = endAt;
     _intervalMinutes = reminder.reminderMinutes;
     _secondsRemaining = reminder.reminderMinutes * 60;
-    reminder.toggleEyeBreakReminder(true);
-    _saveReminderEnd(reminder.reminderMinutes, endAt);
-    _scheduleRepeatingAlarm(reminder.reminderMinutes);
+    // Hoàn tất lưu trạng thái và đăng ký báo thức với Android trước khi UI
+    // báo rằng bộ nhắc đã chạy. Nếu người dùng đóng app ngay sau khi bấm Start,
+    // lịch vẫn đã được hệ điều hành nhận.
+    await reminder.toggleEyeBreakReminder(true);
+    await _saveReminderEnd(reminder.reminderMinutes, endAt);
+    await _scheduleRepeatingAlarm(reminder.reminderMinutes);
     _startCountdown(reminder);
     _updateOngoingNotification();
     // Chế độ Focus: bắt đầu 1 chu kỳ "đang làm việc" -> bật DND nếu người
@@ -197,7 +208,7 @@ class _EyeBreakScreenState extends State<EyeBreakScreen> with WidgetsBindingObse
   // phụ thuộc vào Timer trong bộ nhớ. Đây là NGUỒN DUY NHẤT bắn thông báo
   // hết-giờ-nghỉ-mắt thật sự — cứ thế lặp lại cho tới khi người dùng vào app
   // và bấm "Tắt" (xem _stopReminder), không cần app phải luôn mở.
-  void _scheduleRepeatingAlarm(int intervalMinutes) {
+  Future<void> _scheduleRepeatingAlarm(int intervalMinutes) async {
     final strings = context.read<LanguageProvider>().strings;
     final reminder = context.read<ReminderProvider>();
     // Body thông báo lặp là CỐ ĐỊNH ngay từ lúc đặt lịch (báo thức lặp chạy
@@ -207,14 +218,17 @@ class _EyeBreakScreenState extends State<EyeBreakScreen> with WidgetsBindingObse
     // ĐÂY, một lần, dựa theo cờ waterReminderEnabled tại thời điểm bấm "Bắt
     // đầu" — nếu người dùng đổi cờ này giữa chừng lúc đang đếm ngược, chỉ có
     // hiệu lực từ lần bấm Start tiếp theo (cùng trade-off với đổi ngôn ngữ).
-    final waterHint = reminder.waterReminderEnabled ? ' ${strings.eyeBreakWaterHint}.' : '';
-    NotificationService.instance.scheduleRepeatingBreakAlarm(
+    final waterHint = reminder.waterReminderEnabled
+        ? ' ${strings.eyeBreakWaterHint}.'
+        : '';
+    await NotificationService.instance.scheduleRepeatingBreakAlarm(
       intervalMinutes: intervalMinutes,
       title: strings.eyeBreakTimeUp,
       // Kèm câu gợi ý chạm vào thông báo để mở thẳng Break Reminder — xem
       // NotificationService.onBreakReminderTapped (gán trong main.dart) xử
       // lý điều hướng thật khi người dùng nhấn.
-      body: '${strings.eyeBreakLookAway}. ${strings.eyeBreakTapToOpen}.$waterHint',
+      body:
+          '${strings.eyeBreakLookAway}. ${strings.eyeBreakTapToOpen}.$waterHint',
       ongoingTitle: strings.breakNotificationTitle,
       ongoingRemainingSuffix: strings.breakNotificationUntil,
     );
@@ -295,7 +309,9 @@ class _EyeBreakScreenState extends State<EyeBreakScreen> with WidgetsBindingObse
     // Đã đạt/vượt mục tiêu số lần nghỉ mắt hôm nay (lấy từ target habit
     // 'breaks' trong Habits) VÀ chưa bật chế độ "không giới hạn" cho hôm
     // nay -> tự dừng nhắc, không tiếp tục vòng đếm ngược tiếp theo nữa.
-    final target = habitProvider.habits.firstWhere((h) => h.id == 'breaks').target;
+    final target = habitProvider.habits
+        .firstWhere((h) => h.id == 'breaks')
+        .target;
     final reachedTarget = habitProvider.eyeBreaksTakenToday >= target;
     if (reachedTarget && !reminder.unlimitedOverrideToday) {
       final strings = context.read<LanguageProvider>().strings;
@@ -309,16 +325,19 @@ class _EyeBreakScreenState extends State<EyeBreakScreen> with WidgetsBindingObse
     }
 
     // Tự động bắt đầu chu kỳ đếm ngược tiếp theo.
-    _startReminder(reminder);
+    await _startReminder(reminder);
   }
 
   Future<void> _saveReminderEnd(int intervalMinutes, DateTime endAt) async {
-    await DeviceDataService.instance.saveBreakReminderEnd(endAt, intervalMinutes);
+    await DeviceDataService.instance.saveBreakReminderEnd(
+      endAt,
+      intervalMinutes,
+    );
   }
 
-  void _dismissPrompt(ReminderProvider reminder) {
+  Future<void> _dismissPrompt(ReminderProvider reminder) async {
     setState(() => _breakPromptShowing = false);
-    _startReminder(reminder);
+    await _startReminder(reminder);
   }
 
   String _formatCountdown(int seconds) {
@@ -346,10 +365,12 @@ class _EyeBreakScreenState extends State<EyeBreakScreen> with WidgetsBindingObse
             tooltip: language.isVietnamese ? 'Quay lại' : 'Back',
           ),
         ),
-        body: SafeArea(child: _BreakPromptView(
-          onDone: () => _confirmBreakTaken(reminder),
-          onSkip: () => _dismissPrompt(reminder),
-        )),
+        body: SafeArea(
+          child: _BreakPromptView(
+            onDone: () => _confirmBreakTaken(reminder),
+            onSkip: () => _dismissPrompt(reminder),
+          ),
+        ),
       );
     }
 
@@ -372,9 +393,15 @@ class _EyeBreakScreenState extends State<EyeBreakScreen> with WidgetsBindingObse
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(strings.eyeBreakTitle, style: Theme.of(context).textTheme.headlineMedium),
+              Text(
+                strings.eyeBreakTitle,
+                style: Theme.of(context).textTheme.headlineMedium,
+              ),
               const SizedBox(height: 4),
-              Text(strings.eyeBreakSubtitle, style: Theme.of(context).textTheme.bodyMedium),
+              Text(
+                strings.eyeBreakSubtitle,
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
               const SizedBox(height: 20),
               SectionCard(
                 child: Column(
@@ -389,12 +416,17 @@ class _EyeBreakScreenState extends State<EyeBreakScreen> with WidgetsBindingObse
                             width: 160,
                             height: 160,
                             child: CircularProgressIndicator(
-                              value: reminder.isEyeBreakReminderActive && reminder.reminderMinutes > 0
-                                  ? _secondsRemaining / (reminder.reminderMinutes * 60)
+                              value:
+                                  reminder.isEyeBreakReminderActive &&
+                                      reminder.reminderMinutes > 0
+                                  ? _secondsRemaining /
+                                        (reminder.reminderMinutes * 60)
                                   : 1,
                               strokeWidth: 10,
                               backgroundColor: AppColors.border,
-                              valueColor: const AlwaysStoppedAnimation(AppColors.testAccent),
+                              valueColor: const AlwaysStoppedAnimation(
+                                AppColors.testAccent,
+                              ),
                             ),
                           ),
                           Column(
@@ -404,7 +436,9 @@ class _EyeBreakScreenState extends State<EyeBreakScreen> with WidgetsBindingObse
                                 reminder.isEyeBreakReminderActive
                                     ? _formatCountdown(_secondsRemaining)
                                     : '--:--',
-                                style: Theme.of(context).textTheme.headlineMedium,
+                                style: Theme.of(
+                                  context,
+                                ).textTheme.headlineMedium,
                               ),
                               Text(
                                 reminder.isEyeBreakReminderActive
@@ -419,20 +453,30 @@ class _EyeBreakScreenState extends State<EyeBreakScreen> with WidgetsBindingObse
                     ),
                     const SizedBox(height: 20),
                     if (!reminder.isEyeBreakReminderActive) ...[
-                      Text(strings.eyeBreakIntervalLabel, style: Theme.of(context).textTheme.titleSmall),
+                      Text(
+                        strings.eyeBreakIntervalLabel,
+                        style: Theme.of(context).textTheme.titleSmall,
+                      ),
                       const SizedBox(height: 10),
                       Wrap(
                         spacing: 8,
                         children: _intervalOptions.map((minutes) {
                           final selected = reminder.reminderMinutes == minutes;
                           return ChoiceChip(
-                            label: Text('$minutes ${strings.vi ? "phút" : "min"}'),
+                            label: Text(
+                              '$minutes ${strings.vi ? "phút" : "min"}',
+                            ),
                             selected: selected,
-                            onSelected: (_) => reminder.setReminderMinutes(minutes),
-                            selectedColor: AppColors.testAccent.withValues(alpha: 0.15),
+                            onSelected: (_) =>
+                                reminder.setReminderMinutes(minutes),
+                            selectedColor: AppColors.testAccent.withValues(
+                              alpha: 0.15,
+                            ),
                             labelStyle: TextStyle(
                               color: selected ? AppColors.testAccent : null,
-                              fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                              fontWeight: selected
+                                  ? FontWeight.w700
+                                  : FontWeight.w500,
                             ),
                           );
                         }).toList(),
@@ -447,13 +491,17 @@ class _EyeBreakScreenState extends State<EyeBreakScreen> with WidgetsBindingObse
                               ? AppColors.error
                               : AppColors.testAccent,
                           padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
                         onPressed: () => reminder.isEyeBreakReminderActive
                             ? _stopReminder(reminder)
                             : _startFromButton(reminder),
                         child: Text(
-                          reminder.isEyeBreakReminderActive ? strings.eyeBreakStop : strings.eyeBreakStart,
+                          reminder.isEyeBreakReminderActive
+                              ? strings.eyeBreakStop
+                              : strings.eyeBreakStart,
                         ),
                       ),
                     ),
@@ -489,7 +537,8 @@ class _EyeBreakScreenState extends State<EyeBreakScreen> with WidgetsBindingObse
                       value: reminder.focusModeEnabled,
                       onChanged: (value) => reminder.setFocusModeEnabled(value),
                     ),
-                    if (reminder.focusModeEnabled) const _FocusModePermissionBanner(),
+                    if (reminder.focusModeEnabled)
+                      const _FocusModePermissionBanner(),
                   ],
                 ),
               ),
@@ -505,17 +554,25 @@ class _EyeBreakScreenState extends State<EyeBreakScreen> with WidgetsBindingObse
                         borderRadius: BorderRadius.circular(12),
                       ),
                       alignment: Alignment.center,
-                      child: const AppIcon('👁️', size: 22, color: AppColors.primaryBlue),
+                      child: const AppIcon(
+                        '👁️',
+                        size: 22,
+                        color: AppColors.primaryBlue,
+                      ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(strings.eyeBreakTodayCount, style: Theme.of(context).textTheme.bodySmall),
+                          Text(
+                            strings.eyeBreakTodayCount,
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
                           Text(
                             '${context.watch<HabitProvider>().eyeBreaksTakenToday}',
-                            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                            style: Theme.of(context).textTheme.headlineSmall
+                                ?.copyWith(
                                   color: AppColors.testAccent,
                                   fontWeight: FontWeight.w800,
                                 ),
@@ -593,9 +650,9 @@ class _BreakPromptViewState extends State<_BreakPromptView> {
           Text(
             '$_secondsLeft',
             style: Theme.of(context).textTheme.displayLarge?.copyWith(
-                  color: AppColors.testAccent,
-                  fontWeight: FontWeight.w800,
-                ),
+              color: AppColors.testAccent,
+              fontWeight: FontWeight.w800,
+            ),
           ),
           const SizedBox(height: 32),
           SizedBox(
@@ -604,7 +661,9 @@ class _BreakPromptViewState extends State<_BreakPromptView> {
               style: FilledButton.styleFrom(
                 backgroundColor: AppColors.testAccent,
                 padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
               onPressed: widget.onDone,
               child: Text(strings.eyeBreakDone),
@@ -631,10 +690,12 @@ class _FocusModePermissionBanner extends StatefulWidget {
   const _FocusModePermissionBanner();
 
   @override
-  State<_FocusModePermissionBanner> createState() => _FocusModePermissionBannerState();
+  State<_FocusModePermissionBanner> createState() =>
+      _FocusModePermissionBannerState();
 }
 
-class _FocusModePermissionBannerState extends State<_FocusModePermissionBanner> with WidgetsBindingObserver {
+class _FocusModePermissionBannerState extends State<_FocusModePermissionBanner>
+    with WidgetsBindingObserver {
   bool? _hasAccess;
 
   @override
@@ -677,7 +738,11 @@ class _FocusModePermissionBannerState extends State<_FocusModePermissionBanner> 
         ),
         child: Row(
           children: [
-            const Icon(Icons.notifications_off_rounded, color: AppColors.warning, size: 20),
+            const Icon(
+              Icons.notifications_off_rounded,
+              color: AppColors.warning,
+              size: 20,
+            ),
             const SizedBox(width: 10),
             Expanded(
               child: Column(
@@ -685,10 +750,15 @@ class _FocusModePermissionBannerState extends State<_FocusModePermissionBanner> 
                 children: [
                   Text(
                     strings.focusModePermissionTitle,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600),
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                   const SizedBox(height: 2),
-                  Text(strings.focusModePermissionDescription, style: Theme.of(context).textTheme.bodySmall),
+                  Text(
+                    strings.focusModePermissionDescription,
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
                 ],
               ),
             ),
