@@ -32,16 +32,7 @@ class _EyeBreakScreenState extends State<EyeBreakScreen>
   Timer? _countdownTimer;
   int _secondsRemaining = 0;
   bool _breakPromptShowing = false;
-  // Mốc thời gian tuyệt đối lúc hết giờ — đây là NGUỒN SỰ THẬT DUY NHẤT cho
-  // thời gian còn lại. _secondsRemaining chỉ là giá trị hiển thị được TÍNH
-  // LẠI từ mốc này mỗi tick, không phải đếm lùi độc lập — vì Timer.periodic
-  // có thể bị hệ điều hành tạm dừng khi app chạy nền một lúc rồi mở lại, nếu
-  // chỉ đếm lùi theo số tick thực sự chạy được thì sẽ bị "đứng hình" giống
-  // lỗi trước đây (thoát app lúc còn 24:39, quay lại vẫn thấy 24:39).
   DateTime? _endAt;
-  // Khoảng lặp hiện tại (phút) — cần lưu lại để khi hết giờ có thể tính NGAY
-  // mốc giờ nhắc kế tiếp (endAt cũ + interval) mà không phải chờ người dùng
-  // xác nhận đã nghỉ mắt mới cập nhật thông báo ghim.
   int _intervalMinutes = 20;
 
   static const _intervalOptions = [10, 20, 30, 45];
@@ -62,16 +53,9 @@ class _EyeBreakScreenState extends State<EyeBreakScreen>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // Khi app quay lại foreground, tính lại ngay lập tức từ đồng hồ thực thay
-    // vì chờ tick tiếp theo của Timer (Timer có thể đã bị hệ điều hành tạm
-    // dừng trong lúc app ở nền).
     if (state == AppLifecycleState.resumed && _endAt != null) {
       _syncWithRealNextFireTime();
     } else if (state == AppLifecycleState.paused && _endAt != null) {
-      // Timer.periodic sẽ ngừng tick khi app xuống nền -> đổi thông báo ghim
-      // sang giờ hẹn CỐ ĐỊNH thay vì để lại con số mm:ss "đứng hình" gây hiểu
-      // lầm app bị treo. Báo thức hệ thống (đã lên lịch từ trước) không phụ
-      // thuộc vào việc này, vẫn tự bắn đúng giờ.
       final strings = context.read<LanguageProvider>().strings;
       NotificationService.instance.showStaticOngoingUntil(
         endAt: _endAt!,
@@ -86,8 +70,6 @@ class _EyeBreakScreenState extends State<EyeBreakScreen>
     final remaining = _endAt!.difference(DateTime.now()).inSeconds;
     if (remaining <= 0) {
       _countdownTimer?.cancel();
-      // Đã hết giờ trong lúc app chạy nền (chỉ giờ mở app lại mới biết) ->
-      // tắt DND ngay, đừng để bị kẹt "chặn thông báo" quá thời gian dự định.
       FocusModeService.instance.disable();
       setState(() {
         _secondsRemaining = 0;
@@ -98,11 +80,6 @@ class _EyeBreakScreenState extends State<EyeBreakScreen>
     }
   }
 
-  // Báo thức lặp thật (chạy hoàn toàn native, xem notification_service.dart)
-  // có thể đã bắn thêm 1 hoặc nhiều chu kỳ trong lúc app ở nền/đóng — nếu
-  // chỉ tính từ `_endAt` cũ (chốt lúc Start lần đầu) thì UI trong app sẽ
-  // hiển thị SAI, lệch hẳn với báo thức thật đang chạy. Tính lại mốc giờ kế
-  // tiếp THẬT (dựa trên mốc bắt đầu + interval) để đồng bộ đúng.
   Future<void> _syncWithRealNextFireTime() async {
     final realNext = await NotificationService.instance
         .getNextRepeatingFireAt();
@@ -140,20 +117,6 @@ class _EyeBreakScreenState extends State<EyeBreakScreen>
     }
   }
 
-  // ---------------- Chế độ Focus (chặn thông báo app khác lúc làm việc) ----------------
-  // GIỚI HẠN THỰC TẾ CẦN BIẾT: báo thức hết-giờ-nghỉ-mắt bắn HOÀN TOÀN
-  // NATIVE (qua flutter_local_notifications.periodicallyShowWithDuration,
-  // xem notification_service.dart) — KHÔNG có đoạn code Dart nào chạy đúng
-  // lúc báo thức đó bắn. Vì vậy nếu hệ điều hành đã ĐÓNG HẲN tiến trình app
-  // (không chỉ đưa xuống nền), DND sẽ không tự tắt đúng lúc báo thức bắn,
-  // mà chỉ tắt lại khi người dùng MỞ APP LẦN KẾ TIẾP (đã xử lý ở
-  // _recomputeFromEndAt/_syncWithRealNextFireTime bên trên) — chấp nhận
-  // được vì đa số trường hợp app vẫn còn tiến trình chạy nền.
-
-  // Chỉ dùng cho nút "Bắt đầu" người dùng BẤM TAY (không dùng cho các lần tự
-  // động chuyển vòng kế tiếp trong _confirmBreakTaken/_dismissPrompt) — nếu
-  // lúc bấm mà đã đạt/vượt mục tiêu ngày, coi như người dùng CHỦ Ý muốn tiếp
-  // tục dù đã đủ, kích hoạt "không giới hạn" cho hết ngày hôm nay luôn.
   Future<void> _startFromButton(ReminderProvider reminder) async {
     final habitProvider = context.read<HabitProvider>();
     final target = habitProvider.habits
@@ -174,24 +137,17 @@ class _EyeBreakScreenState extends State<EyeBreakScreen>
     _endAt = endAt;
     _intervalMinutes = reminder.reminderMinutes;
     _secondsRemaining = reminder.reminderMinutes * 60;
-    // Hoàn tất lưu trạng thái và đăng ký báo thức với Android trước khi UI
-    // báo rằng bộ nhắc đã chạy. Nếu người dùng đóng app ngay sau khi bấm Start,
-    // lịch vẫn đã được hệ điều hành nhận.
     await reminder.toggleEyeBreakReminder(true);
     await _saveReminderEnd(reminder.reminderMinutes, endAt);
     await _scheduleRepeatingAlarm(reminder.reminderMinutes);
     _startCountdown(reminder);
     _updateOngoingNotification();
-    // Chế độ Focus: bắt đầu 1 chu kỳ "đang làm việc" -> bật DND nếu người
-    // dùng đã bật tính năng này (và đã cấp quyền notification policy access
-    // — nếu chưa, FocusModeService.enable() tự trả về false, không làm gì).
     if (reminder.focusModeEnabled) {
       FocusModeService.instance.enable();
     }
     setState(() {});
   }
 
-  // Cập nhật nội dung thông báo ghim với số giây còn lại hiện tại.
   void _updateOngoingNotification() {
     if (!mounted) return;
     final strings = context.read<LanguageProvider>().strings;
@@ -203,30 +159,15 @@ class _EyeBreakScreenState extends State<EyeBreakScreen>
     );
   }
 
-  // Lên lịch báo thức LẶP LẠI mỗi `intervalMinutes` phút — hệ điều hành tự
-  // bắn (và tự lặp lại) kể cả khi app đang ở nền hoặc đã bị đóng hẳn, không
-  // phụ thuộc vào Timer trong bộ nhớ. Đây là NGUỒN DUY NHẤT bắn thông báo
-  // hết-giờ-nghỉ-mắt thật sự — cứ thế lặp lại cho tới khi người dùng vào app
-  // và bấm "Tắt" (xem _stopReminder), không cần app phải luôn mở.
   Future<void> _scheduleRepeatingAlarm(int intervalMinutes) async {
     final strings = context.read<LanguageProvider>().strings;
     final reminder = context.read<ReminderProvider>();
-    // Body thông báo lặp là CỐ ĐỊNH ngay từ lúc đặt lịch (báo thức lặp chạy
-    // hoàn toàn native, không có callback Dart nào chạy mỗi lần bắn để đổi
-    // nội dung — xem giải thích ở scheduleRepeatingBreakAlarm trong
-    // notification_service.dart). Vì vậy câu nhắc uống nước được ghép vào
-    // ĐÂY, một lần, dựa theo cờ waterReminderEnabled tại thời điểm bấm "Bắt
-    // đầu" — nếu người dùng đổi cờ này giữa chừng lúc đang đếm ngược, chỉ có
-    // hiệu lực từ lần bấm Start tiếp theo (cùng trade-off với đổi ngôn ngữ).
     final waterHint = reminder.waterReminderEnabled
         ? ' ${strings.eyeBreakWaterHint}.'
         : '';
     await NotificationService.instance.scheduleRepeatingBreakAlarm(
       intervalMinutes: intervalMinutes,
       title: strings.eyeBreakTimeUp,
-      // Kèm câu gợi ý chạm vào thông báo để mở thẳng Break Reminder — xem
-      // NotificationService.onBreakReminderTapped (gán trong main.dart) xử
-      // lý điều hướng thật khi người dùng nhấn.
       body:
           '${strings.eyeBreakLookAway}. ${strings.eyeBreakTapToOpen}.$waterHint',
       ongoingTitle: strings.breakNotificationTitle,
@@ -237,10 +178,6 @@ class _EyeBreakScreenState extends State<EyeBreakScreen>
   void _startCountdown(ReminderProvider reminder) {
     _countdownTimer?.cancel();
     _countdownTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      // QUAN TRỌNG: tính lại từ _endAt (đồng hồ thực) mỗi tick, KHÔNG đơn
-      // thuần trừ 1 mỗi lần tick — nếu Timer bị hệ điều hành tạm dừng một lúc
-      // (app chạy nền) rồi mở lại, tick tiếp theo sẽ tự nhảy về đúng giá trị
-      // thực tế thay vì tiếp tục đếm từ chỗ "đóng băng" trước đó.
       if (_endAt == null) return;
       final remaining = _endAt!.difference(DateTime.now()).inSeconds;
       setState(() {
@@ -248,24 +185,7 @@ class _EyeBreakScreenState extends State<EyeBreakScreen>
         if (remaining <= 0) {
           _breakPromptShowing = true;
           _countdownTimer?.cancel();
-          // Chế độ Focus: hết giờ "làm việc", tới lúc nghỉ mắt -> tắt DND
-          // ngay, không lý do gì tiếp tục chặn thông báo trong lúc nghỉ.
           FocusModeService.instance.disable();
-          // KHÔNG tự bắn thêm thông báo tay ở đây nữa: báo thức LẶP LẠI
-          // (scheduleRepeatingBreakAlarm) đã là nguồn duy nhất bắn thông
-          // báo hết-giờ-nghỉ-mắt, chạy độc lập trong isolate nền của hệ
-          // điều hành — kể cả khi Timer này đang chạy vì app đang mở. Tự
-          // bắn thêm ở đây từng gây trùng thông báo/rung 2 lần liền nhau.
-          // Màn hình "confirm break" ở đây chỉ để GHI NHẬN lần nghỉ vào
-          // Habits khi người dùng đang mở app đúng lúc hết giờ.
-
-          // BUG ĐÃ SỬA: thông báo ghim trên thanh trạng thái trước đây đứng
-          // yên ở giờ cũ (VD "Sẽ nhắc lúc 10:10") cho tới khi người dùng tự
-          // bấm xác nhận đã nghỉ mắt — gây cảm giác thông báo "bị treo".
-          // Báo thức lặp thật của hệ điều hành vẫn chạy đúng chu kỳ cố định
-          // bất kể người dùng có xác nhận hay không, nên ngay khi tới mốc
-          // hết giờ này, cập nhật NGAY thông báo ghim sang mốc kế tiếp
-          // (endAt cũ + interval) để luôn khớp với báo thức thật.
           final nextFireAt = _endAt!.add(Duration(minutes: _intervalMinutes));
           _endAt = nextFireAt;
           final strings = context.read<LanguageProvider>().strings;
@@ -287,12 +207,7 @@ class _EyeBreakScreenState extends State<EyeBreakScreen>
     _endAt = null;
     reminder.toggleEyeBreakReminder(false);
     DeviceDataService.instance.clearBreakReminderEnd();
-    // Đây là cách DUY NHẤT vòng lặp nhắc nghỉ mắt dừng lại — huỷ báo thức
-    // LẶP LẠI đã đăng ký với hệ điều hành, nếu không nó sẽ tiếp tục tự bắn
-    // mỗi `intervalMinutes` phút vô thời hạn kể cả khi app đã đóng.
     NotificationService.instance.cancelRepeatingBreakAlarm();
-    // Chế độ Focus: dừng nhắc hẳn -> tắt DND, không để bị kẹt "chặn thông
-    // báo" mãi mãi sau khi người dùng đã tắt tính năng nhắc nghỉ mắt.
     FocusModeService.instance.disable();
     setState(() {
       _secondsRemaining = 0;
@@ -306,9 +221,6 @@ class _EyeBreakScreenState extends State<EyeBreakScreen>
     if (!mounted) return;
     setState(() => _breakPromptShowing = false);
 
-    // Đã đạt/vượt mục tiêu số lần nghỉ mắt hôm nay (lấy từ target habit
-    // 'breaks' trong Habits) VÀ chưa bật chế độ "không giới hạn" cho hôm
-    // nay -> tự dừng nhắc, không tiếp tục vòng đếm ngược tiếp theo nữa.
     final target = habitProvider.habits
         .firstWhere((h) => h.id == 'breaks')
         .target;
@@ -324,7 +236,6 @@ class _EyeBreakScreenState extends State<EyeBreakScreen>
       return;
     }
 
-    // Tự động bắt đầu chu kỳ đếm ngược tiếp theo.
     await _startReminder(reminder);
   }
 
@@ -472,11 +383,19 @@ class _EyeBreakScreenState extends State<EyeBreakScreen>
                             selectedColor: AppColors.testAccent.withValues(
                               alpha: 0.15,
                             ),
+                            // BUG ĐÃ SỬA: ChoiceChip mặc định hiện dấu ✓ khi
+                            // được chọn — dấu tích chèn vào đột ngột, cộng
+                            // với fontWeight đổi từ 500 lên 700 (chữ đậm
+                            // rộng hơn chữ thường) khiến cả chip đổi kích
+                            // thước 2 LẦN CÙNG LÚC trong 1 khung hình, tạo
+                            // cảm giác "giật/lag" khi chọn khoảng thời gian
+                            // nhắc. Tắt checkmark + giữ NGUYÊN 1 độ đậm chữ
+                            // cho cả 2 trạng thái (chỉ đổi màu) để chip
+                            // không bao giờ đổi kích thước khi chọn nữa.
+                            showCheckmark: false,
                             labelStyle: TextStyle(
                               color: selected ? AppColors.testAccent : null,
-                              fontWeight: selected
-                                  ? FontWeight.w700
-                                  : FontWeight.w500,
+                              fontWeight: FontWeight.w600,
                             ),
                           );
                         }).toList(),
@@ -680,12 +599,6 @@ class _BreakPromptViewState extends State<_BreakPromptView> {
   }
 }
 
-// Chỉ hiện khi Chế độ Focus đang BẬT nhưng app CHƯA được cấp quyền
-// "Notification policy access" — quyền đặc biệt của Android, app không tự
-// xin được qua hộp thoại thường, phải dẫn người dùng vào đúng màn hình Cài
-// đặt hệ thống. Tự kiểm tra lại mỗi khi widget được build lại (ví dụ sau khi
-// người dùng quay lại từ màn Cài đặt) để tự ẩn banner ngay khi đã cấp xong,
-// không cần khởi động lại app.
 class _FocusModePermissionBanner extends StatefulWidget {
   const _FocusModePermissionBanner();
 
@@ -713,8 +626,6 @@ class _FocusModePermissionBannerState extends State<_FocusModePermissionBanner>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // Người dùng có thể vừa quay lại từ màn Cài đặt hệ thống sau khi cấp
-    // quyền -> kiểm tra lại ngay khi app foreground trở lại.
     if (state == AppLifecycleState.resumed) _checkAccess();
   }
 
@@ -766,10 +677,6 @@ class _FocusModePermissionBannerState extends State<_FocusModePermissionBanner>
             TextButton(
               onPressed: () async {
                 await FocusModeService.instance.openAccessSettings();
-                // Người dùng thường bấm rồi quay lại app ngay lập tức trước
-                // khi didChangeAppLifecycleState kịp bắn -> kiểm tra thêm 1
-                // lần nữa sau khi Future openAccessSettings() trả về, phòng
-                // trường hợp OS trả quyền điều khiển về app nhanh hơn dự kiến.
                 _checkAccess();
               },
               child: Text(strings.focusModeGrantAccess),

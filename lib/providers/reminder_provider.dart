@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../services/cloud_backup_service.dart';
+
 class ReminderProvider extends ChangeNotifier {
   static const _kReminderMinutesKey = 'pref_reminder_minutes';
-  static const _kReminderActiveKey = 'pref_eye_break_reminder_active';
   // Chế độ THỤ ĐỘNG (Cách 1 trong tài liệu tham khảo): khi người dùng khoá
   // màn hình / rời app từ 20 giây trở lên, tự động tính là 1 lần nghỉ mắt —
   // phù hợp với thói quen của thanh thiếu niên (hay tự nhiên úp điện thoại
@@ -54,14 +57,10 @@ class ReminderProvider extends ChangeNotifier {
   Future<void> _loadSavedPreferences() async {
     final prefs = await SharedPreferences.getInstance();
     _reminderMinutes = prefs.getInt(_kReminderMinutesKey) ?? _reminderMinutes;
-    _isEyeBreakReminderActive = prefs.getBool(_kReminderActiveKey) ?? false;
-    _autoDetectEyeBreaks =
-        prefs.getBool(_kAutoDetectKey) ?? _autoDetectEyeBreaks;
+    _autoDetectEyeBreaks = prefs.getBool(_kAutoDetectKey) ?? _autoDetectEyeBreaks;
     _focusModeEnabled = prefs.getBool(_kFocusModeKey) ?? _focusModeEnabled;
-    _unlimitedOverrideToday =
-        prefs.getString(_kUnlimitedOverrideDateKey) == _todayKey();
-    _waterReminderEnabled =
-        prefs.getBool(_kWaterReminderKey) ?? _waterReminderEnabled;
+    _unlimitedOverrideToday = prefs.getString(_kUnlimitedOverrideDateKey) == _todayKey();
+    _waterReminderEnabled = prefs.getBool(_kWaterReminderKey) ?? _waterReminderEnabled;
     notifyListeners();
   }
 
@@ -79,6 +78,7 @@ class ReminderProvider extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_kFocusModeKey, value);
     notifyListeners();
+    _pushToCloudInBackground();
   }
 
   Future<void> setWaterReminderEnabled(bool value) async {
@@ -86,6 +86,7 @@ class ReminderProvider extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_kWaterReminderKey, value);
     notifyListeners();
+    _pushToCloudInBackground();
   }
 
   Future<void> setAutoDetectEyeBreaks(bool value) async {
@@ -93,6 +94,7 @@ class ReminderProvider extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_kAutoDetectKey, value);
     notifyListeners();
+    _pushToCloudInBackground();
   }
 
   Future<void> setReminderMinutes(int minutes) async {
@@ -100,12 +102,30 @@ class ReminderProvider extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(_kReminderMinutesKey, minutes);
     notifyListeners();
+    _pushToCloudInBackground();
   }
 
   Future<void> toggleEyeBreakReminder(bool active) async {
     _isEyeBreakReminderActive = active;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_kReminderActiveKey, active);
     notifyListeners();
+  }
+
+  // Đẩy ngay 1 bản sao lưu lên Firestore mỗi khi người dùng đổi cài đặt
+  // nhắc nghỉ mắt (thay vì chỉ trông chờ vào timer 5 phút / lúc app xuống
+  // nền ở MainShell) — để lần cài lại app / đổi máy sau này khôi phục được
+  // ĐÚNG lựa chọn gần nhất, không phải đợi tới lần đồng bộ định kỳ tiếp
+  // theo. Tự đọc thẳng cờ "Sao lưu đám mây" từ SharedPreferences (thay vì
+  // qua SettingsMoreProvider, vì ReminderProvider không có BuildContext để
+  // context.read) để tôn trọng đúng lựa chọn tắt/bật của người dùng, khớp
+  // với cách MainShell đang gate việc đẩy backup định kỳ. Không await (lỗi
+  // mạng/chưa đăng nhập không được chặn UI) — CloudBackupService.pushBackup()
+  // tự bỏ qua âm thầm nếu chưa đăng nhập.
+  void _pushToCloudInBackground() {
+    unawaited(() async {
+      final prefs = await SharedPreferences.getInstance();
+      final cloudBackupEnabled = prefs.getBool('pref_cloud_backup_enabled') ?? true;
+      if (!cloudBackupEnabled) return;
+      await CloudBackupService.instance.pushBackup();
+    }());
   }
 }

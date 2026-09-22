@@ -526,6 +526,56 @@ class DeviceDataService {
     );
   }
 
+  // ---------------- Daily FACTOR snapshot (cho so sánh hôm qua vs hôm nay) ----------------
+  // Khác với `daily_snapshot_*` ở trên (chỉ giữ điểm TỔNG + giờ màn hình/ngủ
+  // để vẽ biểu đồ), đây lưu riêng % của TỪNG YẾU TỐ trong Eye Health Score
+  // (Thời gian màn hình, Khoảng cách, Môi trường, Nghỉ mắt, Giấc ngủ) của
+  // MỖI NGÀY — cần thiết để so sánh "hôm nay so với hôm qua" theo TỪNG yếu
+  // tố riêng lẻ (xem HabitProvider.factorDeltas), thay vì chỉ so được mỗi
+  // điểm tổng như trước. Giá trị null (yếu tố chưa có dữ liệu hôm đó) được
+  // lưu thành chuỗi rỗng, phân biệt với 0% (có dữ liệu nhưng đang xấu).
+  static const _kDailyFactorsPrefix = 'daily_factors_';
+
+  Future<void> saveDailyFactorScores({
+    double? screenTimeScore,
+    double? distanceScore,
+    double? environmentScore,
+    double? eyeBreaksScore,
+    double? sleepScore,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final today = DateTime.now().toIso8601String().substring(0, 10);
+    String enc(double? v) => v == null ? '' : v.toStringAsFixed(2);
+    await prefs.setString(
+      '$_kDailyFactorsPrefix$today',
+      '${enc(screenTimeScore)}|${enc(distanceScore)}|${enc(environmentScore)}|${enc(eyeBreaksScore)}|${enc(sleepScore)}',
+    );
+  }
+
+  Future<
+      ({
+        double? screenTimeScore,
+        double? distanceScore,
+        double? environmentScore,
+        double? eyeBreaksScore,
+        double? sleepScore,
+      })?> loadDailyFactorScores(DateTime date) async {
+    final prefs = await SharedPreferences.getInstance();
+    final key = '$_kDailyFactorsPrefix${date.toIso8601String().substring(0, 10)}';
+    final raw = prefs.getString(key);
+    if (raw == null) return null;
+    final parts = raw.split('|');
+    if (parts.length != 5) return null;
+    double? dec(String s) => s.isEmpty ? null : double.tryParse(s);
+    return (
+      screenTimeScore: dec(parts[0]),
+      distanceScore: dec(parts[1]),
+      environmentScore: dec(parts[2]),
+      eyeBreaksScore: dec(parts[3]),
+      sleepScore: dec(parts[4]),
+    );
+  }
+
   // Trả về danh sách 7 ngày của TUẦN HIỆN TẠI (Thứ 2 -> Chủ nhật). Với các
   // ngày đã qua/hôm nay: snapshot thật nếu có, null nếu không mở app hôm đó.
   // Với các ngày CHƯA TỚI: luôn null (chưa xảy ra thì không thể có dữ liệu).
@@ -599,7 +649,7 @@ class DeviceDataService {
 
     return result;
   }
-
+  static const int _kStreakScoreThreshold = 60;
   // Tính chuỗi ngày liên tiếp (streak) thật: đếm ngược từ hôm nay, mỗi ngày
   // có snapshot với điểm hoàn thành >= 80% thì tính là 1 ngày trong chuỗi,
   // dừng lại ở ngày đầu tiên không đạt hoặc không có dữ liệu.
@@ -608,7 +658,7 @@ class DeviceDataService {
     var day = DateTime.now();
     for (var i = 0; i < 365; i++) {
       final snapshot = await loadDailySnapshot(DateTime(day.year, day.month, day.day));
-      if (snapshot == null || snapshot.score < 80) break;
+      if (snapshot == null || snapshot.score < _kStreakScoreThreshold) break;
       streak++;
       day = day.subtract(const Duration(days: 1));
     }

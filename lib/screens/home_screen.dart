@@ -22,6 +22,7 @@ import 'habits_survey_screen.dart';
 import 'rank_screen.dart';
 import 'settings_screen.dart';
 import 'statistics_screen.dart';
+import '../widgets/next_break_countdown_card.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -106,6 +107,9 @@ class HomeScreen extends StatelessWidget {
           const SizedBox(height: 20),
           const SetupStatusBanner(),
           _ScoreCard(habit: habit),
+          const NextBreakCountdownCard(),
+          const SizedBox(height: 12),
+          _TodaySuggestionsCard(habit: habit),
           const SizedBox(height: 18),
           _FeatureHubCard(),
           const SizedBox(height: 20),
@@ -897,6 +901,97 @@ class _ScoreCard extends StatelessWidget {
             noDataLabel: strings.scoreFactorNoData,
             explanation: strings.scoreFactorSleepExplain,
           ),
+        ],
+      ),
+    );
+  }
+}
+
+// Thẻ "Lưu ý & gợi ý cho hôm nay" — so sánh % từng yếu tố hôm nay với chính
+// nó hôm qua (HabitProvider.factorDeltas) để đưa ra vài dòng gợi ý CỤ THỂ,
+// thay vì chỉ hiện điểm số trần trụi. Ưu tiên hiện yếu tố đang XẤU nhất
+// (percent thấp nhất) hoặc TỤT nhiều nhất trước, tối đa 3 dòng để không rối
+// mắt. "Khoảng cách" bị loại khỏi danh sách vì đang thử nghiệm — không nên
+// đưa ra lời khuyên dựa trên 1 phép đo chưa đáng tin cậy.
+class _TodaySuggestionsCard extends StatelessWidget {
+  const _TodaySuggestionsCard({required this.habit});
+
+  final HabitProvider habit;
+
+  @override
+  Widget build(BuildContext context) {
+    final strings = context.watch<LanguageProvider>().strings;
+
+    final factors = <String, double?>{
+      'screenTime': habit.screenTimeScore,
+      'environment': habit.environmentScore,
+      'eyeBreaks': habit.eyeBreaksScore,
+      'sleep': habit.sleepScore,
+    };
+    final labels = <String, String>{
+      'screenTime': strings.scoreFactorScreenTime,
+      'environment': strings.scoreFactorEnvironment,
+      'eyeBreaks': strings.scoreFactorEyeBreaks,
+      'sleep': strings.scoreFactorSleep,
+    };
+
+    // Chỉ xét các yếu tố ĐANG CÓ dữ liệu hôm nay, sắp % thấp nhất lên đầu —
+    // đây thường là điều đáng chú ý nhất.
+    final candidates = factors.entries.where((e) => e.value != null).toList()
+      ..sort((a, b) => a.value!.compareTo(b.value!));
+
+    final bullets = <String>[];
+    for (final entry in candidates) {
+      if (bullets.length >= 3) break;
+      final id = entry.key;
+      final percent = entry.value!;
+      final delta = habit.factorDeltas[id];
+      final label = labels[id]!;
+      if (delta != null && delta <= -10) {
+        bullets.add(strings.suggestionDeclined(label, -delta));
+      } else if (percent < 50) {
+        bullets.add(strings.suggestionLow(label));
+      } else if (delta != null && delta >= 10) {
+        bullets.add(strings.suggestionImproved(label, delta));
+      }
+    }
+
+    final hasAnyYesterdayData = habit.factorDeltas.values.any((d) => d != null);
+    final fallbackText =
+        hasAnyYesterdayData ? strings.suggestionsAllGood : strings.suggestionsNoData;
+
+    return SectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Text('💡', style: TextStyle(fontSize: 16)),
+              const SizedBox(width: 8),
+              Text(strings.todaySuggestionsTitle, style: Theme.of(context).textTheme.titleSmall),
+            ],
+          ),
+          const SizedBox(height: 10),
+          if (bullets.isEmpty)
+            Text(
+              fallbackText,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textMuted),
+            )
+          else
+            ...bullets.map(
+              (line) => Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('•  ', style: Theme.of(context).textTheme.bodySmall),
+                    Expanded(
+                      child: Text(line, style: Theme.of(context).textTheme.bodySmall),
+                    ),
+                  ],
+                ),
+              ),
+            ),
         ],
       ),
     );

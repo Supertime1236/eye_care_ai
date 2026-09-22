@@ -764,8 +764,30 @@ class AppStrings {
   // mắt phải đạt từ 80/100 trở lên trong ngày) không hiển nhiên chút nào.
   String get streakExplainTitle => vi ? 'Chuỗi ngày chăm mắt' : 'Eye-care streak';
   String get streakExplainBody => vi
-      ? 'Mỗi ngày Điểm sức khỏe mắt (xem thẻ điểm ở Trang chủ) đạt từ 80/100 trở lên, chuỗi sẽ tự tăng thêm 1 ngày. Nếu một ngày điểm dưới 80 (hoặc bạn không mở app hôm đó), chuỗi sẽ bị đứt và về lại 0 vào ngày hôm sau.\n\nĐể giữ điểm cao, hãy chú ý các yếu tố trong thẻ điểm: dùng điện thoại không vượt mục tiêu, ngủ đủ giờ, hoàn thành đủ số lần nghỉ mắt, và giữ môi trường đủ sáng. Chạm vào từng yếu tố trong thẻ điểm để xem cách tính chi tiết.'
-      : 'Any day your Eye Health Score (see the score card on Home) reaches 80/100 or higher, your streak automatically goes up by 1 day. If a day scores below 80 (or you don\'t open the app that day), the streak breaks and resets to 0 the next day.\n\nTo keep your score high, watch the factors in the score card: stay within your phone usage target, get enough sleep, complete enough eye breaks, and keep your surroundings well lit. Tap each factor in the score card to see exactly how it\'s calculated.';
+      ? 'Mỗi ngày Điểm sức khỏe mắt (xem thẻ điểm ở Trang chủ) đạt từ 60/100 trở lên, chuỗi sẽ tự tăng thêm 1 ngày. Nếu một ngày điểm dưới 60 (hoặc bạn không mở app hôm đó), chuỗi sẽ bị đứt và về lại 0 vào ngày hôm sau.\n\nĐể giữ điểm cao, hãy chú ý các yếu tố trong thẻ điểm: dùng điện thoại không vượt mục tiêu, ngủ đủ giờ, hoàn thành đủ số lần nghỉ mắt, và giữ môi trường đủ sáng. Chạm vào từng yếu tố trong thẻ điểm để xem cách tính chi tiết.'
+      : 'Any day your Eye Health Score (see the score card on Home) reaches 60/100 or higher, your streak automatically goes up by 1 day. If a day scores below 60 (or you don\'t open the app that day), the streak breaks and resets to 0 the next day.\n\nTo keep your score high, watch the factors in the score card: stay within your phone usage target, get enough sleep, complete enough eye breaks, and keep your surroundings well lit. Tap each factor in the score card to see exactly how it\'s calculated.';
+
+  // ---------------- Lưu ý & gợi ý cho hôm nay (so sánh hôm qua vs hôm nay) ----------------
+  // Hiện dưới thẻ Điểm sức khỏe mắt ở Trang chủ (xem _TodaySuggestionsCard
+  // trong home_screen.dart) — so từng yếu tố hôm nay với chính nó hôm qua
+  // (xem HabitProvider.factorDeltas) để đưa ra lưu ý CỤ THỂ, thay vì chỉ nói
+  // chung chung "hãy chăm sóc mắt tốt hơn".
+  String get todaySuggestionsTitle => vi ? 'Lưu ý & gợi ý cho hôm nay' : "Today's notes & suggestions";
+  String suggestionDeclined(String factorLabel, int percentDrop) => vi
+      ? '$factorLabel giảm $percentDrop% so với hôm qua — nên chú ý cải thiện lại.'
+      : '$factorLabel dropped $percentDrop% from yesterday — worth paying attention to.';
+  String suggestionImproved(String factorLabel, int percentGain) => vi
+      ? '$factorLabel tăng $percentGain% so với hôm qua — tiếp tục phát huy nhé!'
+      : '$factorLabel improved $percentGain% from yesterday — keep it up!';
+  String suggestionLow(String factorLabel) => vi
+      ? '$factorLabel đang ở mức thấp hôm nay, cần chú ý nhiều hơn.'
+      : '$factorLabel is low today — needs more attention.';
+  String get suggestionsAllGood => vi
+      ? 'Mọi yếu tố đều đang ổn định hoặc tốt hơn so với hôm qua. Tiếp tục duy trì nhé! 🎉'
+      : 'Everything looks steady or better compared to yesterday. Keep it up! 🎉';
+  String get suggestionsNoData => vi
+      ? 'Chưa có đủ dữ liệu hôm qua để so sánh — quay lại vào ngày mai nhé.'
+      : 'Not enough data from yesterday to compare yet — check back tomorrow.';
 
   // ---------------- App usage breakdown (Statistics pie chart) ----------------
   String get appUsageBreakdownTitle => vi ? 'Sử dụng theo ứng dụng' : 'App Usage Breakdown';

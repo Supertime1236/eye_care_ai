@@ -29,6 +29,7 @@ class CloudBackupService {
     'pref_', // mọi tuỳ chọn: theme, ngôn ngữ, đơn vị đo, target habit, accent color, font, reminder...
     'eye_breaks_', // số lần nghỉ mắt hôm nay + tổng cộng dồn (dùng cho Thành tựu)
     'daily_snapshot_', // snapshot điểm số/screen time/sleep từng ngày (dùng tính streak + biểu đồ Thống kê)
+    'daily_factors_', // snapshot % từng yếu tố (thời gian màn hình/khoảng cách/môi trường/nghỉ mắt/giấc ngủ) từng ngày — dùng so sánh hôm qua vs hôm nay
     'outdoor_minutes_',
     'reading_minutes_',
     'survey_completed',
