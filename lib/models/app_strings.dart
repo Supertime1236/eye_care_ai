@@ -36,7 +36,6 @@ class AppStrings {
   // home_screen.dart) — mỗi yếu tố là 1 thanh %, kèm 1 emoji cố định (không
   // đổi theo ngôn ngữ) để dễ nhận diện nhanh.
   String get scoreFactorScreenTime => vi ? 'Thời gian màn hình' : 'Screen Time';
-  String get scoreFactorDistance => vi ? 'Khoảng cách' : 'Distance';
   String get scoreFactorEnvironment => vi ? 'Môi trường' : 'Environment';
   String get scoreFactorEyeBreaks => vi ? 'Nghỉ mắt' : 'Eye Breaks';
   String get scoreFactorSleep => vi ? 'Giấc ngủ' : 'Sleep';
@@ -57,9 +56,6 @@ class AppStrings {
   String get scoreFactorScreenTimeExplain => vi
       ? 'So sánh tổng thời gian dùng điện thoại hôm nay với mục tiêu bạn đặt trong phần Thói quen. Dùng càng gần hoặc ít hơn mục tiêu, điểm càng cao.'
       : 'Compares your total phone screen time today against the target you set in Habits. The closer to or under target, the higher the score.';
-  String get scoreFactorDistanceExplain => vi
-      ? 'App dùng camera trước để ước lượng khoảng cách từ mắt bạn đến màn hình theo từng đợt lấy mẫu trong ngày. % này là tỉ lệ số lần đo được khoảng cách an toàn (≥30cm) trên tổng số lần đo. Cần cấp quyền camera để đo được. Tính năng đang trong giai đoạn THỬ NGHIỆM nên hiện chưa được cộng vào điểm sức khỏe mắt tổng.'
-      : 'The app uses the front camera to estimate the distance from your eyes to the screen, sampled periodically throughout the day. This % is the share of samples where the distance was safe (≥30cm). Camera permission is required for this to work. This feature is currently EXPERIMENTAL, so it does not yet count toward your overall eye health score.';
   String get scoreFactorEnvironmentExplain => vi
       ? 'App dùng cảm biến ánh sáng của máy để đo độ sáng xung quanh theo từng đợt lấy mẫu trong ngày. % này là tỉ lệ số lần đo được ánh sáng đủ tốt (không quá tối, không quá chói) trên tổng số lần đo.'
       : 'The app uses your device\'s light sensor to measure ambient brightness, sampled periodically throughout the day. This % is the share of samples where lighting was good (not too dark, not too glaring).';
@@ -736,6 +732,15 @@ class AppStrings {
       : 'That\'s a great question about eye health! Based on general guidelines, '
           'maintaining regular breaks, good lighting, and annual eye check-ups are key. '
           'Would you like specific tips on screen time, nutrition, or vision exercises?';
+    // ---------------- AI actions & confirmation ----------------
+  String get aiConfirmBeforeActingTitle =>
+      vi ? 'Hỏi trước khi AI tự thao tác' : 'Ask before AI takes action';
+  String get aiConfirmBeforeActingDesc => vi
+      ? 'Khi bật, AI sẽ hỏi xác nhận trước mỗi lần đổi mục tiêu/cài đặt thay bạn. Tắt đi nếu muốn AI tự áp dụng ngay không cần hỏi.'
+      : "When on, AI will ask for your confirmation before changing any goal/setting on your behalf. Turn off to let AI apply changes immediately without asking.";
+  String get aiPendingActionsTitle => vi ? 'AI muốn thực hiện:' : 'AI wants to:';
+  String get aiPendingActionsAccept => vi ? 'Đồng ý' : 'Accept';
+  String get aiPendingActionsDecline => vi ? 'Từ chối' : 'Decline';
 
   List<String> get weeklyLabels => vi
       ? ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN']

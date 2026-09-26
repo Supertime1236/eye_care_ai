@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'models/app_strings.dart';
 import 'providers/accent_color_provider.dart';
 import 'providers/auth_provider.dart';
+import 'providers/auto_break_provider.dart';
 import 'providers/auto_brightness_provider.dart';
 import 'providers/chat_provider.dart';
 import 'providers/font_provider.dart';
@@ -130,6 +131,7 @@ Future<void> main() async {
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => SetupProvider()),
         ChangeNotifierProvider(create: (_) => UpdateProvider()),
+        ChangeNotifierProvider(create: (_) => AutoBreakProvider()),
         ChangeNotifierProxyProvider<AuthProvider, ProfileProvider>(
           create: (_) => ProfileProvider(),
           update: (_, auth, profile) => profile!..syncFromUser(auth.user),

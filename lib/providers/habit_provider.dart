@@ -144,15 +144,18 @@ class HabitProvider extends ChangeNotifier {
   int get eyeHealthScore => habitsCompletionPercent;
   double get screenTimeHours => totalScreenTimeHoursToday;
 
-  // ---------------- Eye Health Score 2.0: breakdown 5 yếu tố ----------------
+  // ---------------- Eye Health Score 2.0: breakdown 4 yếu tố ----------------
   // Mỗi yếu tố là % 0-100 độc lập (null = CHƯA có đủ dữ liệu để tính, khác
   // với 0% = có dữ liệu nhưng đang xấu) — xem _updateHabitsCompletion() bên
   // dưới để biết công thức từng yếu tố. `habitsCompletionPercent` (điểm
   // tổng) = trung bình cộng của các yếu tố ĐANG CÓ dữ liệu (bỏ qua null,
   // không tính là 0 — tránh phạt oan người dùng chưa cấp đủ quyền/chưa đủ
   // mẫu, ví dụ mới cài app được vài phút).
+  //
+  // ĐÃ BỎ yếu tố "Khoảng cách" (đo bằng camera) — không đủ tin cậy để cộng
+  // vào điểm tổng và không đáng chi phí pin/quyền riêng tư, xem
+  // DeviceDataService.
   double? screenTimeScore;
-  double? distanceScore;
   double? environmentScore;
   double? eyeBreaksScore;
   double? sleepScore;
@@ -162,10 +165,10 @@ class HabitProvider extends ChangeNotifier {
   int? eyeHealthScoreDelta;
 
   // Chênh lệch % của TỪNG YẾU TỐ so với hôm qua (key khớp tên trong
-  // _updateHabitsCompletion: 'screenTime'/'distance'/'environment'/
-  // 'eyeBreaks'/'sleep') — null nếu yếu tố đó hôm nay hoặc hôm qua chưa có
-  // dữ liệu để so sánh. Dùng để hiện gợi ý/lưu ý cho hôm nay ở Trang chủ
-  // (xem _TodaySuggestionsCard trong home_screen.dart).
+  // _updateHabitsCompletion: 'screenTime'/'environment'/'eyeBreaks'/'sleep')
+  // — null nếu yếu tố đó hôm nay hoặc hôm qua chưa có dữ liệu để so sánh.
+  // Dùng để hiện gợi ý/lưu ý cho hôm nay ở Trang chủ (xem
+  // _TodaySuggestionsCard trong home_screen.dart).
   Map<String, int?> factorDeltas = {};
 
   // Tổng thời gian dùng điện thoại THẬT của hôm nay, lấy TRỰC TIẾP từ tổng
@@ -219,11 +222,8 @@ class HabitProvider extends ChangeNotifier {
     // đổi thành "Eye Test Count" (đang phát triển, xem HabitData(id: 'reading')
     // ở trên), không có nguồn dữ liệu thật để bật lên.
     service.startOutdoorTracking();
-    // Lấy mẫu môi trường (lux) + khoảng cách mắt-màn hình định kỳ, dùng cho
-    // 2 yếu tố "🌙 Môi trường" / "📏 Khoảng cách" trong Eye Health Score 2.0
-    // (xem DeviceDataService.startEnvironmentMonitoring để biết các ràng
-    // buộc an toàn riêng tư/pin — không tự xin quyền camera, không giữ
-    // camera mở liên tục).
+    // Lấy mẫu môi trường (lux) định kỳ, dùng cho yếu tố "🌙 Môi trường" trong
+    // Eye Health Score 2.0.
     service.startEnvironmentMonitoring();
     // Cảnh báo dùng điện thoại trong bóng tối: gửi thông báo hệ thống khi
     // môi trường xung quanh tối liên tục quá lâu trong lúc app đang mở.
@@ -313,7 +313,6 @@ class HabitProvider extends ChangeNotifier {
         (today == null || yest == null) ? null : (today - yest).round();
     factorDeltas = {
       'screenTime': delta(screenTimeScore, yesterdayFactors?.screenTimeScore),
-      'distance': delta(distanceScore, yesterdayFactors?.distanceScore),
       'environment': delta(environmentScore, yesterdayFactors?.environmentScore),
       'eyeBreaks': delta(eyeBreaksScore, yesterdayFactors?.eyeBreaksScore),
       'sleep': delta(sleepScore, yesterdayFactors?.sleepScore),
@@ -330,7 +329,6 @@ class HabitProvider extends ChangeNotifier {
     // yesterdayFactors ở trên, đọc lại đúng key này vào ngày kế tiếp).
     await service.saveDailyFactorScores(
       screenTimeScore: screenTimeScore,
-      distanceScore: distanceScore,
       environmentScore: environmentScore,
       eyeBreaksScore: eyeBreaksScore,
       sleepScore: sleepScore,
@@ -460,24 +458,16 @@ class HabitProvider extends ChangeNotifier {
         ? _simpleProgressScoreFor(breaks.current, breaks.target)
         : null;
 
-    // 📏 Khoảng cách + 🌙 Môi trường — lấy từ mẫu lux/khoảng cách thu thập
-    // được trong ngày (xem DeviceDataService.startEnvironmentMonitoring).
-    // null nếu CHƯA có mẫu nào hôm nay (chưa cấp quyền camera, máy không có
-    // cảm biến ánh sáng, hoặc mới mở app chưa tới chu kỳ lấy mẫu đầu).
+    // 🌙 Môi trường — lấy từ mẫu lux thu thập được trong ngày (xem
+    // DeviceDataService.startEnvironmentMonitoring). null nếu CHƯA có mẫu
+    // nào hôm nay (máy không có cảm biến ánh sáng, hoặc mới mở app chưa tới
+    // chu kỳ lấy mẫu đầu).
     final service = DeviceDataService.instance;
-    // 🧪 Đo khoảng cách mắt bằng camera đang ĐÁNH DẤU "THỬ NGHIỆM" — độ chính
-    // xác chưa ổn định trên nhiều dòng máy/điều kiện ánh sáng, nên TẠM THỜI
-    // vẫn chạy ngầm để thu thập dữ liệu (phục vụ theo dõi/cải thiện thuật
-    // toán) nhưng KHÔNG dùng để tính điểm tổng — tránh điểm sức khỏe mắt bị
-    // sai lệch bởi 1 phép đo chưa đáng tin cậy. UI vẫn hiện dòng này kèm
-    // nhãn "Thử nghiệm" để người dùng hiểu vì sao nó không cộng vào điểm.
-    distanceScore = await service.getDistanceScoreToday();
     environmentScore = await service.getEnvironmentScoreToday();
 
     // Điểm tổng = trung bình cộng CÁC YẾU TỐ ĐANG CÓ DỮ LIỆU — bỏ qua (không
     // tính là 0) những yếu tố null, để không phạt oan người dùng chưa cấp đủ
-    // quyền/chưa đủ mẫu trong ngày. Khoảng cách bị loại khỏi danh sách này vì
-    // đang ở trạng thái thử nghiệm (xem comment ở trên).
+    // quyền/chưa đủ mẫu trong ngày.
     final available = <double>[
       ?screenTimeScore,
       ?environmentScore,

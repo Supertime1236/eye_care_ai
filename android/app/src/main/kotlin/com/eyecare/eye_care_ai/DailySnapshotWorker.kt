@@ -21,8 +21,6 @@ import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import java.util.Calendar
 import java.util.concurrent.TimeUnit
-import android.app.NotificationManager
-import androidx.core.app.NotificationCompat
 
 // MainActivity thêm một MethodChannel riêng cho các dữ liệu mà package
 // `app_usage` không cung cấp đủ chính xác/đầy đủ:
@@ -108,110 +106,6 @@ class MainActivity : FlutterActivity() {
             request,
         )
     }
-
-    override suspend fun doWork(): Result {
-        return try {
-            val today = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
-
-            if (prefs.contains("flutter.daily_snapshot_$today")) {
-                return Result.success()
-            }
-
-            val screenHours = readTodayScreenHours()
-            val sleepHours = readManualOrZeroSleepHours(today)
-            val outdoorMinutes = readOutdoorMinutesToday(today)
-            val breaksCount = readEyeBreaksToday(today)
-            val score = computeScore(screenHours, sleepHours, breaksCount)
-
-            prefs.edit()
-                .putString(
-                    "flutter.daily_snapshot_$today",
-                    "$score|$screenHours|$sleepHours|$outdoorMinutes|$breaksCount"
-                )
-                .apply()
-
-            sendDailySummaryNotification(score, screenHours)
-
-            Result.success()
-        } catch (e: Exception) {
-            Result.retry()
-        }
-    }
-
-    // Thông báo TÓM TẮT NGÀY — kênh giao tiếp CHÍNH với người dùng, không phụ
-    // thuộc việc họ có mở app hay không. Dùng CHUNG kênh "gentle_reminders_channel"
-    // mà NotificationService.dart (flutter_local_notifications) đã tạo lúc app
-    // khởi động lần đầu — chỉ cần TRÙNG channel id, không cần gọi qua Dart, vì
-    // channel là 1 khái niệm của hệ điều hành (đã tồn tại thì post thẳng được).
-    // Nếu channel CHƯA từng được tạo (người dùng cài app nhưng chưa mở lần nào
-    // -> không thể vì Worker chỉ đăng ký sau khi MainActivity.onCreate() chạy
-    // ít nhất 1 lần), notify() sẽ tự bỏ qua an toàn trên Android 8+.
-    private fun sendDailySummaryNotification(score: Int, screenHours: Double) {
-        val isVi = prefs.getBoolean("flutter.pref_vietnamese", true)
-        val yesterdayKey = SimpleDateFormat("yyyy-MM-dd", Locale.US)
-            .format(Calendar.getInstance().apply { add(Calendar.DAY_OF_MONTH, -1) }.time)
-        val yesterdayRaw = prefs.getString("flutter.daily_snapshot_$yesterdayKey", null)
-        val yesterdayScore = yesterdayRaw?.split("|")?.getOrNull(0)?.toIntOrNull()
-
-        val streakThreshold = 60
-        val streak = calculateStreak(streakThreshold)
-        val title: String
-        val body: String
-
-        if (yesterdayScore == null) {
-            title = if (isVi) "📊 Điểm hôm nay: $score/100" else "📊 Today's score: $score/100"
-            body = if (isVi)
-                "Hôm nay dùng máy $screenHours giờ. Mở app để xem chi tiết & mẹo cho ngày mai."
-            else
-                "You used your phone for $screenHours hours today. Open the app for details & tips."
-        } else {
-            val delta = score - yesterdayScore
-            val trendIcon = if (delta >= 0) "📈" else "📉"
-            val trendVi = if (delta >= 0) "tăng" else "giảm"
-            val trendEn = if (delta >= 0) "up" else "down"
-            title = if (isVi) "$trendIcon Điểm hôm nay: $score/100" else "$trendIcon Today's score: $score/100"
-            body = if (isVi)
-                "$trendVi ${Math.abs(delta)} điểm so với hôm qua. " +
-                    (if (score >= streakThreshold) "🔥 Chuỗi $streak ngày — vẫn tiếp tục!"
-                    else "Điểm dưới $streakThreshold sẽ làm đứt chuỗi $streak ngày — cố lên nhé.")
-            else
-                "$trendEn ${Math.abs(delta)} points from yesterday. " +
-                    (if (score >= streakThreshold) "🔥 $streak-day streak — keep going!"
-                    else "Below $streakThreshold breaks your $streak-day streak — you've got this.")
-        }
-
-        try {
-            val notification = NotificationCompat.Builder(applicationContext, "gentle_reminders_channel")
-                .setSmallIcon(android.R.drawable.ic_dialog_info)
-                .setContentTitle(title)
-                .setContentText(body)
-                .setStyle(NotificationCompat.BigTextStyle().bigText(body))
-                .setAutoCancel(true)
-                .build()
-            val manager = applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            manager.notify(7001, notification)
-        } catch (_: Exception) {
-        }
-    }
-
-// Đếm chuỗi ngày liên tiếp có điểm >= threshold, đếm NGƯỢC từ HÔM NAY —
-// tại thời điểm hàm này chạy, snapshot hôm nay đã được ghi ở trên rồi, nên
-// tính luôn cả hôm nay vào chuỗi (khớp đúng cách Dart tính:
-// DeviceDataService.calculateStreakDays() cũng bắt đầu đếm từ DateTime.now()).
-private fun calculateStreak(threshold: Int): Int {
-    var streak = 0
-    val cal = Calendar.getInstance()
-    val fmt = SimpleDateFormat("yyyy-MM-dd", Locale.US)
-    for (i in 0 until 365) {
-        val key = fmt.format(cal.time)
-        val raw = prefs.getString("flutter.daily_snapshot_$key", null) ?: break
-        val dayScore = raw.split("|").getOrNull(0)?.toIntOrNull() ?: break
-        if (dayScore < threshold) break
-        streak++
-        cal.add(Calendar.DAY_OF_MONTH, -1)
-    }
-    return streak
-}
 
     // Đăng ký DailySnapshotWorker: tự tính & lưu snapshot điểm sức khỏe mắt
     // mỗi ngày lúc ~23:55, HOÀN TOÀN NATIVE — không cần người dùng mở app

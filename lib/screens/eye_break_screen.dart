@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../providers/auto_break_provider.dart';
 import '../providers/habit_provider.dart';
 import '../providers/language_provider.dart';
 import '../providers/reminder_provider.dart';
@@ -20,6 +21,15 @@ import '../widgets/shared_widgets.dart';
 // người dùng nhìn xa trong 20 giây, sau đó tự xác nhận đã nghỉ — số lần nghỉ
 // này được ghi nhận THẬT (qua HabitProvider.recordEyeBreak) và đồng bộ với habit
 // "Eye Breaks" ở trang Habits.
+//
+// THÊM MỚI: card "Tự động nhắc nghỉ mắt" (AutoBreakProvider) — khác hẳn bộ
+// đếm thủ công ở trên (người dùng phải tự bấm "Bắt đầu" và chọn khoảng thời
+// gian cố định). Ở chế độ tự động: countdown được TÍNH RA từ mục tiêu số
+// lần nghỉ/ngày (habit 'breaks') chia cho thời gian dùng máy thật, và việc
+// "đã nghỉ mắt hay chưa" được suy luận tự động qua UsageStatsManager (nếu
+// sau khi nhắc mà máy KHÔNG ghi nhận thêm thao tác trong 20 giây, coi như
+// người dùng đã rời mắt khỏi màn hình) — không cần camera, không cần bấm
+// xác nhận thủ công.
 class EyeBreakScreen extends StatefulWidget {
   const EyeBreakScreen({super.key});
 
@@ -257,9 +267,16 @@ class _EyeBreakScreenState extends State<EyeBreakScreen>
     return '$m:$s';
   }
 
+  String _formatAutoCountdown(int seconds) {
+    final m = (seconds ~/ 60).toString().padLeft(2, '0');
+    final s = (seconds % 60).toString().padLeft(2, '0');
+    return '$m:$s';
+  }
+
   @override
   Widget build(BuildContext context) {
     final reminder = context.watch<ReminderProvider>();
+    final autoBreak = context.watch<AutoBreakProvider>();
     final language = context.watch<LanguageProvider>();
     final strings = language.strings;
 
@@ -314,6 +331,61 @@ class _EyeBreakScreenState extends State<EyeBreakScreen>
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
               const SizedBox(height: 20),
+
+              // ---------------- Tự động nhắc nghỉ mắt (mới) ----------------
+              SectionCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    SettingsToggleTile(
+                      title: strings.vi
+                          ? 'Tự động nhắc nghỉ mắt'
+                          : 'Auto eye-break reminders',
+                      description: strings.vi
+                          ? 'Không cần đặt hẹn giờ — tự chia mục tiêu nghỉ mắt/ngày theo thời gian bạn thực sự dùng máy, và tự nhận diện nếu bạn đã nghỉ (không cần bấm xác nhận, không cần camera).'
+                          : "No need to set a timer — splits your daily break goal across your real phone usage, and auto-detects when you've rested (no confirmation tap, no camera needed).",
+                      value: autoBreak.enabled,
+                      onChanged: (v) => autoBreak.setEnabled(v),
+                    ),
+                    if (autoBreak.enabled) ...[
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(4),
+                              child: LinearProgressIndicator(
+                                value: autoBreak.progress,
+                                minHeight: 6,
+                                backgroundColor: AppColors.border,
+                                valueColor: const AlwaysStoppedAnimation(
+                                  AppColors.testAccent,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Text(
+                            _formatAutoCountdown(autoBreak.secondsRemaining),
+                            style: Theme.of(context).textTheme.titleSmall
+                                ?.copyWith(fontWeight: FontWeight.w700),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        strings.vi
+                            ? 'Countdown ước tính: mỗi ${(autoBreak.intervalSeconds / 60).round()} phút dùng máy sẽ nhắc 1 lần'
+                            : 'Estimated countdown: reminds every ${(autoBreak.intervalSeconds / 60).round()} min of usage',
+                        style: Theme.of(context).textTheme.bodySmall
+                            ?.copyWith(color: AppColors.textMuted),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+
               SectionCard(
                 child: Column(
                   children: [

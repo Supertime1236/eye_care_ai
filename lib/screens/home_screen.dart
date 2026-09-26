@@ -871,16 +871,6 @@ class _ScoreCard extends StatelessWidget {
             explanation: strings.scoreFactorScreenTimeExplain,
           ),
           _ScoreFactorRow(
-            icon: '📏',
-            label: strings.scoreFactorDistance,
-            percent: habit.distanceScore,
-            noDataLabel: strings.scoreFactorNoData,
-            explanation: strings.scoreFactorDistanceExplain,
-            // Đang thử nghiệm — xem comment trong HabitProvider.refresh():
-            // giá trị vẫn đo/hiện ở đây nhưng KHÔNG được cộng vào điểm tổng.
-            isExperimental: true,
-          ),
-          _ScoreFactorRow(
             icon: '🌙',
             label: strings.scoreFactorEnvironment,
             percent: habit.environmentScore,
@@ -911,8 +901,7 @@ class _ScoreCard extends StatelessWidget {
 // nó hôm qua (HabitProvider.factorDeltas) để đưa ra vài dòng gợi ý CỤ THỂ,
 // thay vì chỉ hiện điểm số trần trụi. Ưu tiên hiện yếu tố đang XẤU nhất
 // (percent thấp nhất) hoặc TỤT nhiều nhất trước, tối đa 3 dòng để không rối
-// mắt. "Khoảng cách" bị loại khỏi danh sách vì đang thử nghiệm — không nên
-// đưa ra lời khuyên dựa trên 1 phép đo chưa đáng tin cậy.
+// mắt.
 class _TodaySuggestionsCard extends StatelessWidget {
   const _TodaySuggestionsCard({required this.habit});
 
@@ -1017,15 +1006,11 @@ class _ScoreFactorRow extends StatelessWidget {
   final double? percent;
   final String noDataLabel;
   // Giải thích cách tính % của yếu tố này — hiện trong bottom sheet khi
-  // người dùng chạm vào dòng này. Thêm vì "Khoảng cách"/"Môi trường" một
-  // mình không đủ rõ ràng người dùng tính bằng cách nào (dựa vào camera/cảm
-  // biến ánh sáng, không trực quan như thời gian màn hình hay giấc ngủ).
+  // người dùng chạm vào dòng này.
   final String explanation;
-  // true = yếu tố đang THỬ NGHIỆM (hiện tại chỉ có "Khoảng cách") — vẫn đo
-  // và hiện % như bình thường, nhưng gắn thêm nhãn nhỏ để người dùng biết
-  // giá trị này KHÔNG được cộng vào điểm sức khỏe mắt tổng (xem
-  // HabitProvider.refresh()), tránh thắc mắc vì sao 100% mà điểm không tăng
-  // tương ứng.
+  // Giữ lại tham số này để tương thích ngược — không còn yếu tố nào dùng
+  // isExperimental = true nữa (Khoảng cách đã bị gỡ bỏ), nhưng để đây phòng
+  // khi thêm yếu tố thử nghiệm khác trong tương lai.
   final bool isExperimental;
 
   void _showExplanation(BuildContext context) {
