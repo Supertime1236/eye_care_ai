@@ -221,8 +221,22 @@ class DeviceDataService {
   // VÀ ánh sáng đủ mạnh — giảm mạnh trường hợp báo nhầm theo cả 2 chiều
   // (không chỉ GPS bị lừa bởi WiFi indoor, mà lux đơn lẻ cũng có thể bị lừa
   // bởi ánh nắng chiếu qua cửa sổ dù đang ngồi trong nhà).
-  static const _kGpsGoodAccuracyMeters = 30.0; // độ chính xác GPS coi là "tốt"
-  static const _kOutdoorLuxThreshold = 1000; // lux tối thiểu coi là "ánh sáng ngoài trời"
+  //
+  // BUG ĐÃ SỬA (Outdoor Time gần như không bao giờ tăng): ngưỡng cũ (lux
+  // >= 1000 VÀ GPS accuracy <= 30m trong đúng 5 giây) trên thực tế QUÁ KHẮT
+  // KHE — cảm biến ánh sáng của nhiều điện thoại báo thấp hơn ánh sáng thật
+  // khá nhiều (do lớp kính/lớp phủ che cảm biến), nên trời hơi âm u hoặc chỉ
+  // đứng dưới bóng cây vẫn có thể không đạt 1000 lux dù rõ ràng đang ở ngoài
+  // trời; đồng thời GPS lấy fix mới trong vòng 5 giây rất hay bị timeout
+  // (đặc biệt lúc mới bật GPS/tín hiệu yếu), khiến _hasGoodGpsFix() gần như
+  // luôn trả về false. Đã nới các mốc này (vẫn giữ nguyên tắc "cần cả 2 tín
+  // hiệu" để tránh báo nhầm trong nhà) + thêm phương án dự phòng khi thiếu
+  // 1 trong 2 tín hiệu, xem chi tiết ở _detectOutdoorSample/_hasGoodGpsFix.
+  static const _kGpsGoodAccuracyMeters = 50.0; // độ chính xác GPS coi là "tốt"
+  // Ngưỡng dùng khi CHỈ có GPS làm căn cứ (thiếu số đo lux) — nghiêm ngặt
+  // hơn để bù lại việc thiếu xác nhận ánh sáng.
+  static const _kGpsOnlyAccuracyMeters = 20.0;
+  static const _kOutdoorLuxThreshold = 600; // lux tối thiểu coi là "ánh sáng ngoài trời"
 
   Future<double> getOutdoorMinutesToday() async {
     final prefs = await SharedPreferences.getInstance();
@@ -232,9 +246,12 @@ class DeviceDataService {
 
   Future<void> startOutdoorTracking() async {
     _outdoorSampleTimer?.cancel();
-    _outdoorSampleTimer = Timer.periodic(const Duration(minutes: 2), (_) async {
+    // Lấy mẫu mỗi 1 phút thay vì 2 phút trước đây — vừa phản hồi nhanh hơn
+    // với việc ra/vào nhà, vừa giảm rủi ro "trót ở ngoài trời 90 giây nhưng
+    // đúng lúc mẫu lấy vào giữa lúc GPS timeout" làm mất nguyên cả mẫu.
+    _outdoorSampleTimer = Timer.periodic(const Duration(minutes: 1), (_) async {
       final elapsedMinutes = _lastOutdoorSample == null
-          ? 2.0
+          ? 1.0
           : DateTime.now().difference(_lastOutdoorSample!).inSeconds / 60.0;
       _lastOutdoorSample = DateTime.now();
 
@@ -247,26 +264,34 @@ class DeviceDataService {
       }
       // isOutdoor == false: trong nhà (thiếu GPS tốt, hoặc đủ GPS nhưng
       // ánh sáng không giống ngoài trời), không cộng dồn.
-      // isOutdoor == null: không đọc được cảm biến ánh sáng (máy không có
-      // cảm biến, hoặc iOS không hỗ trợ) -> bỏ qua mẫu này hoàn toàn thay vì
-      // đoán mò chỉ bằng GPS.
+      // isOutdoor == null: không xác định được (mất quyền/dịch vụ vị trí bị
+      // tắt) -> bỏ qua mẫu này hoàn toàn thay vì đoán mò.
     });
   }
 
-  // Trả về true (ngoài trời) / false (trong nhà) / null (không đọc được
-  // cảm biến ánh sáng để kết luận cho mẫu này — ví dụ máy không có cảm biến).
+  // Trả về true (ngoài trời) / false (trong nhà) / null (không đủ căn cứ để
+  // kết luận cho mẫu này — ví dụ dịch vụ vị trí đang tắt hoặc chưa cấp
+  // quyền, không phải lỗi tạm thời của 1 lần đo).
   Future<bool?> _detectOutdoorSample() async {
     final lux = await _readAmbientLuxOnce();
-    if (lux == null) return null; // Không có cảm biến ánh sáng -> không đủ căn cứ, bỏ qua mẫu.
+    if (lux == null) {
+      // Không đọc được cảm biến ánh sáng ở LẦN NÀY (máy không có cảm biến,
+      // hoặc timeout tạm thời) — trước đây BỎ QUA HẲN mẫu này, khiến những
+      // máy/thời điểm không đọc được lux không bao giờ được tính "ngoài
+      // trời" dù đang đứng giữa trời nắng. Giờ hạ xuống dùng RIÊNG GPS làm
+      // căn cứ, với ngưỡng NGHIÊM NGẶT HƠN (_kGpsOnlyAccuracyMeters) để bù
+      // lại việc thiếu xác nhận ánh sáng, thay vì bỏ cuộc hoàn toàn.
+      return _hasGoodGpsFix(accuracyMeters: _kGpsOnlyAccuracyMeters);
+    }
     if (lux < _kOutdoorLuxThreshold) return false; // Ánh sáng kiểu trong nhà -> chắc chắn không phải ngoài trời.
     // Ánh sáng đủ mạnh RỒI mới kiểm tra thêm GPS (đỡ tốn pin hơn: GPS luôn
     // là bước "xin fix vị trí" tốn thời gian/pin hơn hẳn so với đọc lux).
-    return _hasGoodGpsFix();
+    return _hasGoodGpsFix(accuracyMeters: _kGpsGoodAccuracyMeters);
   }
 
   // Đọc đúng 1 mẫu lux rồi hủy lắng nghe ngay — khác với
   // startDarkRoomMonitoring() ở dưới vốn lắng nghe LIÊN TỤC cho mục đích
-  // khác (cảnh báo dùng điện thoại trong bóng tối); ở đây mỗi 2 phút chỉ cần
+  // khác (cảnh báo dùng điện thoại trong bóng tối); ở đây mỗi 1 phút chỉ cần
   // 1 lần đọc tức thời.
   Future<int?> _readAmbientLuxOnce({Duration timeout = const Duration(seconds: 3)}) async {
     if (!Platform.isAndroid) return null; // light sensor not available on iOS
@@ -314,11 +339,17 @@ class DeviceDataService {
         permission == LocationPermission.whileInUse;
   }
 
-  // Lấy nhanh 1 fix GPS (tối đa 5 giây) và đánh giá độ chính xác. Trả về
-  // false (không phải null) khi thiếu quyền/dịch vụ vị trí hoặc không lấy
-  // được fix trong thời gian cho phép, vì trong các trường hợp đó không có
+  // Lấy nhanh 1 fix GPS và đánh giá độ chính xác. Trả về false (không phải
+  // null) khi thiếu quyền/dịch vụ vị trí, vì trong trường hợp đó không có
   // căn cứ để xác nhận "ngoài trời" -> coi như không xác nhận được.
-  Future<bool> _hasGoodGpsFix() async {
+  //
+  // BUG ĐÃ SỬA: `timeLimit: 5 giây` trước đây quá ngắn — GPS "nguội" (mới
+  // bật app, vừa ra khỏi vùng có tín hiệu yếu) thường cần 10-15 giây mới có
+  // fix đầu tiên, khiến lần lấy mẫu này liên tục bị timeout và luôn trả về
+  // false dù đang thực sự ở ngoài trời. Tăng lên 12 giây, và nếu vẫn timeout
+  // thì lùi về dùng VỊ TRÍ GẦN NHẤT hệ điều hành còn nhớ (nếu chưa quá 5
+  // phút) thay vì bỏ cuộc hoàn toàn.
+  Future<bool> _hasGoodGpsFix({double accuracyMeters = _kGpsGoodAccuracyMeters}) async {
     try {
       final serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) return false;
@@ -326,15 +357,22 @@ class DeviceDataService {
       final hasPermission = await hasLocationPermission();
       if (!hasPermission) return false;
 
-      final position = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.high,
-          timeLimit: Duration(seconds: 5),
-        ),
-      );
-      return position.accuracy <= _kGpsGoodAccuracyMeters;
+      try {
+        final position = await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.high,
+            timeLimit: Duration(seconds: 12),
+          ),
+        );
+        return position.accuracy <= accuracyMeters;
+      } on TimeoutException {
+        final last = await Geolocator.getLastKnownPosition();
+        if (last == null) return false;
+        final isFresh = DateTime.now().difference(last.timestamp).inMinutes < 5;
+        return isFresh && last.accuracy <= accuracyMeters;
+      }
     } catch (_) {
-      // Timeout, dịch vụ bị tắt giữa chừng, hoặc lỗi phần cứng.
+      // Timeout kiểu khác, dịch vụ bị tắt giữa chừng, hoặc lỗi phần cứng.
       return false;
     }
   }

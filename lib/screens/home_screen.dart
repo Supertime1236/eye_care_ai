@@ -3,12 +3,18 @@ import 'dart:async';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
+import '../providers/auto_break_provider.dart';
 import '../providers/habit_provider.dart';
 import '../providers/language_provider.dart';
 import '../providers/profile_provider.dart';
+import '../providers/settings_more_provider.dart';
+import '../providers/settings_provider.dart';
 import '../providers/update_provider.dart';
+import '../services/ai_action_handler.dart';
 import '../services/device_data_service.dart';
+import '../services/eye_chat_service.dart';
 import '../theme/app_colors.dart';
 import '../utils/app_icon.dart';
 import '../theme/app_theme.dart';
@@ -107,6 +113,13 @@ class HomeScreen extends StatelessWidget {
           const SizedBox(height: 20),
           const SetupStatusBanner(),
           _ScoreCard(habit: habit),
+          const SizedBox(height: 12),
+          // Thẻ AI TỰ ĐỘNG rà soát dữ liệu ngay ở Trang chủ — khác với Chat
+          // (phải người dùng chủ động hỏi): thẻ này TỰ chạy phân tích (tối đa
+          // 1 lần mỗi 6 tiếng) và đề xuất/thực hiện điều chỉnh (tôn trọng
+          // đúng cài đặt "Hỏi trước khi AI tự thao tác" ở Settings > Quyền
+          // riêng tư & Bảo mật).
+          const _AiInsightCard(),
           const NextBreakCountdownCard(),
           const SizedBox(height: 12),
           _TodaySuggestionsCard(habit: habit),
@@ -250,6 +263,271 @@ class HomeScreen extends StatelessWidget {
                   ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ---------------- AI tự động rà soát ngay Trang chủ ----------------
+// Khác với Chat (bạn phải chủ động gõ câu hỏi), thẻ này TỰ CHẠY 1 lượt phân
+// tích dữ liệu hiện tại (điểm sức khỏe mắt, từng habit, hồ sơ thị lực, kiểu
+// nhắc nhở, tự động nhắc nghỉ mắt...) và để AI đề xuất ĐÚNG 1 điều chỉnh cụ
+// thể nếu thấy cần, dùng LẠI đúng cơ chế %%ACTION%%...%%END%% + AiActionHandler
+// đã có sẵn cho Chat — không phát minh cơ chế mới, đảm bảo hành vi nhất quán
+// (tôn trọng cùng 1 cài đặt "Hỏi trước khi AI tự thao tác").
+//
+// Tự chạy tối đa 1 lần mỗi 6 tiếng (lưu mốc giờ vào SharedPreferences) để
+// không tốn quota/pin mỗi lần mở app — người dùng vẫn có thể bấm nút làm mới
+// để phân tích lại ngay bất cứ lúc nào.
+class _AiInsightCard extends StatefulWidget {
+  const _AiInsightCard();
+
+  @override
+  State<_AiInsightCard> createState() => _AiInsightCardState();
+}
+
+enum _AiInsightState { idle, loading, result, error }
+
+class _AiInsightCardState extends State<_AiInsightCard> {
+  static const _kLastRunKey = 'pref_ai_home_insight_last_run_millis';
+  static const _kMinGapBetweenAutoRuns = Duration(hours: 6);
+
+  _AiInsightState _state = _AiInsightState.idle;
+  String _resultText = '';
+  List<AiAction> _pendingActions = [];
+  bool _actionsResolved = true;
+  String? _errorText;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _maybeAutoRun());
+  }
+
+  Future<void> _maybeAutoRun() async {
+    final prefs = await SharedPreferences.getInstance();
+    final lastRunMillis = prefs.getInt(_kLastRunKey);
+    final lastRun = lastRunMillis == null ? null : DateTime.fromMillisecondsSinceEpoch(lastRunMillis);
+    if (lastRun != null && DateTime.now().difference(lastRun) < _kMinGapBetweenAutoRuns) {
+      return;
+    }
+    if (!mounted) return;
+    await _runAnalysis(silentOnError: true);
+  }
+
+  String _buildContext(BuildContext context) {
+    final habits = context.read<HabitProvider>();
+    final settings = context.read<SettingsProvider>();
+    final autoBreak = context.read<AutoBreakProvider>();
+    final buffer = StringBuffer();
+    buffer.writeln('- Điểm sức khỏe mắt hiện tại: ${habits.eyeHealthScore}/100');
+    buffer.writeln('- Hồ sơ thị lực (vision profile): "${settings.visionProfile}"');
+    buffer.writeln('- Kiểu nhắc nhở hiện tại (reminder style): "${settings.reminderStyle}"');
+    buffer.writeln('- Tự động nhắc nghỉ mắt (auto break): ${autoBreak.enabled ? "đang BẬT" : "đang TẮT"}');
+    for (final habit in habits.habits) {
+      if (habit.isComingSoon) continue;
+      final unit = switch (habit.id) {
+        'phone' || 'sleep' => 'giờ/ngày',
+        'outdoor' => 'phút/ngày',
+        'breaks' => 'lần/ngày',
+        _ => habit.unit,
+      };
+      buffer.writeln(
+        '- ${habit.title} (id: "${habit.id}"): hiện tại = ${habit.current.toStringAsFixed(1)} $unit, '
+        'mục tiêu = ${habit.target.toStringAsFixed(1)} $unit${habit.isLive ? '' : ' (chưa có dữ liệu)'}',
+      );
+    }
+    return buffer.toString();
+  }
+
+  Future<void> _runAnalysis({bool silentOnError = false}) async {
+    if (!mounted) return;
+    setState(() {
+      _state = _AiInsightState.loading;
+      _errorText = null;
+    });
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_kLastRunKey, DateTime.now().millisecondsSinceEpoch);
+
+    try {
+      final contextInfo = _buildContext(context);
+      final reply = await EyeChatService.instance.sendMessage(
+        history: [
+          {
+            'role': 'user',
+            'content':
+                'Dựa trên dữ liệu hiện tại của tôi (xem phần "Dữ liệu hiện tại của người dùng"), hãy chủ động '
+                'phân tích và đề xuất ĐÚNG 1 thay đổi cụ thể (nếu thật sự cần thiết) để cải thiện sức khỏe mắt, '
+                'kèm đúng 1 khối lệnh %%ACTION%%...%%END%% cho thay đổi đó. Trả lời trong 1-2 câu ngắn gọn bằng '
+                'tiếng Việt, giải thích lý do đề xuất. Nếu mọi chỉ số đều đang ổn hoặc chưa đủ dữ liệu để kết '
+                'luận, chỉ cần trả lời ngắn gọn 1 câu rằng hiện tại ổn/chưa đủ dữ liệu, KHÔNG chèn khối lệnh nào.',
+          },
+        ],
+        contextInfo: contextInfo,
+      );
+
+      if (!mounted) return;
+      final result = AiActionHandler.extract(reply);
+      setState(() {
+        _resultText = result.cleanedText.isEmpty
+            ? (context.read<LanguageProvider>().strings.vi ? 'Mọi thứ đang ổn.' : 'Everything looks fine.')
+            : result.cleanedText;
+        _pendingActions = result.actions;
+        _actionsResolved = _pendingActions.isEmpty;
+        _state = _AiInsightState.result;
+      });
+
+      if (_pendingActions.isNotEmpty && mounted) {
+        final requireConfirm = context.read<SettingsMoreProvider>().aiConfirmBeforeActing;
+        if (!requireConfirm) {
+          await _applyActions();
+        }
+      }
+    } catch (e) {
+      if (!mounted) return;
+      final message = e.toString();
+      final strings = context.read<LanguageProvider>().strings;
+      String friendly;
+      if (message.contains('missing_api_key')) {
+        friendly = strings.chatErrorMissingKey;
+      } else if (message.contains('invalid_api_key')) {
+        friendly = strings.chatErrorInvalidKey;
+      } else if (message.contains('rate_limited')) {
+        friendly = strings.chatErrorRateLimited;
+      } else if (message.contains('network_error')) {
+        friendly = strings.chatErrorNetwork;
+      } else {
+        friendly = strings.chatErrorGeneric;
+      }
+      // Lần tự động chạy nền (silentOnError) thất bại thì lặng lẽ lùi về
+      // trạng thái ban đầu — không làm phiền người dùng bằng lỗi kỹ thuật
+      // ngay khi vừa mở app; chỉ hiện lỗi rõ ràng khi họ chủ động bấm nút
+      // làm mới.
+      setState(() {
+        if (silentOnError) {
+          _state = _AiInsightState.idle;
+        } else {
+          _state = _AiInsightState.error;
+          _errorText = friendly;
+        }
+      });
+    }
+  }
+
+  Future<void> _applyActions() async {
+    final habits = context.read<HabitProvider>();
+    final isVi = context.read<LanguageProvider>().isVietnamese;
+    final confirmations = await AiActionHandler.execute(
+      _pendingActions,
+      habits: habits,
+      isVietnamese: isVi,
+      settings: context.read<SettingsProvider>(),
+      autoBreak: context.read<AutoBreakProvider>(),
+    );
+    if (!mounted) return;
+    setState(() {
+      _actionsResolved = true;
+      if (confirmations.isNotEmpty) {
+        _resultText = '$_resultText\n\n${confirmations.join('\n')}';
+      }
+    });
+  }
+
+  void _declineActions() {
+    setState(() => _actionsResolved = true);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final strings = context.watch<LanguageProvider>().strings;
+    final primary = Theme.of(context).colorScheme.primary;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: SectionCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    gradient: AppTheme.gradientFor(primary),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  alignment: Alignment.center,
+                  child: const Icon(Icons.auto_awesome_rounded, size: 18, color: Colors.white),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    strings.vi ? 'AI tự động rà soát' : 'AI auto check-in',
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                ),
+                if (_state != _AiInsightState.loading)
+                  IconButton(
+                    icon: const Icon(Icons.refresh_rounded, size: 18),
+                    tooltip: strings.vi ? 'Phân tích lại' : 'Re-analyze',
+                    onPressed: () => _runAnalysis(),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            if (_state == _AiInsightState.idle)
+              Text(
+                strings.vi
+                    ? 'Bấm biểu tượng làm mới để AI xem lại thói quen và tự đề xuất điều chỉnh nếu cần.'
+                    : 'Tap refresh to let AI review your habits and suggest a change if needed.',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textMuted),
+              ),
+            if (_state == _AiInsightState.loading)
+              Row(
+                children: [
+                  const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      strings.vi ? 'AI đang xem xét dữ liệu của bạn...' : 'AI is reviewing your data...',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ),
+                ],
+              ),
+            if (_state == _AiInsightState.error)
+              Text(
+                _errorText ?? strings.chatErrorGeneric,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.error),
+              ),
+            if (_state == _AiInsightState.result) ...[
+              Text(_resultText, style: Theme.of(context).textTheme.bodyMedium),
+              if (!_actionsResolved) ...[
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: _declineActions,
+                        child: Text(strings.aiPendingActionsDecline),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: FilledButton(
+                        style: FilledButton.styleFrom(backgroundColor: primary),
+                        onPressed: _applyActions,
+                        child: Text(strings.aiPendingActionsAccept),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ],
+          ],
+        ),
       ),
     );
   }

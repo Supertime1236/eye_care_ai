@@ -30,6 +30,17 @@ import '../widgets/shared_widgets.dart';
 // sau khi nhắc mà máy KHÔNG ghi nhận thêm thao tác trong 20 giây, coi như
 // người dùng đã rời mắt khỏi màn hình) — không cần camera, không cần bấm
 // xác nhận thủ công.
+//
+// BUG ĐÃ SỬA (2 đồng hồ đếm ngược hiển thị 2 con số khác nhau): trước đây
+// "Tự động nhắc nghỉ mắt" (AutoBreakProvider) và "Nhắc nghỉ mắt" thủ công
+// (ReminderProvider, đặt hẹn giờ cố định) là 2 cơ chế HOÀN TOÀN ĐỘC LẬP,
+// không có gì ngăn cả 2 cùng bật một lúc — mỗi cái tự đếm ngược theo lịch
+// riêng (thủ công thì cố định, tự động thì tính lại theo usage thật), ra 2
+// con số/2 thông báo khác nhau ngay trong cùng 1 lúc, khiến người dùng tưởng
+// app bị lỗi "đếm sai". Giờ 2 cơ chế LOẠI TRỪ LẪN NHAU: bật bên nào sẽ tự
+// tắt bên còn lại (xem _ensureOnlyOneReminderActive), và khi "Tự động" đang
+// bật, phần đếm ngược thủ công bị làm mờ + khoá thao tác kèm ghi chú lý do,
+// thay vì vẫn hiển thị số liệu cũ gây hiểu lầm là đang chạy song song.
 class EyeBreakScreen extends StatefulWidget {
   const EyeBreakScreen({super.key});
 
@@ -127,7 +138,25 @@ class _EyeBreakScreenState extends State<EyeBreakScreen>
     }
   }
 
+  // Đảm bảo CHỈ MỘT trong 2 cơ chế nhắc nghỉ mắt (thủ công / tự động) đang
+  // hoạt động tại một thời điểm — tắt bên còn lại trước khi bật bên mới, để
+  // không bao giờ có 2 đồng hồ đếm ngược khác nhau chạy song song.
+  Future<void> _ensureOnlyOneReminderActive({required bool keepAuto}) async {
+    final reminder = context.read<ReminderProvider>();
+    final autoBreak = context.read<AutoBreakProvider>();
+    if (keepAuto) {
+      if (reminder.isEyeBreakReminderActive) {
+        _stopReminder(reminder);
+      }
+    } else {
+      if (autoBreak.enabled) {
+        await autoBreak.setEnabled(false);
+      }
+    }
+  }
+
   Future<void> _startFromButton(ReminderProvider reminder) async {
+    await _ensureOnlyOneReminderActive(keepAuto: false);
     final habitProvider = context.read<HabitProvider>();
     final target = habitProvider.habits
         .firstWhere((h) => h.id == 'breaks')
@@ -279,6 +308,10 @@ class _EyeBreakScreenState extends State<EyeBreakScreen>
     final autoBreak = context.watch<AutoBreakProvider>();
     final language = context.watch<LanguageProvider>();
     final strings = language.strings;
+    // Khi "Tự động nhắc nghỉ mắt" đang bật, phần đếm ngược THỦ CÔNG bên dưới
+    // bị khoá + làm mờ (xem giải thích ở đầu file) — 2 cơ chế không bao giờ
+    // cùng hiển thị số liệu một lúc nữa.
+    final manualLockedByAuto = autoBreak.enabled;
 
     if (_breakPromptShowing) {
       return Scaffold(
@@ -342,10 +375,15 @@ class _EyeBreakScreenState extends State<EyeBreakScreen>
                           ? 'Tự động nhắc nghỉ mắt'
                           : 'Auto eye-break reminders',
                       description: strings.vi
-                          ? 'Không cần đặt hẹn giờ — tự chia mục tiêu nghỉ mắt/ngày theo thời gian bạn thực sự dùng máy, và tự nhận diện nếu bạn đã nghỉ (không cần bấm xác nhận, không cần camera).'
-                          : "No need to set a timer — splits your daily break goal across your real phone usage, and auto-detects when you've rested (no confirmation tap, no camera needed).",
+                          ? 'Không cần đặt hẹn giờ — tự chia mục tiêu nghỉ mắt/ngày theo thời gian bạn thực sự dùng máy, và tự nhận diện nếu bạn đã nghỉ (không cần bấm xác nhận, không cần camera). Bật cái này sẽ tự tắt "Nhắc nghỉ mắt" thủ công bên dưới để tránh 2 đồng hồ đếm ngược khác nhau.'
+                          : "No need to set a timer — splits your daily break goal across your real phone usage, and auto-detects when you've rested (no confirmation tap, no camera needed). Turning this on will automatically turn off the manual reminder below, so you never see two different countdowns.",
                       value: autoBreak.enabled,
-                      onChanged: (v) => autoBreak.setEnabled(v),
+                      onChanged: (v) async {
+                        if (v) {
+                          await _ensureOnlyOneReminderActive(keepAuto: true);
+                        }
+                        await autoBreak.setEnabled(v);
+                      },
                     ),
                     if (autoBreak.enabled) ...[
                       const SizedBox(height: 12),
@@ -386,117 +424,150 @@ class _EyeBreakScreenState extends State<EyeBreakScreen>
               ),
               const SizedBox(height: 16),
 
-              SectionCard(
-                child: Column(
-                  children: [
-                    SizedBox(
-                      width: 160,
-                      height: 160,
-                      child: Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          SizedBox(
-                            width: 160,
-                            height: 160,
-                            child: CircularProgressIndicator(
-                              value:
-                                  reminder.isEyeBreakReminderActive &&
-                                      reminder.reminderMinutes > 0
-                                  ? _secondsRemaining /
-                                        (reminder.reminderMinutes * 60)
-                                  : 1,
-                              strokeWidth: 10,
-                              backgroundColor: AppColors.border,
-                              valueColor: const AlwaysStoppedAnimation(
-                                AppColors.testAccent,
-                              ),
-                            ),
+              if (manualLockedByAuto)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppColors.warning.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.warning.withValues(alpha: 0.3)),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(Icons.info_outline_rounded, color: AppColors.warning, size: 20),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            strings.vi
+                                ? 'Đang tắt "Nhắc nghỉ mắt" thủ công vì Tự động nhắc nghỉ mắt đang bật ở trên — tắt Tự động nếu bạn muốn tự đặt hẹn giờ cố định.'
+                                : 'The manual reminder below is off while Auto eye-break reminders is on above — turn Auto off if you want a fixed manual timer instead.',
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.warning),
                           ),
-                          Column(
-                            mainAxisSize: MainAxisSize.min,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              IgnorePointer(
+                ignoring: manualLockedByAuto,
+                child: Opacity(
+                  opacity: manualLockedByAuto ? 0.4 : 1.0,
+                  child: SectionCard(
+                    child: Column(
+                      children: [
+                        SizedBox(
+                          width: 160,
+                          height: 160,
+                          child: Stack(
+                            alignment: Alignment.center,
                             children: [
-                              Text(
-                                reminder.isEyeBreakReminderActive
-                                    ? _formatCountdown(_secondsRemaining)
-                                    : '--:--',
-                                style: Theme.of(
-                                  context,
-                                ).textTheme.headlineMedium,
+                              SizedBox(
+                                width: 160,
+                                height: 160,
+                                child: CircularProgressIndicator(
+                                  value:
+                                      reminder.isEyeBreakReminderActive &&
+                                          reminder.reminderMinutes > 0
+                                      ? _secondsRemaining /
+                                            (reminder.reminderMinutes * 60)
+                                      : 1,
+                                  strokeWidth: 10,
+                                  backgroundColor: AppColors.border,
+                                  valueColor: const AlwaysStoppedAnimation(
+                                    AppColors.testAccent,
+                                  ),
+                                ),
                               ),
-                              Text(
-                                reminder.isEyeBreakReminderActive
-                                    ? strings.eyeBreakNextIn
-                                    : strings.eyeBreakStart,
-                                style: Theme.of(context).textTheme.bodySmall,
+                              Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    reminder.isEyeBreakReminderActive
+                                        ? _formatCountdown(_secondsRemaining)
+                                        : '--:--',
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.headlineMedium,
+                                  ),
+                                  Text(
+                                    reminder.isEyeBreakReminderActive
+                                        ? strings.eyeBreakNextIn
+                                        : strings.eyeBreakStart,
+                                    style: Theme.of(context).textTheme.bodySmall,
+                                  ),
+                                ],
                               ),
                             ],
                           ),
+                        ),
+                        const SizedBox(height: 20),
+                        if (!reminder.isEyeBreakReminderActive) ...[
+                          Text(
+                            strings.eyeBreakIntervalLabel,
+                            style: Theme.of(context).textTheme.titleSmall,
+                          ),
+                          const SizedBox(height: 10),
+                          Wrap(
+                            spacing: 8,
+                            children: _intervalOptions.map((minutes) {
+                              final selected = reminder.reminderMinutes == minutes;
+                              return ChoiceChip(
+                                label: Text(
+                                  '$minutes ${strings.vi ? "phút" : "min"}',
+                                ),
+                                selected: selected,
+                                onSelected: (_) =>
+                                    reminder.setReminderMinutes(minutes),
+                                selectedColor: AppColors.testAccent.withValues(
+                                  alpha: 0.15,
+                                ),
+                                // BUG ĐÃ SỬA: ChoiceChip mặc định hiện dấu ✓ khi
+                                // được chọn — dấu tích chèn vào đột ngột, cộng
+                                // với fontWeight đổi từ 500 lên 700 (chữ đậm
+                                // rộng hơn chữ thường) khiến cả chip đổi kích
+                                // thước 2 LẦN CÙNG LÚC trong 1 khung hình, tạo
+                                // cảm giác "giật/lag" khi chọn khoảng thời gian
+                                // nhắc. Tắt checkmark + giữ NGUYÊN 1 độ đậm chữ
+                                // cho cả 2 trạng thái (chỉ đổi màu) để chip
+                                // không bao giờ đổi kích thước khi chọn nữa.
+                                showCheckmark: false,
+                                labelStyle: TextStyle(
+                                  color: selected ? AppColors.testAccent : null,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                          const SizedBox(height: 20),
                         ],
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    if (!reminder.isEyeBreakReminderActive) ...[
-                      Text(
-                        strings.eyeBreakIntervalLabel,
-                        style: Theme.of(context).textTheme.titleSmall,
-                      ),
-                      const SizedBox(height: 10),
-                      Wrap(
-                        spacing: 8,
-                        children: _intervalOptions.map((minutes) {
-                          final selected = reminder.reminderMinutes == minutes;
-                          return ChoiceChip(
-                            label: Text(
-                              '$minutes ${strings.vi ? "phút" : "min"}',
+                        SizedBox(
+                          width: double.infinity,
+                          child: FilledButton(
+                            style: FilledButton.styleFrom(
+                              backgroundColor: reminder.isEyeBreakReminderActive
+                                  ? AppColors.error
+                                  : AppColors.testAccent,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
                             ),
-                            selected: selected,
-                            onSelected: (_) =>
-                                reminder.setReminderMinutes(minutes),
-                            selectedColor: AppColors.testAccent.withValues(
-                              alpha: 0.15,
+                            onPressed: () => reminder.isEyeBreakReminderActive
+                                ? _stopReminder(reminder)
+                                : _startFromButton(reminder),
+                            child: Text(
+                              reminder.isEyeBreakReminderActive
+                                  ? strings.eyeBreakStop
+                                  : strings.eyeBreakStart,
                             ),
-                            // BUG ĐÃ SỬA: ChoiceChip mặc định hiện dấu ✓ khi
-                            // được chọn — dấu tích chèn vào đột ngột, cộng
-                            // với fontWeight đổi từ 500 lên 700 (chữ đậm
-                            // rộng hơn chữ thường) khiến cả chip đổi kích
-                            // thước 2 LẦN CÙNG LÚC trong 1 khung hình, tạo
-                            // cảm giác "giật/lag" khi chọn khoảng thời gian
-                            // nhắc. Tắt checkmark + giữ NGUYÊN 1 độ đậm chữ
-                            // cho cả 2 trạng thái (chỉ đổi màu) để chip
-                            // không bao giờ đổi kích thước khi chọn nữa.
-                            showCheckmark: false,
-                            labelStyle: TextStyle(
-                              color: selected ? AppColors.testAccent : null,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          );
-                        }).toList(),
-                      ),
-                      const SizedBox(height: 20),
-                    ],
-                    SizedBox(
-                      width: double.infinity,
-                      child: FilledButton(
-                        style: FilledButton.styleFrom(
-                          backgroundColor: reminder.isEyeBreakReminderActive
-                              ? AppColors.error
-                              : AppColors.testAccent,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
                           ),
                         ),
-                        onPressed: () => reminder.isEyeBreakReminderActive
-                            ? _stopReminder(reminder)
-                            : _startFromButton(reminder),
-                        child: Text(
-                          reminder.isEyeBreakReminderActive
-                              ? strings.eyeBreakStop
-                              : strings.eyeBreakStart,
-                        ),
-                      ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
               const SizedBox(height: 16),
