@@ -99,10 +99,19 @@ class HomeScreen extends StatelessWidget {
                       backgroundColor: accent.withValues(alpha: 0.1),
                       backgroundImage: profile.avatarUrl != null ? NetworkImage(profile.avatarUrl!) : null,
                       child: profile.avatarUrl == null
-                          ? Text(
-                              profile.name.isNotEmpty ? profile.name[0].toUpperCase() : '👤',
-                              style: TextStyle(fontSize: 18, color: accent),
-                            )
+                          ? (profile.name.isNotEmpty
+                              ? Text(
+                                  profile.name[0].toUpperCase(),
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    color: accent,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                )
+                              // Chưa có tên (chưa đăng nhập/chế độ khách) ->
+                              // icon người dùng thay vì emoji 👤, đúng yêu
+                              // cầu không dùng emoji làm icon.
+                              : AppIcon('👤', size: 20, color: accent))
                           : null,
                     );
                   }),
@@ -982,7 +991,7 @@ class _ScoreCard extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    const Text('🔥', style: TextStyle(fontSize: 22)),
+                    const Icon(Icons.local_fire_department_rounded, size: 20, color: Colors.deepOrange),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
@@ -1022,15 +1031,17 @@ class _ScoreCard extends StatelessWidget {
     final delta = habit.eyeHealthScoreDelta;
 
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         gradient: AppTheme.gradientFor(accent),
         borderRadius: BorderRadius.circular(20),
+        // Shadow dịu hơn bản trước (blur/alpha thấp hơn) — thẻ điểm vẫn nổi
+        // bật nhờ gradient + vị trí đầu trang, không cần bóng đổ đậm.
         boxShadow: [
           BoxShadow(
-            color: accent.withValues(alpha: 0.3),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
+            color: accent.withValues(alpha: 0.22),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
@@ -1106,7 +1117,7 @@ class _ScoreCard extends StatelessWidget {
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const Text('🔥', style: TextStyle(fontSize: 12)),
+                                const Icon(Icons.local_fire_department_rounded, size: 13, color: Colors.white),
                                 const SizedBox(width: 3),
                                 Text(
                                   '${habit.streakDays} ${strings.dayStreak}',
@@ -1130,10 +1141,14 @@ class _ScoreCard extends StatelessWidget {
                   ],
                 ),
               ),
-              ScoreRing(score: habit.eyeHealthScore),
+              // Vòng tròn điểm nhỏ lại một chút (120 -> 104) để thẻ điểm
+              // không chiếm gần hết màn hình, vẫn là thông tin nổi bật nhất
+              // nhờ vị trí + gradient, nhưng nhường chỗ cho breakdown yếu
+              // tố bên dưới dễ quét mắt hơn.
+              ScoreRing(score: habit.eyeHealthScore, size: 104, strokeWidth: 9),
             ],
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 16),
           Container(
             padding: const EdgeInsets.symmetric(vertical: 2),
             decoration: BoxDecoration(
@@ -1233,7 +1248,7 @@ class _TodaySuggestionsCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Text('💡', style: TextStyle(fontSize: 16)),
+              Icon(Icons.lightbulb_outline_rounded, size: 18, color: Theme.of(context).colorScheme.primary),
               const SizedBox(width: 8),
               Text(strings.todaySuggestionsTitle, style: Theme.of(context).textTheme.titleSmall),
             ],
@@ -1310,7 +1325,7 @@ class _ScoreFactorRow extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Text(icon, style: const TextStyle(fontSize: 22)),
+                    AppIcon(icon, size: 22, color: Theme.of(sheetContext).colorScheme.primary),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
@@ -1336,7 +1351,7 @@ class _ScoreFactorRow extends StatelessWidget {
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
-                      '🧪 ${strings.experimentalTag}',
+                      strings.experimentalTag,
                       style: Theme.of(sheetContext).textTheme.labelSmall?.copyWith(
                             color: AppColors.warning,
                             fontWeight: FontWeight.w700,
@@ -1372,7 +1387,7 @@ class _ScoreFactorRow extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 6),
         child: Row(
           children: [
-            Text(icon, style: const TextStyle(fontSize: 15)),
+            AppIcon(icon, size: 16, color: Colors.white.withValues(alpha: 0.9)),
             const SizedBox(width: 8),
             SizedBox(
               width: 78,
@@ -1386,7 +1401,7 @@ class _ScoreFactorRow extends StatelessWidget {
               ),
             ),
             if (isExperimental) ...[
-              const Text('🧪', style: TextStyle(fontSize: 11)),
+              Icon(Icons.science_outlined, size: 12, color: Colors.white.withValues(alpha: 0.7)),
               const SizedBox(width: 4),
             ],
             Icon(
@@ -1551,7 +1566,7 @@ class _SuggestionCard extends StatelessWidget {
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(b.$1, style: const TextStyle(fontSize: 18)),
+                      AppIcon(b.$1, size: 18, color: Theme.of(sheetContext).colorScheme.primary),
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(b.$2, style: Theme.of(sheetContext).textTheme.bodyMedium),
