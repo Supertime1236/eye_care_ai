@@ -101,8 +101,44 @@ class AutoBreakProvider extends ChangeNotifier {
     // Sang ngày mới -> mốc usage cũ không còn ý nghĩa để tính delta (usage
     // system của Android tự reset theo ngày) -> bỏ mốc cũ, đo lại từ đầu.
     _lastUsageSeconds = storedDate == todayKey ? prefs.getInt(_kLastUsageSecKey) : null;
-    if (_enabled) _startPolling();
+    if (_enabled) {
+      _startPolling();
+      // Đặt lại báo thức native an toàn mỗi lần app khởi động và tính năng
+      // đang bật — xem giải thích ở _scheduleNativeSafetyAlarm().
+      unawaited(_scheduleNativeSafetyAlarm());
+    }
     notifyListeners();
+  }
+
+  // BUG ĐÃ SỬA (đến giờ hoàn toàn không có thông báo nào): toàn bộ cơ chế
+  // "Tự động nhắc nghỉ mắt" trước đây chỉ dựa vào Timer.periodic của Dart để
+  // đếm usage rồi tự bắn showInstantNotification() khi đủ ngưỡng. Vấn đề:
+  // MỘT KHI APP BỊ ĐƯA XUỐNG NỀN/KHOÁ MÀN HÌNH, Android (Doze/App Standby)
+  // tạm dừng isolate Flutter -> Timer KHÔNG CÒN CHẠY TIẾP -> không bao giờ
+  // tới ngưỡng để bắn thông báo, dù người dùng vẫn đang dùng máy (chỉ là
+  // không mở đúng app EyeCare AI). Đây khác hẳn với "Nhắc nghỉ mắt" thủ
+  // công, vốn dùng báo thức NATIVE qua AlarmManager (xem
+  // NotificationService.scheduleRepeatingBreakAlarm) — luôn tự bắn đúng giờ
+  // kể cả khi app đã đóng hẳn.
+  //
+  // GIẢI PHÁP: khi bật Tự động, ĐẶT THÊM 1 báo thức native lặp lại ở đúng
+  // khoảng `_intervalSeconds` hiện tại, dùng LẠI chính cơ chế đáng tin cậy
+  // của báo thức thủ công — coi đây là "lưới an toàn": nếu Dart Timer vẫn
+  // chạy được (app đang mở), người dùng vẫn có trải nghiệm "tự nhận diện đã
+  // nghỉ chưa" như cũ; nếu Dart Timer bị hệ điều hành tạm dừng, báo thức
+  // native vẫn tự bắn đúng chu kỳ ước tính, đảm bảo KHÔNG BAO GIỜ im lặng
+  // hoàn toàn. Đánh đổi chấp nhận được: thỉnh thoảng có thể nhận 2 thông
+  // báo gần nhau nếu app đang mở liên tục đúng lúc cả 2 cơ chế cùng tới hạn
+  // — tốt hơn nhiều so với không bao giờ được nhắc.
+  Future<void> _scheduleNativeSafetyAlarm() async {
+    final minutes = (_intervalSeconds / 60).round().clamp(1, 1000000);
+    await NotificationService.instance.scheduleRepeatingBreakAlarm(
+      intervalMinutes: minutes,
+      title: '👁️ Đến giờ nghỉ mắt',
+      body: 'Nhìn xa 6 mét trong 20 giây nhé — mình sẽ tự kiểm tra bạn có thật sự nghỉ không.',
+      ongoingTitle: 'Tự động nhắc nghỉ mắt',
+      ongoingRemainingSuffix: 'Sẽ nhắc lúc',
+    );
   }
 
   String _todayKey() {
@@ -119,6 +155,9 @@ class AutoBreakProvider extends ChangeNotifier {
     if (clamped != _intervalSeconds) {
       _intervalSeconds = clamped;
       notifyListeners();
+      // Khoảng lặp vừa đổi -> đặt lại báo thức native theo đúng khoảng mới,
+      // nếu không báo thức cũ vẫn bắn theo khoảng LỖI THỜI.
+      if (_enabled) unawaited(_scheduleNativeSafetyAlarm());
     }
   }
 
@@ -128,10 +167,12 @@ class AutoBreakProvider extends ChangeNotifier {
     await prefs.setBool(_kEnabledKey, value);
     if (value) {
       _startPolling();
+      await _scheduleNativeSafetyAlarm();
     } else {
       _pollTimer?.cancel();
       _uiTickTimer?.cancel();
       _lastPollAt = null;
+      await NotificationService.instance.cancelRepeatingBreakAlarm();
     }
     notifyListeners();
   }

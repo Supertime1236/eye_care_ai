@@ -232,11 +232,7 @@ class DeviceDataService {
   // luôn trả về false. Đã nới các mốc này (vẫn giữ nguyên tắc "cần cả 2 tín
   // hiệu" để tránh báo nhầm trong nhà) + thêm phương án dự phòng khi thiếu
   // 1 trong 2 tín hiệu, xem chi tiết ở _detectOutdoorSample/_hasGoodGpsFix.
-  static const _kGpsGoodAccuracyMeters = 50.0; // độ chính xác GPS coi là "tốt"
-  // Ngưỡng dùng khi CHỈ có GPS làm căn cứ (thiếu số đo lux) — nghiêm ngặt
-  // hơn để bù lại việc thiếu xác nhận ánh sáng.
-  static const _kGpsOnlyAccuracyMeters = 20.0;
-  static const _kOutdoorLuxThreshold = 600; // lux tối thiểu coi là "ánh sáng ngoài trời"
+  static const _kGpsGoodAccuracyMeters = 30.0; // độ chính xác GPS coi là "tốt"
 
   Future<double> getOutdoorMinutesToday() async {
     final prefs = await SharedPreferences.getInstance();
@@ -269,25 +265,14 @@ class DeviceDataService {
     });
   }
 
-  // Trả về true (ngoài trời) / false (trong nhà) / null (không đủ căn cứ để
-  // kết luận cho mẫu này — ví dụ dịch vụ vị trí đang tắt hoặc chưa cấp
-  // quyền, không phải lỗi tạm thời của 1 lần đo).
-  Future<bool?> _detectOutdoorSample() async {
-    final lux = await _readAmbientLuxOnce();
-    if (lux == null) {
-      // Không đọc được cảm biến ánh sáng ở LẦN NÀY (máy không có cảm biến,
-      // hoặc timeout tạm thời) — trước đây BỎ QUA HẲN mẫu này, khiến những
-      // máy/thời điểm không đọc được lux không bao giờ được tính "ngoài
-      // trời" dù đang đứng giữa trời nắng. Giờ hạ xuống dùng RIÊNG GPS làm
-      // căn cứ, với ngưỡng NGHIÊM NGẶT HƠN (_kGpsOnlyAccuracyMeters) để bù
-      // lại việc thiếu xác nhận ánh sáng, thay vì bỏ cuộc hoàn toàn.
-      return _hasGoodGpsFix(accuracyMeters: _kGpsOnlyAccuracyMeters);
-    }
-    if (lux < _kOutdoorLuxThreshold) return false; // Ánh sáng kiểu trong nhà -> chắc chắn không phải ngoài trời.
-    // Ánh sáng đủ mạnh RỒI mới kiểm tra thêm GPS (đỡ tốn pin hơn: GPS luôn
-    // là bước "xin fix vị trí" tốn thời gian/pin hơn hẳn so với đọc lux).
-    return _hasGoodGpsFix(accuracyMeters: _kGpsGoodAccuracyMeters);
-  }
+  // CHỈ DÙNG GPS (theo yêu cầu): trước đây yêu cầu thêm ánh sáng (lux) nên
+  // khi người dùng để điện thoại trong cặp/balo/túi (cảm biến ánh sáng bị
+  // che, lux ~0) thì thời gian ngoài trời KHÔNG BAO GIỜ tăng dù đang đứng
+  // ngoài nắng. Giờ chỉ xét việc có bắt được tín hiệu GPS tốt hay không.
+  // Để vẫn phân biệt được trong nhà/ngoài trời mà không cần lux, xem
+  // _hasGoodGpsFix: ép dùng chip GPS thuần (không Wi-Fi/cell), trong nhà
+  // thường không bắt được fix.
+  Future<bool?> _detectOutdoorSample() => _hasGoodGpsFix();
 
   // Đọc đúng 1 mẫu lux rồi hủy lắng nghe ngay — khác với
   // startDarkRoomMonitoring() ở dưới vốn lắng nghe LIÊN TỤC cho mục đích
@@ -339,16 +324,16 @@ class DeviceDataService {
         permission == LocationPermission.whileInUse;
   }
 
-  // Lấy nhanh 1 fix GPS và đánh giá độ chính xác. Trả về false (không phải
-  // null) khi thiếu quyền/dịch vụ vị trí, vì trong trường hợp đó không có
-  // căn cứ để xác nhận "ngoài trời" -> coi như không xác nhận được.
+  // Lấy 1 fix GPS và đánh giá độ chính xác. Trả về false khi thiếu quyền/dịch
+  // vụ vị trí đang tắt/không bắt được fix.
   //
-  // BUG ĐÃ SỬA: `timeLimit: 5 giây` trước đây quá ngắn — GPS "nguội" (mới
-  // bật app, vừa ra khỏi vùng có tín hiệu yếu) thường cần 10-15 giây mới có
-  // fix đầu tiên, khiến lần lấy mẫu này liên tục bị timeout và luôn trả về
-  // false dù đang thực sự ở ngoài trời. Tăng lên 12 giây, và nếu vẫn timeout
-  // thì lùi về dùng VỊ TRÍ GẦN NHẤT hệ điều hành còn nhớ (nếu chưa quá 5
-  // phút) thay vì bỏ cuộc hoàn toàn.
+  // `forceLocationManager: true` ép Android dùng chip GPS THUẦN thay vì
+  // FusedLocationProvider (vốn trộn Wi-Fi + cell tower nên trong nhà vẫn cho
+  // "độ chính xác tốt"). Chip GPS cần nhìn thấy bầu trời: trong nhà/trong
+  // cặp trong nhà thường timeout hoặc sai số lớn -> coi là "không ngoài
+  // trời". Cố ý KHÔNG dùng getLastKnownPosition() làm dự phòng như trước, vì
+  // vị trí cũ thường đến từ Wi-Fi/cell và sẽ làm lọt trường hợp trong nhà.
+  // Timeout 15 giây vì GPS thuần "nguội" cần lâu hơn fused.
   Future<bool> _hasGoodGpsFix({double accuracyMeters = _kGpsGoodAccuracyMeters}) async {
     try {
       final serviceEnabled = await Geolocator.isLocationServiceEnabled();
@@ -357,22 +342,21 @@ class DeviceDataService {
       final hasPermission = await hasLocationPermission();
       if (!hasPermission) return false;
 
-      try {
-        final position = await Geolocator.getCurrentPosition(
-          locationSettings: const LocationSettings(
-            accuracy: LocationAccuracy.high,
-            timeLimit: Duration(seconds: 12),
-          ),
-        );
-        return position.accuracy <= accuracyMeters;
-      } on TimeoutException {
-        final last = await Geolocator.getLastKnownPosition();
-        if (last == null) return false;
-        final isFresh = DateTime.now().difference(last.timestamp).inMinutes < 5;
-        return isFresh && last.accuracy <= accuracyMeters;
-      }
+      final settings = Platform.isAndroid
+          ? AndroidSettings(
+              accuracy: LocationAccuracy.best,
+              forceLocationManager: true,
+              timeLimit: const Duration(seconds: 15),
+            )
+          : const LocationSettings(
+              accuracy: LocationAccuracy.best,
+              timeLimit: Duration(seconds: 15),
+            );
+      final position = await Geolocator.getCurrentPosition(locationSettings: settings);
+      return position.accuracy <= accuracyMeters;
     } catch (_) {
-      // Timeout kiểu khác, dịch vụ bị tắt giữa chừng, hoặc lỗi phần cứng.
+      // Timeout (không thấy vệ tinh = nhiều khả năng đang trong nhà), dịch vụ
+      // bị tắt giữa chừng, hoặc lỗi phần cứng.
       return false;
     }
   }
@@ -691,16 +675,50 @@ class DeviceDataService {
 
     return result;
   }
-  static const int _kStreakScoreThreshold = 60;
+  // BUG ĐÃ SỬA (streak không bao giờ tăng): ngưỡng cũ là 60, nhưng yếu tố
+  // "Nghỉ mắt" trong điểm tổng LUÔN được tính vào trung bình (không bị loại
+  // trừ như các yếu tố thiếu dữ liệu khác) và bắt đầu từ 0% cho tới khi
+  // người dùng thực sự hoàn thành đủ số lần nghỉ mắt trong ngày (mặc định
+  // mục tiêu 12 lần/ngày) — chỉ mở app xem qua, dù 3 yếu tố còn lại đều tốt,
+  // trung bình 4 yếu tố vẫn khó vượt 60 vì bị yếu tố này kéo xuống ngay từ
+  // đầu ngày. Hạ ngưỡng xuống 50 để streak vẫn có ý nghĩa (đòi hỏi thói quen
+  // tốt thật sự) nhưng không yêu cầu gần như hoàn hảo cả 4 yếu tố mới đạt.
+  static const int _kStreakScoreThreshold = 50;
+
+  // ---------------- Điểm danh đơn giản: chỉ cần mở app hôm đó ----------------
+  // THÊM MỚI: ngoài điều kiện điểm sức khỏe mắt tốt, một ngày CŨNG được tính
+  // vào chuỗi nếu người dùng ĐƠN GIẢN LÀ CÓ MỞ APP hôm đó — giống kiểu
+  // "điểm danh" hằng ngày của các app thói quen phổ biến, để streak không bị
+  // quá khắt khe/dễ nản với người mới dùng hoặc những ngày bận không kịp
+  // hoàn thành đủ thói quen. Chỉ cần đúng 1 lần mở app/ngày là đủ, gọi hàm
+  // này mỗi lần HabitProvider làm mới dữ liệu (xem refreshHabitsFromDevice).
+  static const _kCheckInPrefix = 'daily_checkin_';
+
+  Future<void> recordAppOpenCheckIn() async {
+    final prefs = await SharedPreferences.getInstance();
+    final todayKey = DateTime.now().toIso8601String().substring(0, 10);
+    await prefs.setBool('$_kCheckInPrefix$todayKey', true);
+  }
+
+  Future<bool> _hasCheckIn(DateTime date) async {
+    final prefs = await SharedPreferences.getInstance();
+    final key = '$_kCheckInPrefix${date.toIso8601String().substring(0, 10)}';
+    return prefs.getBool(key) ?? false;
+  }
+
   // Tính chuỗi ngày liên tiếp (streak) thật: đếm ngược từ hôm nay, mỗi ngày
-  // có snapshot với điểm hoàn thành >= 80% thì tính là 1 ngày trong chuỗi,
-  // dừng lại ở ngày đầu tiên không đạt hoặc không có dữ liệu.
+  // được tính vào chuỗi nếu THỎA MÃN ÍT NHẤT MỘT trong 2 điều kiện — điểm
+  // sức khỏe mắt hôm đó đạt ngưỡng, HOẶC người dùng đã mở app hôm đó (điểm
+  // danh) — dừng lại ở ngày đầu tiên không thỏa mãn cả 2.
   Future<int> calculateStreakDays() async {
     var streak = 0;
     var day = DateTime.now();
     for (var i = 0; i < 365; i++) {
-      final snapshot = await loadDailySnapshot(DateTime(day.year, day.month, day.day));
-      if (snapshot == null || snapshot.score < _kStreakScoreThreshold) break;
+      final dayOnly = DateTime(day.year, day.month, day.day);
+      final snapshot = await loadDailySnapshot(dayOnly);
+      final goodScore = snapshot != null && snapshot.score >= _kStreakScoreThreshold;
+      final checkedIn = await _hasCheckIn(dayOnly);
+      if (!goodScore && !checkedIn) break;
       streak++;
       day = day.subtract(const Duration(days: 1));
     }

@@ -768,10 +768,12 @@ class AppStrings {
   // tăng"/"làm sao để tăng chuỗi", trong khi điều kiện thật (điểm sức khỏe
   // mắt phải đạt từ 80/100 trở lên trong ngày) không hiển nhiên chút nào.
   String get streakExplainTitle => vi ? 'Chuỗi ngày chăm mắt' : 'Eye-care streak';
+// Tìm getter `streakExplainBody` hiện có trong app_strings.dart và THAY
+  // TOÀN BỘ bằng đoạn dưới đây — chỉ thêm phần giải thích điều kiện "điểm
+  // danh" (chỉ cần mở app) mới, không đổi gì khác.
   String get streakExplainBody => vi
-      ? 'Mỗi ngày Điểm sức khỏe mắt (xem thẻ điểm ở Trang chủ) đạt từ 60/100 trở lên, chuỗi sẽ tự tăng thêm 1 ngày. Nếu một ngày điểm dưới 60 (hoặc bạn không mở app hôm đó), chuỗi sẽ bị đứt và về lại 0 vào ngày hôm sau.\n\nĐể giữ điểm cao, hãy chú ý các yếu tố trong thẻ điểm: dùng điện thoại không vượt mục tiêu, ngủ đủ giờ, hoàn thành đủ số lần nghỉ mắt, và giữ môi trường đủ sáng. Chạm vào từng yếu tố trong thẻ điểm để xem cách tính chi tiết.'
-      : 'Any day your Eye Health Score (see the score card on Home) reaches 60/100 or higher, your streak automatically goes up by 1 day. If a day scores below 60 (or you don\'t open the app that day), the streak breaks and resets to 0 the next day.\n\nTo keep your score high, watch the factors in the score card: stay within your phone usage target, get enough sleep, complete enough eye breaks, and keep your surroundings well lit. Tap each factor in the score card to see exactly how it\'s calculated.';
-
+      ? 'Một ngày được tính vào chuỗi nếu thỏa ít nhất 1 trong 2 điều kiện: (1) Điểm sức khỏe mắt (xem thẻ điểm ở Trang chủ) đạt từ 50/100 trở lên, hoặc (2) bạn có mở app trong ngày đó (điểm danh). Nếu cả 2 đều không thỏa, chuỗi sẽ bị đứt và về lại 0 vào ngày hôm sau.\n\nĐể điểm cao hơn (không bắt buộc, nhưng tốt cho mắt), hãy chú ý các yếu tố trong thẻ điểm: dùng điện thoại không vượt mục tiêu, ngủ đủ giờ, hoàn thành đủ số lần nghỉ mắt, và giữ môi trường đủ sáng. Chạm vào từng yếu tố trong thẻ điểm để xem cách tính chi tiết.'
+      : 'A day counts toward the streak if it meets at least one of 2 conditions: (1) your Eye Health Score (see the score card on Home) reaches 50/100 or higher, or (2) you simply opened the app that day (check-in). If neither is met, the streak breaks and resets to 0 the next day.\n\nFor a higher score (optional, but good for your eyes), watch the factors in the score card: stay within your phone usage target, get enough sleep, complete enough eye breaks, and keep your surroundings well lit. Tap each factor in the score card to see exactly how it\'s calculated.';
   // ---------------- Lưu ý & gợi ý cho hôm nay (so sánh hôm qua vs hôm nay) ----------------
   // Hiện dưới thẻ Điểm sức khỏe mắt ở Trang chủ (xem _TodaySuggestionsCard
   // trong home_screen.dart) — so từng yếu tố hôm nay với chính nó hôm qua

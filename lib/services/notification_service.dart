@@ -635,6 +635,54 @@ class NotificationService {
     await notifications.cancel(_dailyHabitNotificationId);
   }
 
+  // ===== DÁN VÀO TRONG class NotificationService (lib/services/notification_service.dart) =====
+  // Đặt ngay dưới hàm cancelDailyHabitReminder() là hợp lý.
+
+  // ID + giờ cố định cho nhắc giữ streak — 21:00, sau nhắc thói quen 20:00
+  // để 2 thông báo không dồn vào cùng 1 lúc.
+  static const int _streakReminderNotificationId = 6003;
+  static const int _streakReminderHour = 21;
+
+  // Nhắc giữ chuỗi ngày (streak) HÀNG NGÀY lúc 21:00. Nội dung `body` chứa
+  // số ngày streak tại thời điểm đặt lịch — HabitProvider gọi lại hàm này
+  // mỗi lần làm mới dữ liệu nên số luôn khá mới. Cùng ID nên mỗi lần gọi
+  // lại sẽ tự ghi đè lịch cũ, không bị trùng thông báo.
+  Future<void> scheduleStreakReminder({
+    required String title,
+    required String body,
+  }) async {
+    await initialize();
+    final scheduledDate = _nextInstanceOfDailyTime(_streakReminderHour, 0);
+    try {
+      await notifications.zonedSchedule(
+        _streakReminderNotificationId,
+        title,
+        body,
+        scheduledDate,
+        _gentleDetails(),
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        matchDateTimeComponents: DateTimeComponents.time,
+      );
+    } catch (e, st) {
+      debugPrint(
+        '[NotificationService] scheduleStreakReminder exact FAILED: $e\n$st',
+      );
+      await notifications.zonedSchedule(
+        _streakReminderNotificationId,
+        title,
+        body,
+        scheduledDate,
+        _gentleDetails(),
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        matchDateTimeComponents: DateTimeComponents.time,
+      );
+    }
+  }
+
+  Future<void> cancelStreakReminder() async {
+    await notifications.cancel(_streakReminderNotificationId);
+  }
+
   // Yêu cầu quyền hiển thị thông báo (Android 13+ cần popup thật, các bản
   // cũ hơn/iOS thường tự cấp) — dùng riêng cho bước "Thông báo" trong Setup
   // Wizard, tách khỏi initialize() vì initialize() chạy quá sớm trong

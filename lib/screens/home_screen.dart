@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../providers/auto_break_provider.dart';
 import '../providers/habit_provider.dart';
@@ -298,9 +297,6 @@ class _AiInsightCard extends StatefulWidget {
 enum _AiInsightState { idle, loading, result, error }
 
 class _AiInsightCardState extends State<_AiInsightCard> {
-  static const _kLastRunKey = 'pref_ai_home_insight_last_run_millis';
-  static const _kMinGapBetweenAutoRuns = Duration(hours: 6);
-
   _AiInsightState _state = _AiInsightState.idle;
   String _resultText = '';
   List<AiAction> _pendingActions = [];
@@ -310,18 +306,23 @@ class _AiInsightCardState extends State<_AiInsightCard> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _maybeAutoRun());
+    WidgetsBinding.instance.addPostFrameCallback((_) => _autoRunOnOpen());
   }
 
-  Future<void> _maybeAutoRun() async {
-    final prefs = await SharedPreferences.getInstance();
-    final lastRunMillis = prefs.getInt(_kLastRunKey);
-    final lastRun = lastRunMillis == null ? null : DateTime.fromMillisecondsSinceEpoch(lastRunMillis);
-    if (lastRun != null && DateTime.now().difference(lastRun) < _kMinGapBetweenAutoRuns) {
-      return;
+  // Theo yêu cầu: VÀO APP LÀ AI BÁO LUÔN, không cần bấm làm mới. Trước đây
+  // có giới hạn tối đa 1 lần/6 tiếng nên nhiều lần mở app không thấy gì.
+  // Giờ chạy MỖI LẦN thẻ này xuất hiện (mỗi lần vào Trang chủ). Chờ tối đa
+  // ~8 giây cho HabitProvider nạp xong dữ liệu thật hôm nay (nếu không AI sẽ
+  // phân tích số 0 lúc app vừa khởi động), rồi mới gọi AI. Lỗi (mạng, key...)
+  // hiện thẳng trong thẻ để người dùng biết, không còn nuốt im lặng.
+  Future<void> _autoRunOnOpen() async {
+    final habit = context.read<HabitProvider>();
+    for (var i = 0; i < 16 && habit.habitsLastUpdated == null; i++) {
+      await Future<void>.delayed(const Duration(milliseconds: 500));
+      if (!mounted) return;
     }
     if (!mounted) return;
-    await _runAnalysis(silentOnError: true);
+    await _runAnalysis();
   }
 
   String _buildContext(BuildContext context) {
@@ -355,9 +356,6 @@ class _AiInsightCardState extends State<_AiInsightCard> {
       _state = _AiInsightState.loading;
       _errorText = null;
     });
-
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt(_kLastRunKey, DateTime.now().millisecondsSinceEpoch);
 
     try {
       final contextInfo = _buildContext(context);

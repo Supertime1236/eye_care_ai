@@ -241,6 +241,14 @@ class HabitProvider extends ChangeNotifier {
     notifyListeners();
 
     final service = DeviceDataService.instance;
+
+    // THÊM MỚI: "điểm danh" — chỉ cần có MỞ APP hôm nay là đủ để ngày đó
+    // được tính vào chuỗi (streak), không bắt buộc phải đạt điểm sức khỏe
+    // mắt tốt (xem DeviceDataService.calculateStreakDays). Ghi nhận ngay ở
+    // đầu mỗi lần làm mới dữ liệu — rẻ (chỉ set 1 bool trong
+    // SharedPreferences), an toàn để gọi nhiều lần/ngày.
+    await service.recordAppOpenCheckIn();
+
     // Mỗi nguồn dữ liệu có timeout RIÊNG (không dùng chung Future.wait không
     // giới hạn thời gian) — nếu một nguồn bị treo (ví dụ hộp thoại xin quyền
     // sức khỏe/GPS chưa được người dùng phản hồi), nó sẽ tự trả về null sau
@@ -334,8 +342,35 @@ class HabitProvider extends ChangeNotifier {
       sleepScore: sleepScore,
     );
     streakDays = await service.calculateStreakDays();
+    await _syncStreakReminder();
 
     notifyListeners();
+  }
+
+  // Đặt/huỷ thông báo nhắc giữ streak hằng ngày (21:00) theo công tắc "Theo
+  // dõi thói quen" (pref_notify_habits, mặc định bật) — đọc thẳng từ
+  // SharedPreferences vì HabitProvider không có BuildContext để lấy
+  // SettingsProvider. Gọi mỗi lần làm mới để số ngày trong nội dung luôn mới.
+  Future<void> _syncStreakReminder() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (!(prefs.getBool('pref_notify_habits') ?? true)) {
+        await NotificationService.instance.cancelStreakReminder();
+        return;
+      }
+      final vi = prefs.getBool('pref_vietnamese') ?? true;
+      final title = vi ? 'Đừng để mất chuỗi ngày!' : "Don't lose your streak!";
+      final body = streakDays > 0
+          ? (vi
+              ? 'Bạn đang có chuỗi $streakDays ngày chăm mắt. Mở app hôm nay để giữ chuỗi nhé!'
+              : 'You have a $streakDays-day eye-care streak. Open the app today to keep it!')
+          : (vi
+              ? 'Mở app hôm nay để bắt đầu chuỗi ngày chăm mắt của bạn nhé!'
+              : 'Open the app today to start your eye-care streak!');
+      await NotificationService.instance.scheduleStreakReminder(title: title, body: body);
+    } catch (_) {
+      // Thông báo chỉ là phụ — không để lỗi lập lịch làm hỏng việc làm mới dữ liệu.
+    }
   }
 
   // Ngưỡng "ngủ quá nhiều" — không có trong yêu cầu gốc con số cụ thể, chọn
