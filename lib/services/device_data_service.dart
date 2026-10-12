@@ -793,20 +793,31 @@ class DeviceDataService {
   // trạng thái thử nghiệm, độ chính xác chưa đủ tin cậy trên nhiều dòng máy
   // và không mang lại giá trị tương xứng với chi phí pin/quyền riêng tư
   // (phải mở camera định kỳ). Đã gỡ bỏ hoàn toàn khỏi app.
-  static const _kEnvironmentSampleInterval = Duration(minutes: 15);
-  // Lux dưới mức này coi là "hơi tối để nhìn màn hình" cho mục đích tính
-  // điểm (khác ngưỡng _kDarkLuxThreshold=10 dùng cho CẢNH BÁO phòng tối —
-  // ở đây chỉ cần "đủ sáng để đọc thoải mái", không cần tối om mới tính xấu).
+  // CÔNG THỨC MỚI (theo yêu cầu): mỗi ngày mới điểm Môi trường BẮT ĐẦU Ở
+  // 100%. Mỗi lần dùng điện thoại, app lấy mẫu lux định kỳ; thời gian dùng
+  // máy ở nơi thiếu sáng (lux < _kGoodLuxThreshold) được cộng vào "dim", mọi
+  // thời gian lấy mẫu cộng vào "total". Điểm = 100% - (dim / total).
+  // VD: dùng máy 5 giờ, trong đó 2 giờ thiếu sáng = 40% -> còn 60%.
+  // Trước đây điểm = % số lần đo "đủ sáng" và là 0% khi chưa có mẫu đủ sáng
+  // nào (xem hình 1: Môi trường 0%), không đúng ý nghĩa "trừ dần từ 100%".
+  static const _kEnvironmentSampleInterval = Duration(minutes: 1);
+  // Dart Timer bị Android tạm dừng khi app xuống nền; kẹp trọng số mỗi mẫu để
+  // khoảng im lặng dài (app bị đóng băng) không bị tính là thời gian dùng máy.
+  static const _kMaxSampleWeightSeconds = 120;
+  // Lux dưới mức này coi là "thiếu sáng để nhìn màn hình" (khác ngưỡng
+  // _kDarkLuxThreshold=10 dùng cho CẢNH BÁO phòng tối).
   static const _kGoodLuxThreshold = 50;
 
-  static const _kEnvGoodLuxCountKey = 'env_good_lux_count';
-  static const _kEnvTotalLuxCountKey = 'env_total_lux_count';
+  static const _kEnvDimSecondsKey = 'env_dim_seconds';
+  static const _kEnvTotalSecondsKey = 'env_total_seconds';
   static const _kEnvDateKey = 'env_sample_date';
 
   Timer? _environmentSampleTimer;
+  DateTime? _lastEnvSampleAt;
 
   void startEnvironmentMonitoring() {
     _environmentSampleTimer?.cancel();
+    _sampleEnvironmentOnce(); // lấy mẫu ngay, không chờ hết chu kỳ đầu.
     _environmentSampleTimer = Timer.periodic(_kEnvironmentSampleInterval, (_) {
       _sampleEnvironmentOnce();
     });
@@ -821,14 +832,20 @@ class DeviceDataService {
     final prefs = await SharedPreferences.getInstance();
     await _resetEnvironmentCountersIfNewDay(prefs);
 
+    final now = DateTime.now();
+    final weight = _lastEnvSampleAt == null
+        ? _kEnvironmentSampleInterval.inSeconds
+        : now.difference(_lastEnvSampleAt!).inSeconds.clamp(1, _kMaxSampleWeightSeconds);
+    _lastEnvSampleAt = now;
+
     final lux = await _readAmbientLuxOnce();
-    if (lux != null) {
-      final total = (prefs.getInt(_kEnvTotalLuxCountKey) ?? 0) + 1;
-      await prefs.setInt(_kEnvTotalLuxCountKey, total);
-      if (lux >= _kGoodLuxThreshold) {
-        final good = (prefs.getInt(_kEnvGoodLuxCountKey) ?? 0) + 1;
-        await prefs.setInt(_kEnvGoodLuxCountKey, good);
-      }
+    if (lux == null) return; // không đọc được cảm biến -> bỏ mẫu, không phạt.
+
+    final total = (prefs.getInt(_kEnvTotalSecondsKey) ?? 0) + weight;
+    await prefs.setInt(_kEnvTotalSecondsKey, total);
+    if (lux < _kGoodLuxThreshold) {
+      final dim = (prefs.getInt(_kEnvDimSecondsKey) ?? 0) + weight;
+      await prefs.setInt(_kEnvDimSecondsKey, dim);
     }
   }
 
@@ -837,21 +854,19 @@ class DeviceDataService {
     final storedDate = prefs.getString(_kEnvDateKey);
     if (storedDate != today) {
       await prefs.setString(_kEnvDateKey, today);
-      await prefs.setInt(_kEnvGoodLuxCountKey, 0);
-      await prefs.setInt(_kEnvTotalLuxCountKey, 0);
+      await prefs.setInt(_kEnvDimSecondsKey, 0);
+      await prefs.setInt(_kEnvTotalSecondsKey, 0);
     }
   }
 
-  // % mẫu lux "đủ sáng" trong hôm nay — null nếu CHƯA có mẫu nào (máy không
-  // có cảm biến ánh sáng, hoặc mới mở app, chưa tới chu kỳ lấy mẫu đầu tiên)
-  // -> UI nên hiện "chưa có dữ liệu", không phải 0%.
+  // Luôn trả về số (không còn null): chưa có mẫu nào hôm nay = 100%.
   Future<double?> getEnvironmentScoreToday() async {
     final prefs = await SharedPreferences.getInstance();
     await _resetEnvironmentCountersIfNewDay(prefs);
-    final total = prefs.getInt(_kEnvTotalLuxCountKey) ?? 0;
-    if (total == 0) return null;
-    final good = prefs.getInt(_kEnvGoodLuxCountKey) ?? 0;
-    return (good / total) * 100;
+    final total = prefs.getInt(_kEnvTotalSecondsKey) ?? 0;
+    if (total <= 0) return 100;
+    final dim = prefs.getInt(_kEnvDimSecondsKey) ?? 0;
+    return (100 - (dim / total) * 100).clamp(0, 100).toDouble();
   }
 
   // ---------------- AI Auto Break: hôm qua có thiếu mục tiêu nghỉ mắt? ----------------

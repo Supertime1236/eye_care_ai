@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../services/cloud_backup_service.dart';
 import '../services/device_data_service.dart';
 import '../services/notification_service.dart';
 
@@ -56,6 +58,13 @@ class HabitProvider extends ChangeNotifier {
   static const _kHabitTargetPrefix = 'pref_habit_target_';
   static const _kManualSleepHoursKey = 'pref_manual_sleep_hours';
   static const _kManualSleepDateKey = 'pref_manual_sleep_date';
+  // Thời điểm (millis) mục tiêu được đổi gần nhất + kết quả khảo sát đã lưu.
+  // Có tiền tố 'pref_' nên được CloudBackupService sao lưu; dấu thời gian cho
+  // phép khi khôi phục từ đám mây KHÔNG ghi đè mục tiêu mới hơn đang có trên
+  // máy (nguyên nhân khiến mục tiêu từ khảo sát bị quay về giá trị cũ/mặc định
+  // sau khi đăng nhập).
+  static const _kTargetsUpdatedAtKey = 'pref_habit_targets_updated_at';
+  static const _kSurveyResultKey = 'pref_survey_result';
 
   HabitProvider() {
     ready = _loadSavedPreferences();
@@ -577,11 +586,18 @@ class HabitProvider extends ChangeNotifier {
     await _saveHabitTarget(habitId, value);
     hasCustomHabitTargets = true;
     await _saveHasCustomHabitTargets();
+    await _stampTargetsUpdated();
     await _updateHabitsCompletion();
     notifyListeners();
+    _pushBackupInBackground();
   }
 
-  Future<void> applySurveyTargets(Map<String, double> targets) async {
+  /// Áp dụng TOÀN BỘ mục tiêu từ khảo sát trong 1 lần (đã await đủ) và lưu cả
+  /// kết quả khảo sát. [surveyAnswers] tuỳ chọn: câu trả lời gốc để lưu kèm.
+  Future<void> applySurveyTargets(
+    Map<String, double> targets, {
+    Map<String, dynamic>? surveyAnswers,
+  }) async {
     for (final entry in targets.entries) {
       final index = habits.indexWhere((h) => h.id == entry.key);
       if (index == -1) continue;
@@ -590,7 +606,35 @@ class HabitProvider extends ChangeNotifier {
     }
     hasCustomHabitTargets = true;
     await _saveHasCustomHabitTargets();
+    await _stampTargetsUpdated();
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+      _kSurveyResultKey,
+      jsonEncode({
+        'appliedAt': DateTime.now().toIso8601String(),
+        'targets': targets,
+        if (surveyAnswers != null) 'answers': surveyAnswers,
+      }),
+    );
+
     await _updateHabitsCompletion();
     notifyListeners();
+    _pushBackupInBackground();
+  }
+
+  Future<void> _stampTargetsUpdated() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_kTargetsUpdatedAtKey, DateTime.now().millisecondsSinceEpoch);
+  }
+
+  // Đẩy backup ngay để bản trên đám mây luôn có mục tiêu mới nhất (tôn trọng
+  // công tắc "Sao lưu đám mây"; bỏ qua âm thầm nếu chưa đăng nhập).
+  void _pushBackupInBackground() {
+    unawaited(() async {
+      final prefs = await SharedPreferences.getInstance();
+      if (!(prefs.getBool('pref_cloud_backup_enabled') ?? true)) return;
+      await CloudBackupService.instance.pushBackup();
+    }());
   }
 }

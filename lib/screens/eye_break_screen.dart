@@ -55,6 +55,9 @@ class _EyeBreakScreenState extends State<EyeBreakScreen>
   bool _breakPromptShowing = false;
   DateTime? _endAt;
   int _intervalMinutes = 20;
+  // Mỗi chu kỳ đếm ngược chỉ được tính 1 lần nghỉ mắt (tránh cộng đôi khi cả
+  // Timer lẫn lúc app mở lại từ nền cùng phát hiện đã hết giờ).
+  bool _cycleCounted = false;
 
   static const _intervalOptions = [10, 20, 30, 45];
 
@@ -96,12 +99,18 @@ class _EyeBreakScreenState extends State<EyeBreakScreen>
         _secondsRemaining = 0;
         _breakPromptShowing = true;
       });
+      _countBreakOnce();
     } else {
       setState(() => _secondsRemaining = remaining);
     }
   }
 
   Future<void> _syncWithRealNextFireTime() async {
+    // Đếm ngược đã hết trong lúc app ở nền (báo thức native đã báo) -> tính 1
+    // lần nghỉ mắt trước khi mốc _endAt bị ghi đè bằng lần nhắc kế tiếp.
+    if (_endAt != null && !_endAt!.isAfter(DateTime.now())) {
+      await _countBreakOnce();
+    }
     final realNext = await NotificationService.instance
         .getNextRepeatingFireAt();
     if (!mounted) return;
@@ -170,6 +179,7 @@ class _EyeBreakScreenState extends State<EyeBreakScreen>
 
   Future<void> _startReminder(ReminderProvider reminder) async {
     _countdownTimer?.cancel();
+    _cycleCounted = false;
     final endAt = DateTime.now().add(
       Duration(minutes: reminder.reminderMinutes),
     );
@@ -235,6 +245,7 @@ class _EyeBreakScreenState extends State<EyeBreakScreen>
           );
         }
       });
+      if (remaining <= 0) _countBreakOnce();
       if (_secondsRemaining > 0) {
         _updateOngoingNotification();
       }
@@ -254,27 +265,33 @@ class _EyeBreakScreenState extends State<EyeBreakScreen>
     });
   }
 
-  Future<void> _confirmBreakTaken(ReminderProvider reminder) async {
+  // Đếm ngược về 0 = tính ĐÚNG 1 lần nghỉ mắt (theo yêu cầu), không cần bấm
+  // xác nhận. Nếu vừa đạt mục tiêu ngày và chưa bật "không giới hạn" thì tự
+  // dừng nhắc như trước.
+  Future<void> _countBreakOnce() async {
+    if (_cycleCounted || !mounted) return;
+    _cycleCounted = true;
     final habitProvider = context.read<HabitProvider>();
+    final reminder = context.read<ReminderProvider>();
     await habitProvider.recordEyeBreak();
     if (!mounted) return;
-    setState(() => _breakPromptShowing = false);
 
-    final target = habitProvider.habits
-        .firstWhere((h) => h.id == 'breaks')
-        .target;
+    final target = habitProvider.habits.firstWhere((h) => h.id == 'breaks').target;
     final reachedTarget = habitProvider.eyeBreaksTakenToday >= target;
     if (reachedTarget && !reminder.unlimitedOverrideToday) {
       final strings = context.read<LanguageProvider>().strings;
       _stopReminder(reminder);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(strings.eyeBreakTargetReached(target as int))),
-        );
-      }
-      return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        // `target` là double -> phải .round(), bản cũ `target as int` sẽ crash.
+        SnackBar(content: Text(strings.eyeBreakTargetReached(target.round()))),
+      );
     }
+  }
 
+  // Nút "Xong" ở màn nhìn xa 20 giây: lần nghỉ đã được tính lúc hết giờ, nên
+  // chỉ đóng màn và bắt đầu chu kỳ kế tiếp.
+  Future<void> _confirmBreakTaken(ReminderProvider reminder) async {
+    setState(() => _breakPromptShowing = false);
     await _startReminder(reminder);
   }
 
@@ -375,8 +392,8 @@ class _EyeBreakScreenState extends State<EyeBreakScreen>
                           ? 'Tự động nhắc nghỉ mắt'
                           : 'Auto eye-break reminders',
                       description: strings.vi
-                          ? 'Không cần đặt hẹn giờ — tự chia mục tiêu nghỉ mắt/ngày theo thời gian bạn thực sự dùng máy, và tự nhận diện nếu bạn đã nghỉ (không cần bấm xác nhận, không cần camera). Bật cái này sẽ tự tắt "Nhắc nghỉ mắt" thủ công bên dưới để tránh 2 đồng hồ đếm ngược khác nhau.'
-                          : "No need to set a timer — splits your daily break goal across your real phone usage, and auto-detects when you've rested (no confirmation tap, no camera needed). Turning this on will automatically turn off the manual reminder below, so you never see two different countdowns.",
+                          ? 'Không cần đặt hẹn giờ — tự chia mục tiêu nghỉ mắt/ngày thành các khoảng đếm ngược đều nhau. Hết giờ mới nhắc và tự tính là 1 lần nghỉ mắt (không cần bấm xác nhận). Bật cái này sẽ tự tắt "Nhắc nghỉ mắt" thủ công bên dưới để tránh 2 đồng hồ đếm ngược khác nhau.'
+                          : "No need to set a timer — splits your daily break goal into even countdowns. When it hits zero you get reminded and it counts as 1 eye break automatically (no confirmation tap). Turning this on will automatically turn off the manual reminder below, so you never see two different countdowns.",
                       value: autoBreak.enabled,
                       onChanged: (v) async {
                         if (v) {
@@ -413,8 +430,8 @@ class _EyeBreakScreenState extends State<EyeBreakScreen>
                       const SizedBox(height: 6),
                       Text(
                         strings.vi
-                            ? 'Countdown ước tính: mỗi ${(autoBreak.intervalSeconds / 60).round()} phút dùng máy sẽ nhắc 1 lần'
-                            : 'Estimated countdown: reminds every ${(autoBreak.intervalSeconds / 60).round()} min of usage',
+                            ? 'Mỗi ${(autoBreak.intervalSeconds / 60).round()} phút nhắc 1 lần và tính 1 lần nghỉ mắt'
+                            : 'Reminds every ${(autoBreak.intervalSeconds / 60).round()} min and counts 1 eye break',
                         style: Theme.of(context).textTheme.bodySmall
                             ?.copyWith(color: AppColors.textMuted),
                       ),

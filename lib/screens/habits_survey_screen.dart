@@ -8,6 +8,7 @@ import '../providers/habit_provider.dart';
 import '../providers/language_provider.dart';
 import '../providers/settings_provider.dart';
 import '../providers/setup_provider.dart';
+import '../providers/auto_break_provider.dart';
 import '../theme/app_colors.dart';
 import '../widgets/shared_widgets.dart';
 import 'login_screen.dart';
@@ -779,17 +780,27 @@ class _HabitsSurveyScreenState extends State<HabitsSurveyScreen> {
                   ),
                   onPressed: () async {
                     final habitProvider = context.read<HabitProvider>();
-                    for (final id in _surveyTargetHabitIds) {
-                      final value = _selectedTargetValues[id];
-                      if (value != null) {
-                        habitProvider.setHabitTarget(id, value);
-                      }
-                    }
-                    // QUAN TRỌNG: phải đánh dấu khảo sát đã hoàn thành và lưu
-                    // xuống SharedPreferences — trước đây bước này bị thiếu
-                    // nên _AppGate luôn đọc lại survey_completed = false, bắt
-                    // người dùng làm lại khảo sát mỗi lần mở app.
+                    await habitProvider.applySurveyTargets(
+                      {
+                        for (final id in _surveyTargetHabitIds)
+                          if (_selectedTargetValues[id] != null) id: _selectedTargetValues[id]!,
+                      },
+                      surveyAnswers: {
+                        'ageGroup': _ageGroup.name,
+                        'screenHoursPerDay': _screenHours,
+                        'outdoorMinutesPerDay': _outdoorMinutes,
+                        'readingDistanceCm': _readingDistance,
+                        'sleepHoursPerNight': _sleepHours,
+                        'breaksPerDay': _breaksPerDay,
+                      },
+                    );
                     await habitProvider.markSurveyCompleted();
+                    // Đồng bộ ngay khoảng đếm ngược "Tự động nhắc nghỉ mắt" theo mục tiêu mới.
+                    if (context.mounted) {
+                      context.read<AutoBreakProvider>().recomputeInterval(
+                            habitProvider.habits.firstWhere((h) => h.id == 'breaks').target,
+                          );
+                    }
                     if (!context.mounted) return;
                     if (widget.mandatory) {
                       // Sau khảo sát bắt buộc: nếu đã đăng nhập thì vào thẳng

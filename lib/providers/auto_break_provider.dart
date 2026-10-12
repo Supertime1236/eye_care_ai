@@ -4,89 +4,59 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/notification_service.dart';
-import '../services/usage_service.dart';
 
-/// Nhắc nghỉ mắt TỰ ĐỘNG dựa theo THỜI GIAN DÙNG MÁY THẬT (không cần người
-/// dùng tự đặt hẹn giờ như EyeBreakScreen cũ).
+/// "Tự động nhắc nghỉ mắt": đếm ngược theo ĐỒNG HỒ THẬT, không cần người dùng
+/// tự đặt hẹn giờ. Countdown được chia từ mục tiêu "Nghỉ mắt/ngày" (habit
+/// 'breaks') trên số giờ thức giả định.
 ///
-/// Cách hoạt động:
-/// 1. Chia đều mục tiêu "Nghỉ mắt/ngày" (habit 'breaks') ra thành các
-///    khoảng countdown, dựa trên số giờ thức trung bình/ngày (giả định).
-/// 2. Theo dõi tổng THỜI GIAN MÀN HÌNH SÁNG thật của TOÀN MÁY (không riêng
-///    app này) qua UsageService — mỗi lần poll kiểm tra delta so với lần
-///    trước, cộng dồn vào bộ đếm "đã dùng máy bao lâu kể từ lần nghỉ gần
-///    nhất". Nhờ đọc UsageStatsManager (toàn hệ thống), việc bắn nhắc không
-///    phụ thuộc app đang mở là app nào.
-/// 3. Khi bộ đếm vượt countdown -> bắn thông báo nhắc nghỉ, RỒI 20 giây sau
-///    tự kiểm tra lại: nếu trong 20 giây đó máy KHÔNG ghi nhận thêm thao tác
-///    (tổng thời gian màn hình không tăng) -> coi như user đã thực sự rời
-///    mắt khỏi máy, TỰ ĐỘNG ghi nhận 1 lần nghỉ (không cần bấm "Đã nghỉ",
-///    không cần camera). Nếu máy vẫn tăng dùng liên tục -> gửi thêm 1 nhắc
-///    nhẹ, KHÔNG tự tính là đã nghỉ.
+/// THIẾT KẾ MỚI (theo yêu cầu: "khi đếm ngược hết thời gian thì mới gửi thông
+/// báo nhắc nhở và tính đó là 1 lần nghỉ mắt"):
+///  - Thông báo CHỈ do báo thức NATIVE (AlarmManager qua
+///    flutter_local_notifications) bắn đúng lúc đếm ngược về 0 — đáng tin cậy
+///    kể cả khi app ở nền/đã đóng. Dart KHÔNG tự bắn thêm thông báo nào nữa,
+///    nên không còn chuyện 2 thông báo/2 đồng hồ lệch nhau.
+///  - Mỗi chu kỳ đếm ngược trôi hết = ĐÚNG 1 lần nghỉ mắt được ghi nhận
+///    (onAutoConfirmed), không cần bấm xác nhận, không cần kiểm tra usage.
+///  - Thanh/số đếm ngược trên UI tính từ cùng 1 mốc `_cycleStart` với báo
+///    thức native (cùng khoảng làm tròn theo phút) nên luôn khớp thông báo.
+///  - App mở lại sau khi ở nền: bù các chu kỳ đã trôi qua trong lúc đó (tối
+///    đa [_kMaxCatchUpCycles]). Nếu vắng mặt quá lâu (máy tắt, ban đêm...)
+///    thì chỉ dời mốc, KHÔNG cộng bừa các lần nghỉ.
 class AutoBreakProvider extends ChangeNotifier {
   static const _kEnabledKey = 'pref_auto_break_enabled';
-  static const _kAccumulatedSecKey = 'pref_auto_break_accumulated_sec';
-  static const _kLastUsageSecKey = 'pref_auto_break_last_usage_sec';
-  static const _kLastUsageDateKey = 'pref_auto_break_last_usage_date';
-  // Giả định số giờ thức trung bình/ngày, dùng để chia countdown từ mục
-  // tiêu số lần nghỉ — không có cách nào biết chính xác giờ ngủ TƯƠNG LAI
-  // của người dùng, nên lấy 1 con số hợp lý phổ biến (16h thức/24h).
+  static const _kCycleStartKey = 'pref_auto_break_cycle_start_millis';
+  // Giả định số giờ thức trung bình/ngày để chia countdown từ mục tiêu.
   static const double _kAssumedWakingHours = 16.0;
   static const int _kMinIntervalSec = 5 * 60;
   static const int _kMaxIntervalSec = 90 * 60;
-  // Trong 20 giây kiểm tra sau khi nhắc, nếu tổng usage tăng thêm quá mốc
-  // này (mili-giây) thì coi là "vẫn đang dùng máy", không tự tính là nghỉ.
-  static const int _kBreakCheckWindowSeconds = 20;
-  static const int _kUsageIncreaseToleranceMs = 3000;
-
-  // BUG ĐÃ SỬA #1 (thanh đếm ngược "đứng hình", không nhảy số): trước đây
-  // bộ đếm CHỈ được cập nhật (và notifyListeners()) mỗi 60 giây bên trong
-  // _poll() — giữa 2 lần đó, UI đứng yên gần 1 phút, trông như bị treo.
-  // Giờ:
-  //  1. Poll THẬT (đọc UsageStatsManager) chạy dày hơn — mỗi 15 giây thay vì
-  //     60 giây, để bộ đếm cập nhật thường xuyên hơn.
-  //  2. Có thêm 1 Timer UI riêng chạy mỗi giây, CHỈ để gọi notifyListeners()
-  //     — `secondsRemaining`/`progress` (xem 2 getter bên dưới) giờ tự NỘI
-  //     SUY thêm phần thời gian đã trôi qua kể từ lần poll thật gần nhất,
-  //     nên hiển thị "chạy" mượt từng giây thay vì nhảy cục mỗi 15-60 giây.
-  //     Giá trị nội suy này CHỈ phục vụ hiển thị, không ảnh hưởng tới lúc
-  //     nào thật sự bắn thông báo (vẫn do _poll() quyết định).
-  static const Duration _kPollInterval = Duration(seconds: 15);
+  static const int _kMaxCatchUpCycles = 3;
 
   bool _enabled = false;
   int _intervalSeconds = 20 * 60;
-  int _accumulatedSeconds = 0;
-  int? _lastUsageSeconds;
-  // Mốc giờ của lần poll THẬT gần nhất — dùng để nội suy UI (xem
-  // _interpolatedAccumulatedSeconds) và làm cơ sở tính wallElapsed khi
-  // UsageStatsManager bị trễ (xem BUG ĐÃ SỬA #2 trong _poll()).
-  DateTime? _lastPollAt;
-  Timer? _pollTimer;
-  Timer? _uiTickTimer;
+  DateTime? _cycleStart;
+  Timer? _tickTimer;
 
-  /// Gọi khi phát hiện được (tự động, không camera) rằng user đã nghỉ mắt
-  /// thật — nơi gọi (main_shell.dart) gán hàm này để đi ghi vào HabitProvider.
+  /// Gọi mỗi khi 1 chu kỳ đếm ngược trôi hết — nơi gọi (main_shell.dart) gán
+  /// hàm này để ghi 1 lần nghỉ mắt vào HabitProvider.
   Future<void> Function()? onAutoConfirmed;
 
   bool get enabled => _enabled;
-  int get intervalSeconds => _intervalSeconds;
 
-  // Nội suy thêm thời gian THỰC đã trôi qua kể từ lần poll thật gần nhất
-  // (kẹp trong đúng 1 chu kỳ poll) — giả định máy vẫn đang được dùng liên
-  // tục giữa 2 lần poll, để thanh đếm ngược luôn "chạy" mượt thay vì đứng
-  // yên chờ tới lần poll thật tiếp theo mới nhảy số.
-  int get _interpolatedAccumulatedSeconds {
-    if (!_enabled || _lastPollAt == null) return _accumulatedSeconds;
-    final elapsed = DateTime.now().difference(_lastPollAt!).inSeconds;
-    final capped = elapsed.clamp(0, _kPollInterval.inSeconds);
-    return (_accumulatedSeconds + capped).clamp(0, _intervalSeconds);
+  // Khoảng thực tế, làm tròn theo PHÚT để khớp tuyệt đối với báo thức native
+  // (periodicallyShowWithDuration nhận số phút nguyên).
+  int get intervalSeconds => ((_intervalSeconds / 60).round().clamp(1, 1000000)) * 60;
+
+  int get secondsRemaining {
+    final start = _cycleStart;
+    if (!_enabled || start == null) return intervalSeconds;
+    final elapsed = DateTime.now().difference(start).inSeconds;
+    return (intervalSeconds - elapsed).clamp(0, intervalSeconds);
   }
 
-  int get secondsRemaining =>
-      (_intervalSeconds - _interpolatedAccumulatedSeconds).clamp(0, _intervalSeconds);
-  double get progress => _intervalSeconds == 0
-      ? 0
-      : (_interpolatedAccumulatedSeconds / _intervalSeconds).clamp(0.0, 1.0);
+  double get progress {
+    if (intervalSeconds == 0) return 0;
+    return ((intervalSeconds - secondsRemaining) / intervalSeconds).clamp(0.0, 1.0);
+  }
 
   AutoBreakProvider() {
     _load();
@@ -95,69 +65,37 @@ class AutoBreakProvider extends ChangeNotifier {
   Future<void> _load() async {
     final prefs = await SharedPreferences.getInstance();
     _enabled = prefs.getBool(_kEnabledKey) ?? false;
-    _accumulatedSeconds = prefs.getInt(_kAccumulatedSecKey) ?? 0;
-    final storedDate = prefs.getString(_kLastUsageDateKey);
-    final todayKey = _todayKey();
-    // Sang ngày mới -> mốc usage cũ không còn ý nghĩa để tính delta (usage
-    // system của Android tự reset theo ngày) -> bỏ mốc cũ, đo lại từ đầu.
-    _lastUsageSeconds = storedDate == todayKey ? prefs.getInt(_kLastUsageSecKey) : null;
+    final startMillis = prefs.getInt(_kCycleStartKey);
+    _cycleStart = startMillis == null ? null : DateTime.fromMillisecondsSinceEpoch(startMillis);
     if (_enabled) {
-      _startPolling();
-      // Đặt lại báo thức native an toàn mỗi lần app khởi động và tính năng
-      // đang bật — xem giải thích ở _scheduleNativeSafetyAlarm().
-      unawaited(_scheduleNativeSafetyAlarm());
+      if (_cycleStart == null) {
+        await _restartCycle(); // lần đầu: đặt mốc + báo thức native.
+      } else {
+        await _catchUp(); // bù chu kỳ đã trôi trong lúc app không chạy.
+        // Đăng ký lại báo thức native mỗi lần app khởi động (idempotent).
+        unawaited(_scheduleNativeAlarm());
+      }
+      _startTicking();
     }
     notifyListeners();
   }
 
-  // BUG ĐÃ SỬA (đến giờ hoàn toàn không có thông báo nào): toàn bộ cơ chế
-  // "Tự động nhắc nghỉ mắt" trước đây chỉ dựa vào Timer.periodic của Dart để
-  // đếm usage rồi tự bắn showInstantNotification() khi đủ ngưỡng. Vấn đề:
-  // MỘT KHI APP BỊ ĐƯA XUỐNG NỀN/KHOÁ MÀN HÌNH, Android (Doze/App Standby)
-  // tạm dừng isolate Flutter -> Timer KHÔNG CÒN CHẠY TIẾP -> không bao giờ
-  // tới ngưỡng để bắn thông báo, dù người dùng vẫn đang dùng máy (chỉ là
-  // không mở đúng app EyeCare AI). Đây khác hẳn với "Nhắc nghỉ mắt" thủ
-  // công, vốn dùng báo thức NATIVE qua AlarmManager (xem
-  // NotificationService.scheduleRepeatingBreakAlarm) — luôn tự bắn đúng giờ
-  // kể cả khi app đã đóng hẳn.
-  //
-  // GIẢI PHÁP: khi bật Tự động, ĐẶT THÊM 1 báo thức native lặp lại ở đúng
-  // khoảng `_intervalSeconds` hiện tại, dùng LẠI chính cơ chế đáng tin cậy
-  // của báo thức thủ công — coi đây là "lưới an toàn": nếu Dart Timer vẫn
-  // chạy được (app đang mở), người dùng vẫn có trải nghiệm "tự nhận diện đã
-  // nghỉ chưa" như cũ; nếu Dart Timer bị hệ điều hành tạm dừng, báo thức
-  // native vẫn tự bắn đúng chu kỳ ước tính, đảm bảo KHÔNG BAO GIỜ im lặng
-  // hoàn toàn. Đánh đổi chấp nhận được: thỉnh thoảng có thể nhận 2 thông
-  // báo gần nhau nếu app đang mở liên tục đúng lúc cả 2 cơ chế cùng tới hạn
-  // — tốt hơn nhiều so với không bao giờ được nhắc.
-  Future<void> _scheduleNativeSafetyAlarm() async {
-    final minutes = (_intervalSeconds / 60).round().clamp(1, 1000000);
-    await NotificationService.instance.scheduleRepeatingBreakAlarm(
-      intervalMinutes: minutes,
-      title: '👁️ Đến giờ nghỉ mắt',
-      body: 'Nhìn xa 6 mét trong 20 giây nhé — mình sẽ tự kiểm tra bạn có thật sự nghỉ không.',
-      ongoingTitle: 'Tự động nhắc nghỉ mắt',
-      ongoingRemainingSuffix: 'Sẽ nhắc lúc',
-    );
-  }
-
-  String _todayKey() {
-    final now = DateTime.now();
-    return '${now.year}-${now.month}-${now.day}';
-  }
-
-  /// Gọi mỗi khi mục tiêu 'breaks' (HabitProvider) thay đổi hoặc lúc khởi
-  /// động — chia đều giờ thức giả định cho số lần nghỉ mục tiêu.
+  /// Gọi mỗi khi mục tiêu 'breaks' thay đổi hoặc lúc khởi động — chia đều giờ
+  /// thức giả định cho số lần nghỉ mục tiêu.
   void recomputeInterval(double dailyTargetBreaks) {
     if (dailyTargetBreaks <= 0) return;
     final seconds = (_kAssumedWakingHours * 3600 / dailyTargetBreaks).round();
     final clamped = seconds.clamp(_kMinIntervalSec, _kMaxIntervalSec);
     if (clamped != _intervalSeconds) {
+      final oldEffective = intervalSeconds;
       _intervalSeconds = clamped;
-      notifyListeners();
-      // Khoảng lặp vừa đổi -> đặt lại báo thức native theo đúng khoảng mới,
-      // nếu không báo thức cũ vẫn bắn theo khoảng LỖI THỜI.
-      if (_enabled) unawaited(_scheduleNativeSafetyAlarm());
+      // Khoảng hiệu dụng (làm tròn phút) đổi -> bắt đầu chu kỳ mới để UI và
+      // báo thức native không lệch pha.
+      if (_enabled && intervalSeconds != oldEffective) {
+        unawaited(_restartCycle());
+      } else {
+        notifyListeners();
+      }
     }
   }
 
@@ -166,122 +104,76 @@ class AutoBreakProvider extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_kEnabledKey, value);
     if (value) {
-      _startPolling();
-      await _scheduleNativeSafetyAlarm();
+      await _restartCycle();
+      _startTicking();
     } else {
-      _pollTimer?.cancel();
-      _uiTickTimer?.cancel();
-      _lastPollAt = null;
+      _tickTimer?.cancel();
+      _tickTimer = null;
+      _cycleStart = null;
+      await prefs.remove(_kCycleStartKey);
       await NotificationService.instance.cancelRepeatingBreakAlarm();
     }
     notifyListeners();
   }
 
-  void _startPolling() {
-    _pollTimer?.cancel();
-    _uiTickTimer?.cancel();
-    _pollTimer = Timer.periodic(_kPollInterval, (_) => _poll());
-    // Timer UI riêng — chỉ để thanh tiến độ/số đếm ngược "chạy" mượt mỗi
-    // giây bằng nội suy (xem _interpolatedAccumulatedSeconds), KHÔNG đọc
-    // lại usage stat ở đây (đỡ tốn pin/CPU); việc đọc thật vẫn do
-    // _pollTimer đảm nhiệm.
-    _uiTickTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (_enabled) notifyListeners();
-    });
-    _poll();
-  }
-
-  Future<void> _poll() async {
-    if (!_enabled) return;
-    final totalMs = await UsageService.getTodayScreenTime();
-    final totalSec = totalMs ~/ 1000;
-    final now = DateTime.now();
-
-    if (_lastUsageSeconds == null) {
-      _lastUsageSeconds = totalSec;
-      _lastPollAt = now;
-      await _persist();
-      notifyListeners();
-      return;
-    }
-
-    var delta = totalSec - _lastUsageSeconds!;
-    _lastUsageSeconds = totalSec;
-
-    // BUG ĐÃ SỬA #2 ("đến giờ vẫn không báo"): UsageStatsManager của Android
-    // KHÔNG cập nhật số liệu theo thời gian thực — hệ điều hành có thể trì
-    // hoãn việc "chốt sổ" thời gian dùng app hiện tại tới hàng chục phút,
-    // khiến delta đọc được cứ = 0 dù người dùng vẫn đang cầm máy dùng liên
-    // tục, làm bộ đếm không bao giờ tới ngưỡng để bắn nhắc nghỉ mắt. Khi
-    // phát hiện delta <= 0 (usage stat chưa kịp cập nhật), dùng tạm khoảng
-    // THỜI GIAN THỰC đã trôi qua kể từ lần poll trước làm ước lượng thay
-    // thế (thay vì để bộ đếm đứng yên vô thời hạn) — đây là đánh đổi chấp
-    // nhận được: có thể đếm hơi rộng rãi lúc máy đang khoá màn hình ngắn,
-    // nhưng khắc phục được lỗi "không bao giờ nhắc" nghiêm trọng hơn nhiều.
-    if (delta <= 0) {
-      final wallElapsed = _lastPollAt == null ? 0 : now.difference(_lastPollAt!).inSeconds;
-      if (wallElapsed > 0 && wallElapsed < 3600) {
-        delta = wallElapsed;
-      }
-    }
-    _lastPollAt = now;
-
-    // delta quá lớn (>1h): dữ liệu usage bất thường -> bỏ qua, tránh cộng ảo.
-    if (delta > 0 && delta < 3600) {
-      _accumulatedSeconds += delta;
-    }
-
-    if (_accumulatedSeconds >= _intervalSeconds) {
-      _accumulatedSeconds = 0;
-      await _fireReminderAndCheck();
-    }
-    await _persist();
-    notifyListeners();
-  }
-
-  Future<void> _fireReminderAndCheck() async {
-    await NotificationService.instance.showInstantNotification(
-      title: '👁️ Đến giờ nghỉ mắt',
-      body: 'Nhìn xa 6 mét trong 20 giây nhé — mình sẽ tự kiểm tra bạn có thật sự nghỉ không.',
-    );
-    final beforeMs = await UsageService.getTodayScreenTime();
-    Timer(Duration(seconds: _kBreakCheckWindowSeconds), () async {
-      final afterMs = await UsageService.getTodayScreenTime();
-      final stillUsingPhone = (afterMs - beforeMs) > _kUsageIncreaseToleranceMs;
-      if (!stillUsingPhone) {
-        // Không ghi nhận thêm thao tác trong 20 giây -> tự tính là đã nghỉ,
-        // không cần người dùng bấm "Đã nghỉ"/dùng camera.
-        await onAutoConfirmed?.call();
-      } else {
-        await NotificationService.instance.showInstantNotification(
-          title: '⚠️ Bạn có vẻ vẫn đang dùng máy',
-          body: 'Lần nhắc vừa rồi chưa tính là đã nghỉ mắt — cố nhìn xa ở lần nhắc tiếp theo nhé.',
-        );
-      }
-    });
-  }
-
-  /// Người dùng tự bấm "Đã nghỉ" thủ công (nếu muốn) — reset bộ đếm sớm.
-  Future<void> confirmBreakManually() async {
-    _accumulatedSeconds = 0;
-    _lastPollAt = DateTime.now();
-    await _persist();
-    notifyListeners();
-  }
-
-  Future<void> _persist() async {
+  Future<void> _restartCycle() async {
+    _cycleStart = DateTime.now();
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt(_kAccumulatedSecKey, _accumulatedSeconds);
-    await prefs.setString(_kLastUsageDateKey, _todayKey());
-    if (_lastUsageSeconds != null) {
-      await prefs.setInt(_kLastUsageSecKey, _lastUsageSeconds!);
+    await prefs.setInt(_kCycleStartKey, _cycleStart!.millisecondsSinceEpoch);
+    await _scheduleNativeAlarm();
+    notifyListeners();
+  }
+
+  // Báo thức native lặp lại mỗi `intervalSeconds` — lần bắn đầu tiên cách thời
+  // điểm đặt lịch đúng 1 khoảng, trùng với `_cycleStart + interval`.
+  Future<void> _scheduleNativeAlarm() async {
+    await NotificationService.instance.scheduleRepeatingBreakAlarm(
+      intervalMinutes: intervalSeconds ~/ 60,
+      title: 'Đến giờ nghỉ mắt',
+      body: 'Nhìn xa 6 mét trong 20 giây nhé.',
+      ongoingTitle: 'Tự động nhắc nghỉ mắt',
+      ongoingRemainingSuffix: 'Sẽ nhắc lúc',
+    );
+  }
+
+  void _startTicking() {
+    _tickTimer?.cancel();
+    _tickTimer = Timer.periodic(const Duration(seconds: 1), (_) async {
+      if (!_enabled) return;
+      await _catchUp();
+      notifyListeners();
+    });
+  }
+
+  // Ghi nhận các chu kỳ đã trôi hết kể từ `_cycleStart`. Mốc được dời lên
+  // đúng bội số của chu kỳ để giữ cùng pha với báo thức native.
+  Future<void> _catchUp() async {
+    final start = _cycleStart;
+    if (start == null) return;
+    final intervalMs = intervalSeconds * 1000;
+    final cycles = DateTime.now().difference(start).inMilliseconds ~/ intervalMs;
+    if (cycles <= 0) return;
+
+    _cycleStart = start.add(Duration(milliseconds: cycles * intervalMs));
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_kCycleStartKey, _cycleStart!.millisecondsSinceEpoch);
+
+    // Vắng mặt quá lâu (> _kMaxCatchUpCycles chu kỳ) = nhiều khả năng máy
+    // tắt/ngủ qua đêm -> chỉ dời mốc, không cộng các lần nghỉ.
+    if (cycles > _kMaxCatchUpCycles) return;
+    for (var i = 0; i < cycles; i++) {
+      await onAutoConfirmed?.call();
     }
+  }
+
+  /// Người dùng tự bấm "Đã nghỉ" thủ công (nếu muốn) — bắt đầu chu kỳ mới.
+  Future<void> confirmBreakManually() async {
+    await _restartCycle();
   }
 
   @override
   void dispose() {
-    _pollTimer?.cancel();
-    _uiTickTimer?.cancel();
+    _tickTimer?.cancel();
     super.dispose();
   }
 }
