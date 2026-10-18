@@ -22,6 +22,7 @@ import '../widgets/shared_widgets.dart';
 import 'chat_screen.dart';
 import 'eye_break_screen.dart';
 import 'eye_test_screen.dart';
+import 'eye_timeline_screen.dart';
 import 'habits_screen.dart';
 import 'habits_survey_screen.dart';
 import 'rank_screen.dart';
@@ -554,6 +555,7 @@ class _FeatureHubCard extends StatelessWidget {
       _FeatureItem(icon: '🧪', title: strings.eyeTest, route: const EyeTestScreen()),
       _FeatureItem(icon: '✅', title: strings.habits, route: const HabitsScreen()),
       _FeatureItem(icon: '☕', title: strings.eyeBreakTitle, route: const EyeBreakScreen()),
+      _FeatureItem(icon: '🗺️', title: strings.vi ? 'Dòng thời gian' : 'Timeline', route: const EyeTimelineScreen()),
       _FeatureItem(icon: '💬', title: strings.chat, route: const ChatScreen()),
       _FeatureItem(icon: '⚙️', title: strings.settings, route: const SettingsScreen()),
     ];
