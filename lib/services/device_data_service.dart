@@ -590,6 +590,7 @@ class DeviceDataService {
 
   Future<void> saveDailyFactorScores({
     double? screenTimeScore,
+    double? distanceScore,
     double? environmentScore,
     double? eyeBreaksScore,
     double? sleepScore,
@@ -599,15 +600,16 @@ class DeviceDataService {
     String enc(double? v) => v == null ? '' : v.toStringAsFixed(2);
     await prefs.setString(
       '$_kDailyFactorsPrefix$today',
-      // Trường thứ 2 (giữa screenTimeScore và environmentScore) là ô
-      // "distance" CŨ, luôn để rỗng — giữ nguyên vị trí cột để không phá
-      // định dạng của các snapshot đã lưu từ trước.
-      '${enc(screenTimeScore)}||${enc(environmentScore)}|${enc(eyeBreaksScore)}|${enc(sleepScore)}',
+      // Trường thứ 2 là ô "distance" — từng bị bỏ trống khi tính năng này bị
+      // gỡ, nay dùng lại (khoảng cách trở lại làm 1 yếu tố của điểm). Vị trí
+      // cột giữ nguyên nên snapshot cũ (ô này rỗng) vẫn đọc được bình thường.
+      '${enc(screenTimeScore)}|${enc(distanceScore)}|${enc(environmentScore)}|${enc(eyeBreaksScore)}|${enc(sleepScore)}',
     );
   }
 
   Future<({
         double? screenTimeScore,
+        double? distanceScore,
         double? environmentScore,
         double? eyeBreaksScore,
         double? sleepScore,
@@ -621,7 +623,7 @@ class DeviceDataService {
     double? dec(String s) => s.isEmpty ? null : double.tryParse(s);
     return (
       screenTimeScore: dec(parts[0]),
-      // parts[1] = ô "distance" cũ — cố tình bỏ qua, không đọc lại.
+      distanceScore: dec(parts[1]),
       environmentScore: dec(parts[2]),
       eyeBreaksScore: dec(parts[3]),
       sleepScore: dec(parts[4]),

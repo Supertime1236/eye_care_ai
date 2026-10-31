@@ -13,6 +13,7 @@ enum TimelineEventType {
   eyeBreak, // hoàn thành 1 lần nghỉ mắt
   darkRoom, // dùng máy trong phòng quá tối
   brightnessAdjusted, // độ sáng màn hình được chỉnh
+  distanceWarning, // để màn hình quá gần mắt (value = cm)
 }
 
 class TimelineEvent {

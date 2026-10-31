@@ -6,7 +6,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/cloud_backup_service.dart';
 import '../services/device_data_service.dart';
+import '../services/distance_monitor_service.dart';
 import '../services/eye_timeline_service.dart';
+import '../services/notification_coordinator.dart';
 import '../services/notification_service.dart';
 
 class HabitData {
@@ -129,6 +131,18 @@ class HabitProvider extends ChangeNotifier {
       target: 12,
       color: 0xFFF97316,
     ),
+    // Khoảng cách mắt-màn hình: giá trị hiện tại = khoảng cách TRUNG BÌNH hôm
+    // nay (cm), mục tiêu = khoảng cách TỐI THIỂU nên giữ (cm). Chỉ có dữ liệu
+    // khi người dùng bật "Nhắc giữ khoảng cách" (xem DistanceMonitorService).
+    HabitData(
+      id: 'distance',
+      title: 'Eye Distance',
+      subtitle: 'Front camera distance check',
+      icon: '📏',
+      unit: 'cm',
+      target: 30,
+      color: 0xFF06B6D4,
+    ),
   ];
 
   bool isRefreshingHabits = false;
@@ -169,6 +183,10 @@ class HabitProvider extends ChangeNotifier {
   double? environmentScore;
   double? eyeBreaksScore;
   double? sleepScore;
+  // Khoảng cách mắt-màn hình (đo bằng camera nếu người dùng bật "Nhắc giữ
+  // khoảng cách"): % số lần đo hôm nay nằm trong 30-55 cm. null (chưa bật/chưa
+  // có lần đo) thì KHÔNG tính vào điểm tổng — giống mọi yếu tố thiếu dữ liệu.
+  double? distanceScore;
   // Chênh lệch điểm tổng so với snapshot NGÀY HÔM QUA (dương = tăng, âm =
   // giảm, null = chưa có snapshot hôm qua để so sánh — ví dụ ngày đầu dùng
   // app). Cập nhật trong refreshHabitsFromDevice() sau khi có điểm hôm nay.
@@ -228,6 +246,8 @@ class HabitProvider extends ChangeNotifier {
 
   void startHabitTracking() {
     final service = DeviceDataService.instance;
+    // Nhắc giữ khoảng cách (camera) — chỉ chạy nếu người dùng đã tự bật.
+    unawaited(DistanceMonitorService.instance.init());
     // Không còn cần theo dõi "Reading Time" bằng cảm biến nữa — thẻ này đã
     // đổi thành "Eye Test Count" (đang phát triển, xem HabitData(id: 'reading')
     // ở trên), không có nguồn dữ liệu thật để bật lên.
@@ -239,10 +259,17 @@ class HabitProvider extends ChangeNotifier {
     // môi trường xung quanh tối liên tục quá lâu trong lúc app đang mở.
     service.startDarkRoomMonitoring(() async {
       unawaited(EyeTimelineService.instance.log(TimelineEventType.darkRoom));
-      await NotificationService.instance.showInstantNotification(
-        title: '🌙 Bạn đang dùng điện thoại trong bóng tối',
-        body: 'Ánh sáng yếu khiến mắt phải điều tiết nhiều hơn, dễ gây mỏi mắt. '
-            'Hãy bật đèn hoặc giảm độ sáng màn hình cho phù hợp.',
+      // Đi qua NotificationCoordinator: chống lặp, gộp với gợi ý giảm độ sáng
+      // ban đêm nếu cùng lúc, và né giờ báo thức nghỉ mắt.
+      await NotificationCoordinator.instance.notify(
+        const NotificationRequest(
+          kind: NotificationKind.darkRoom,
+          title: 'Bạn đang dùng điện thoại trong bóng tối',
+          body: 'Ánh sáng yếu khiến mắt phải điều tiết nhiều hơn, dễ gây mỏi mắt. '
+              'Hãy bật đèn hoặc giảm độ sáng màn hình cho phù hợp.',
+          mergedTitle: 'Phòng đang tối',
+          mergeLine: 'Ánh sáng yếu khiến mắt phải điều tiết nhiều hơn, dễ gây mỏi mắt.',
+        ),
       );
     });
   }
@@ -309,6 +336,7 @@ class HabitProvider extends ChangeNotifier {
     _applyHabitValue('breaks', breaks.toDouble());
     eyeBreaksTakenToday = breaks;
     totalEyeBreaksAllTime = await service.getTotalEyeBreaksAllTime();
+    _applyHabitValue('distance', await DistanceMonitorService.instance.getAverageDistanceTodayCm());
 
     await _updateHabitsCompletion();
     habitsLastUpdated = DateTime.now();
@@ -333,6 +361,7 @@ class HabitProvider extends ChangeNotifier {
         (today == null || yest == null) ? null : (today - yest).round();
     factorDeltas = {
       'screenTime': delta(screenTimeScore, yesterdayFactors?.screenTimeScore),
+      'distance': delta(distanceScore, yesterdayFactors?.distanceScore),
       'environment': delta(environmentScore, yesterdayFactors?.environmentScore),
       'eyeBreaks': delta(eyeBreaksScore, yesterdayFactors?.eyeBreaksScore),
       'sleep': delta(sleepScore, yesterdayFactors?.sleepScore),
@@ -349,6 +378,7 @@ class HabitProvider extends ChangeNotifier {
     // yesterdayFactors ở trên, đọc lại đúng key này vào ngày kế tiếp).
     await service.saveDailyFactorScores(
       screenTimeScore: screenTimeScore,
+      distanceScore: distanceScore,
       environmentScore: environmentScore,
       eyeBreaksScore: eyeBreaksScore,
       sleepScore: sleepScore,
@@ -410,6 +440,7 @@ class HabitProvider extends ChangeNotifier {
         return HabitAlertLevel.good;
       case 'outdoor':
       case 'breaks':
+      case 'distance':
         return habit.current < habit.target ? HabitAlertLevel.warning : HabitAlertLevel.good;
       default:
         return HabitAlertLevel.none;
@@ -511,12 +542,14 @@ class HabitProvider extends ChangeNotifier {
     // chu kỳ lấy mẫu đầu).
     final service = DeviceDataService.instance;
     environmentScore = await service.getEnvironmentScoreToday();
+    distanceScore = await DistanceMonitorService.instance.getDistanceScoreToday();
 
     // Điểm tổng = trung bình cộng CÁC YẾU TỐ ĐANG CÓ DỮ LIỆU — bỏ qua (không
     // tính là 0) những yếu tố null, để không phạt oan người dùng chưa cấp đủ
     // quyền/chưa đủ mẫu trong ngày.
     final available = <double>[
       ?screenTimeScore,
+      ?distanceScore,
       ?environmentScore,
       ?eyeBreaksScore,
       ?sleepScore,

@@ -29,6 +29,7 @@ import 'rank_screen.dart';
 import 'settings_screen.dart';
 import 'statistics_screen.dart';
 import '../widgets/next_break_countdown_card.dart';
+import '../widgets/night_phone_usage_card.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -132,6 +133,8 @@ class HomeScreen extends StatelessWidget {
           const NextBreakCountdownCard(),
           const SizedBox(height: 12),
           _TodaySuggestionsCard(habit: habit),
+          // Tự ẩn khi chưa có dữ liệu Usage Access; tự có khoảng cách phía trên.
+          const NightPhoneUsageCard(),
           const SizedBox(height: 18),
           _FeatureHubCard(),
           const SizedBox(height: 20),
@@ -1184,6 +1187,17 @@ class _ScoreCard extends StatelessWidget {
             noDataLabel: strings.scoreFactorNoData,
             explanation: strings.scoreFactorSleepExplain,
           ),
+          // Chỉ hiện khi người dùng đã bật nhắc giữ khoảng cách và đã có lần đo.
+          if (habit.distanceScore != null)
+            _ScoreFactorRow(
+              icon: '📏',
+              label: strings.vi ? 'Khoảng cách' : 'Distance',
+              percent: habit.distanceScore,
+              noDataLabel: strings.scoreFactorNoData,
+              explanation: strings.vi
+                  ? 'Dùng camera trước đo nhanh khoảng cách từ mắt tới màn hình vài phút một lần khi bạn đang mở app. % là tỉ lệ số lần đo nằm trong khoảng 30–55 cm. Cách đo có sai số khoảng ±15–20%. Ảnh không được lưu hay gửi đi.'
+                  : 'Uses the front camera for a quick eye-to-screen distance check every few minutes while the app is open. The % is the share of checks within 30–55 cm. The method has about ±15–20% error. Images are never saved or sent.',
+            ),
         ],
       ),
     );
@@ -1206,12 +1220,14 @@ class _TodaySuggestionsCard extends StatelessWidget {
 
     final factors = <String, double?>{
       'screenTime': habit.screenTimeScore,
+      'distance': habit.distanceScore,
       'environment': habit.environmentScore,
       'eyeBreaks': habit.eyeBreaksScore,
       'sleep': habit.sleepScore,
     };
     final labels = <String, String>{
       'screenTime': strings.scoreFactorScreenTime,
+      'distance': strings.vi ? 'Khoảng cách' : 'Distance',
       'environment': strings.scoreFactorEnvironment,
       'eyeBreaks': strings.scoreFactorEyeBreaks,
       'sleep': strings.scoreFactorSleep,

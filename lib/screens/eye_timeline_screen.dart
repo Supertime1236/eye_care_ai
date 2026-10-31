@@ -369,6 +369,10 @@ class _TimelineRow extends StatelessWidget {
         return vi ? 'Phòng quá tối' : 'Room too dark';
       case TimelineEventType.brightnessAdjusted:
         return vi ? 'Đã chỉnh độ sáng màn hình' : 'Brightness adjusted';
+      case TimelineEventType.distanceWarning:
+        final cm = e.value;
+        final suffix = cm == null ? '' : ' (~$cm cm)';
+        return vi ? 'Để màn hình quá gần$suffix' : 'Screen too close$suffix';
     }
   }
 
@@ -379,6 +383,8 @@ class _TimelineRow extends StatelessWidget {
         return vi ? 'Nên bật thêm đèn' : 'Consider turning on a light';
       case TimelineEventType.darkRoom:
         return vi ? 'Bật đèn hoặc giảm độ sáng màn hình' : 'Turn on a light or lower screen brightness';
+      case TimelineEventType.distanceWarning:
+        return vi ? 'Giữ khoảng 30–50 cm' : 'Keep about 30–50 cm away';
       case TimelineEventType.screenSession:
         return (e.value ?? 0) >= 45
             ? (vi ? 'Phiên khá dài, nhớ nghỉ mắt 20-20-20' : 'Long session, remember the 20-20-20 rule')
@@ -402,6 +408,8 @@ class _TimelineRow extends StatelessWidget {
         return const _EventStyle(Icons.bedtime_outlined, AppColors.error);
       case TimelineEventType.brightnessAdjusted:
         return const _EventStyle(Icons.brightness_6_outlined, AppColors.testAccent);
+      case TimelineEventType.distanceWarning:
+        return const _EventStyle(Icons.straighten_outlined, AppColors.warning);
     }
   }
 }

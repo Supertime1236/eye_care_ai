@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'brightness_service.dart';
+import 'notification_coordinator.dart';
 import 'notification_service.dart';
 
 /// "AI Night Mode Advisor" — không cần cài đặt/xin quyền gì thêm (tái dùng
@@ -13,6 +14,9 @@ import 'notification_service.dart';
 /// hình lại đang để khá sáng — coi là bất hợp lý, gửi 1 thông báo gợi ý giảm
 /// độ sáng, kèm nút "Giảm ngay" để áp dụng ngay trên thông báo, không cần mở
 /// app. Chỉ gợi ý TỐI ĐA 1 LẦN/NGÀY để không làm phiền.
+///
+/// Thông báo đi qua NotificationCoordinator: nếu cùng lúc có cảnh báo phòng tối
+/// thì 2 cái được GỘP thành 1, và được né giờ báo thức nghỉ mắt.
 class NightModeAdvisorService {
   NightModeAdvisorService._();
   static final NightModeAdvisorService instance = NightModeAdvisorService._();
@@ -89,9 +93,22 @@ class NightModeAdvisorService {
     // sau đó, không thể tính lại real-time từ trong notification action).
     await prefs.setDouble(_kPendingBrightnessKey, suggested);
 
-    await NotificationService.instance.showNightModeSuggestion(
-      currentPercent: (brightness * 100).round(),
-      suggestedPercent: (suggested * 100).round(),
+    final currentPercent = (brightness * 100).round();
+    final suggestedPercent = (suggested * 100).round();
+
+    await NotificationCoordinator.instance.notify(
+      NotificationRequest(
+        kind: NotificationKind.nightMode,
+        title: 'Gợi ý giảm độ sáng',
+        body: 'Phòng đang tối nhưng màn hình ở $currentPercent%. Giảm xuống $suggestedPercent% để dễ chịu hơn?',
+        mergedTitle: 'Phòng đang tối',
+        mergeLine: 'Màn hình đang $currentPercent% — nên giảm xuống $suggestedPercent%.',
+        // Gửi ĐỘC LẬP thì giữ nguyên giao diện thông báo cũ (có nút "Giảm ngay").
+        soloShow: () => NotificationService.instance.showNightModeSuggestion(
+          currentPercent: currentPercent,
+          suggestedPercent: suggestedPercent,
+        ),
+      ),
     );
   }
 

@@ -8,6 +8,8 @@ import '../providers/habit_provider.dart';
 import '../providers/language_provider.dart';
 import '../providers/reminder_provider.dart';
 import '../services/device_data_service.dart';
+import '../services/distance_monitor_service.dart';
+import 'distance_check_screen.dart';
 import '../services/focus_mode_service.dart';
 import '../services/notification_service.dart';
 import '../theme/app_colors.dart';
@@ -620,6 +622,80 @@ class _EyeBreakScreenState extends State<EyeBreakScreen>
                     if (reminder.focusModeEnabled)
                       const _FocusModePermissionBanner(),
                   ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              // Nhắc giữ khoảng cách bằng camera trước — tắt mặc định, người
+              // dùng tự bật (xin quyền camera lúc bật).
+              SectionCard(
+                child: ListenableBuilder(
+                  listenable: DistanceMonitorService.instance,
+                  builder: (context, _) {
+                    final monitor = DistanceMonitorService.instance;
+                    final lastCm = monitor.lastMeasuredCm;
+                    final lastAt = monitor.lastMeasuredAt;
+                    String? lastLine;
+                    if (monitor.enabled) {
+                      if (lastCm != null && lastAt != null) {
+                        final hh = lastAt.hour.toString().padLeft(2, '0');
+                        final mm = lastAt.minute.toString().padLeft(2, '0');
+                        lastLine = strings.vi
+                            ? 'Lần đo gần nhất: ${lastCm.round()} cm lúc $hh:$mm'
+                            : 'Last check: ${lastCm.round()} cm at $hh:$mm';
+                      } else {
+                        lastLine = strings.vi
+                            ? 'Đang chờ lần đo đầu tiên — hãy nhìn vào màn hình trong giây lát.'
+                            : 'Waiting for the first check — keep looking at the screen for a moment.';
+                      }
+                    }
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        SettingsToggleTile(
+                          title: strings.vi ? 'Nhắc giữ khoảng cách' : 'Distance reminder',
+                          description: strings.vi
+                              ? 'Khi đang mở app, cứ vài phút dùng camera trước đo nhanh vài giây để nhắc nếu bạn để màn hình quá gần. Không lưu hay gửi ảnh; có thể tốn thêm một ít pin.'
+                              : 'While the app is open, briefly uses the front camera every few minutes to warn you if the screen is too close. No images are saved or sent; may use a little extra battery.',
+                          value: monitor.enabled,
+                          onChanged: (value) async {
+                            final ok = await monitor.setEnabled(value);
+                            if (!context.mounted) return;
+                            if (value && !ok) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    strings.vi
+                                        ? 'Cần cấp quyền camera để dùng tính năng này.'
+                                        : 'Camera permission is required for this feature.',
+                                  ),
+                                ),
+                              );
+                            }
+                          },
+                        ),
+                        if (lastLine != null)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: Text(
+                              lastLine,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall
+                                  ?.copyWith(color: AppColors.textMuted),
+                            ),
+                          ),
+                        OutlinedButton.icon(
+                          onPressed: () => Navigator.of(context).push(
+                            MaterialPageRoute(builder: (_) => const DistanceCheckScreen()),
+                          ),
+                          icon: const Icon(Icons.straighten_outlined, size: 18),
+                          label: Text(
+                            strings.vi ? 'Đo thử & hiệu chỉnh' : 'Try it & calibrate',
+                          ),
+                        ),
+                      ],
+                    );
+                  },
                 ),
               ),
               const SizedBox(height: 16),

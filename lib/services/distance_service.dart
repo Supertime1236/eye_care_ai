@@ -6,8 +6,8 @@ import 'package:camera/camera.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 
 /// Đo khoảng cách MẮT -> MÀN HÌNH bằng camera trước, dùng cho bài kiểm tra
-/// thị lực (thay lời nhắc tĩnh "giữ cách 40cm" bằng số đo THẬT theo thời
-/// gian thực).
+/// thị lực và chức năng nhắc giữ khoảng cách (thay lời nhắc tĩnh "giữ cách
+/// 40cm" bằng số đo THẬT theo thời gian thực).
 ///
 /// CÁCH TÍNH (không cần hiệu chỉnh riêng từng máy):
 ///   1. ML Kit tìm khuôn mặt + 2 điểm mốc MẮT TRÁI/MẮT PHẢI trên khung hình.
@@ -19,25 +19,20 @@ import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 ///   3. `tiêu_cự_px` ước lượng từ độ rộng ảnh + góc nhìn (FOV) ngang giả
 ///      định ~70° — thông số phổ biến của camera trước điện thoại, KHÔNG
 ///      đọc được chính xác tuyệt đối qua Flutter cho mọi máy.
+///      => Sai số nằm chủ yếu ở bước này và gần như TỈ LỆ THUẬN với khoảng cách,
+///      nên có thể bù bằng 1 hệ số hiệu chỉnh (xem DistanceMonitorService.calibration).
 ///
-/// BUG ĐÃ SỬA ("Face not detected" dù mặt rõ ràng trong khung hình): trước
-/// đây dùng `FaceDetectorMode.fast` + BẮT BUỘC phải có đủ landmark mắt trái
-/// VÀ mắt phải mới tính — nhưng ở chế độ `fast`, ML Kit ưu tiên tốc độ nên
-/// landmark mắt RẤT HAY bị null dù bounding box khuôn mặt vẫn nhận diện
-/// đúng (đặc biệt khi đầu hơi nghiêng hoặc ánh sáng không lý tưởng), khiến
-/// app báo "không thấy mặt" liên tục dù mặt rõ ràng đang trong khung hình.
-/// Giờ đổi sang `FaceDetectorMode.accurate` (đánh đổi chậm hơn 1 chút để
-/// đổi lấy landmark ổn định hơn nhiều) VÀ thêm phương án DỰ PHÒNG: nếu vẫn
-/// thiếu landmark mắt, dùng luôn ĐỘ RỘNG KHUÔN MẶT (bounding box) so với độ
-/// rộng khuôn mặt trung bình (~14cm) để ước lượng khoảng cách — kém chính
-/// xác hơn dùng khoảng cách 2 mắt một chút, nhưng vẫn tốt hơn nhiều so với
-/// báo "không phát hiện được" khi thực ra đã thấy mặt.
+/// BUG ĐÃ SỬA ("Face not detected" dù mặt rõ ràng trong khung hình): dùng
+/// `FaceDetectorMode.accurate` + phương án DỰ PHÒNG theo độ rộng khuôn mặt
+/// khi thiếu landmark mắt.
 ///
-/// GIỚI HẠN THỰC TẾ CẦN BIẾT: đây là ước lượng dựa trên số đo trung bình
-/// dân số + giả định góc nhìn camera — sai số thực tế có thể dao động
-/// ±15-20% tùy khuôn mặt người dùng và đời máy cụ thể. Đủ dùng để phân biệt
-/// "quá gần / vừa / quá xa" (mục đích chính: nhắc giữ khoảng cách ỔN ĐỊNH
-/// giữa các lần đo, không phải đo milimet chính xác tuyệt đối).
+/// NÂNG CẤP: độ phân giải camera tăng từ `low` (320x240) lên `medium`
+/// (~720x480). Ở 40cm khuôn mặt chỉ rộng ~80px trên ảnh `low` — dưới mức ML Kit
+/// nhận diện ổn định (khuyến nghị >= ~100px), nên hay chập chờn "không thấy
+/// mặt". `medium` cho khuôn mặt ~2 lần rộng hơn mà vẫn đủ nhẹ.
+///
+/// GIỚI HẠN: ước lượng dựa trên số đo trung bình dân số + giả định góc nhìn
+/// camera — sai số thô khoảng ±15-20% (giảm đáng kể sau khi hiệu chỉnh).
 /// Kết quả đo 1 khung hình: khoảng cách + xác suất mở mắt từng bên (0.0 =
 /// chắc chắn nhắm, 1.0 = chắc chắn mở). Xác suất mắt null nếu ML Kit không
 /// trả về được (thường do góc mặt/ánh sáng), lúc đó coi như "chưa xác định
@@ -52,8 +47,7 @@ class FaceMeasurement {
   final double? distanceCm;
   // LƯU Ý HỆ QUY CHIẾU: đây là mắt TRÁI/PHẢI THẬT của người dùng (theo cách
   // ML Kit gắn nhãn landmark dựa trên cấu trúc khuôn mặt, không phải theo
-  // vị trí trái/phải trên ẢNH — camera trước dù có lật ảnh để hiển thị kiểu
-  // "soi gương" thì ML Kit vẫn luôn trả nhãn theo đúng mắt thật của mặt).
+  // vị trí trái/phải trên ẢNH).
   final double? leftEyeOpenProbability;
   final double? rightEyeOpenProbability;
 }
@@ -100,7 +94,7 @@ class DistanceService {
 
       _controller = CameraController(
         front,
-        ResolutionPreset.low, // đủ dùng để tìm mốc mắt, không cần ảnh nét cao -> đỡ tốn pin/CPU
+        ResolutionPreset.medium, // đủ lớn để ML Kit nhận diện mặt ổn định (xem ghi chú đầu file)
         enableAudio: false,
         imageFormatGroup: ImageFormatGroup.nv21,
       );
@@ -109,12 +103,10 @@ class DistanceService {
       _faceDetector = FaceDetector(
         options: FaceDetectorOptions(
           enableLandmarks: true,
-          // enableClassification: BẬT thêm để lấy được leftEyeOpenProbability
-          // / rightEyeOpenProbability — dùng cho việc kiểm tra "mắt còn lại
+          // enableClassification: lấy leftEyeOpenProbability /
+          // rightEyeOpenProbability — dùng cho việc kiểm tra "mắt còn lại
           // có đang nhắm/che đúng không" trong bài đo thị lực từng mắt.
           enableClassification: true,
-          // Chậm hơn "fast" một chút nhưng landmark mắt ổn định hơn HẲN —
-          // xem giải thích chi tiết ở doc comment class phía trên.
           performanceMode: FaceDetectorMode.accurate,
         ),
       );
@@ -187,20 +179,16 @@ class DistanceService {
         return;
       }
       // Giới hạn khoảng hợp lý (10cm-150cm) — ngoài khoảng này gần như chắc
-      // chắn là nhiễu/đo sai, không phải người dùng thật sự đứng xa/gần vậy.
+      // chắn là nhiễu/đo sai.
       if (distanceCm < 10 || distanceCm > 150) {
         _distanceController.add(null);
         return;
       }
       // ĐẢO NGƯỢC CÓ CHỦ ĐÍCH: ML Kit trả left/rightEyeOpenProbability theo
       // giải phẫu khuôn mặt trên buffer ảnh GỐC của camera trước (chưa lật
-      // gương), trong khi preview hiển thị cho người dùng lại bị lật gương
-      // (kiểu selfie, đúng như họ thấy trong gương thật). Vì lời nhắc "che
-      // mắt trái/phải" trong UI luôn nói theo góc nhìn của người dùng khi
-      // soi gương (khớp với preview họ đang thấy), nên "mắt trái" của ML Kit
-      // (tính theo ảnh gốc) chính là mắt PHẢI mà người dùng nhìn thấy trên
-      // màn hình, và ngược lại -> phải đảo 2 giá trị khi gán vào
-      // FaceMeasurement để khớp với những gì UI đang yêu cầu.
+      // gương), trong khi preview hiển thị cho người dùng lại bị lật gương.
+      // Lời nhắc "che mắt trái/phải" trong UI nói theo góc nhìn soi gương nên
+      // phải đảo 2 giá trị cho khớp.
       _distanceController.add(FaceMeasurement(
         distanceCm: distanceCm,
         leftEyeOpenProbability: face.rightEyeOpenProbability,
