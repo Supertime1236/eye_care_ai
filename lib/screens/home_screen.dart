@@ -23,12 +23,15 @@ import 'chat_screen.dart';
 import 'eye_break_screen.dart';
 import 'eye_test_screen.dart';
 import 'eye_timeline_screen.dart';
+import 'feature_health_screen.dart';
+import 'monthly_usage_screen.dart';
 import 'habits_screen.dart';
 import 'habits_survey_screen.dart';
 import 'rank_screen.dart';
 import 'settings_screen.dart';
 import 'statistics_screen.dart';
 import '../widgets/next_break_countdown_card.dart';
+import '../widgets/quick_break_sheet.dart';
 import '../widgets/night_phone_usage_card.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -131,6 +134,8 @@ class HomeScreen extends StatelessWidget {
           // riêng tư & Bảo mật).
           const _AiInsightCard(),
           const NextBreakCountdownCard(),
+          // Hành động nhanh: nghỉ mắt 20 giây ngay, không cần chờ thông báo.
+          const QuickBreakButton(),
           const SizedBox(height: 12),
           _TodaySuggestionsCard(habit: habit),
           // Tự ẩn khi chưa có dữ liệu Usage Access; tự có khoảng cách phía trên.
@@ -219,7 +224,7 @@ class HomeScreen extends StatelessWidget {
           const SizedBox(height: 12),
           const _WeeklyOverviewChart(),
           const SizedBox(height: 20),
-          Text(strings.aiSuggestions, style: Theme.of(context).textTheme.titleMedium),
+          Text(strings.vi ? 'Mẹo chăm sóc mắt' : 'Eye care tips', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 12),
           _SuggestionCard(
             icon: '🌿',
@@ -228,14 +233,14 @@ class HomeScreen extends StatelessWidget {
             color: AppColors.primaryTeal,
             bullets: strings.vi
                 ? const [
-                    ('✨', 'AI: hôm qua bạn nhìn màn hình liên tục ~47 phút, gần gấp đôi mức thường thấy.'),
                     ('👁️', '20 phút nhìn màn hình → 20 giây nhìn xa 6 mét.'),
-                    ('🔥', 'Duy trì 3 ngày liên tiếp để mở khoá huy hiệu.'),
+                    ('💧', 'Chớp mắt thường xuyên để mắt đỡ bị khô.'),
+                    ('✅', 'Nghỉ mắt đều đặn giúp tăng điểm sức khỏe mắt mỗi ngày.'),
                   ]
                 : const [
-                    ('✨', 'AI: yesterday you had ~47 min of continuous screen time, almost double your usual.'),
                     ('👁️', '20 min on screen → 20 sec looking 6m away.'),
-                    ('🔥', 'Keep a 3-day streak to unlock a badge.'),
+                    ('💧', 'Blink often so your eyes do not dry out.'),
+                    ('✅', 'Regular breaks raise your daily eye health score.'),
                   ],
           ),
           const SizedBox(height: 10),
@@ -246,14 +251,14 @@ class HomeScreen extends StatelessWidget {
             color: AppColors.warning,
             bullets: strings.vi
                 ? const [
-                    ('✨', 'AI: ước tính thời gian ngoài trời từ hoạt động hằng ngày của bạn.'),
                     ('🌤️', 'Ánh sáng tự nhiên giúp làm chậm tiến triển cận thị.'),
                     ('💡', 'Kết hợp đi bộ ngoài trời với cuộc gọi hoặc giờ ăn trưa.'),
+                    ('📍', 'Cấp quyền vị trí "Luôn cho phép" để app tự ghi nhận thời gian ngoài trời.'),
                   ]
                 : const [
-                    ('✨', "AI estimates outdoor exposure from your daily activity."),
                     ('🌤️', 'Natural light helps slow myopia progression.'),
                     ('💡', 'Pair outdoor time with a call or lunch break.'),
+                    ('📍', 'Allow location "All the time" so the app can track outdoor time automatically.'),
                   ],
           ),
           const SizedBox(height: 10),
@@ -264,14 +269,14 @@ class HomeScreen extends StatelessWidget {
             color: AppColors.testAccent,
             bullets: strings.vi
                 ? const [
-                    ('✨', 'AI: tuần này màn hình chỉ tắt trước giờ ngủ trung bình 11 phút.'),
                     ('🌙', 'Nên để màn hình nghỉ ít nhất 30 phút trước khi ngủ.'),
                     ('⏰', 'Mục tiêu: 7-8 giờ ngủ mỗi đêm.'),
+                    ('😴', 'Xem thẻ "Dùng điện thoại ban đêm" để biết bạn thường dùng máy tới mấy giờ.'),
                   ]
                 : const [
-                    ('✨', 'AI: your screens were on until 11 min before bed on average this week.'),
                     ('🌙', 'Aim for at least 30 screen-free minutes before bed.'),
                     ('⏰', 'Target: 7-8 hours of sleep per night.'),
+                    ('😴', 'Check the "Night phone usage" card to see how late you usually use your phone.'),
                   ],
           ),
         ],
@@ -559,7 +564,9 @@ class _FeatureHubCard extends StatelessWidget {
       _FeatureItem(icon: '✅', title: strings.habits, route: const HabitsScreen()),
       _FeatureItem(icon: '☕', title: strings.eyeBreakTitle, route: const EyeBreakScreen()),
       _FeatureItem(icon: '🗺️', title: strings.vi ? 'Dòng thời gian' : 'Timeline', route: const EyeTimelineScreen()),
+      _FeatureItem(icon: '📅', title: strings.vi ? 'Thống kê tháng' : 'Monthly stats', route: const MonthlyUsageScreen()),
       _FeatureItem(icon: '💬', title: strings.chat, route: const ChatScreen()),
+      _FeatureItem(icon: '🩺', title: strings.vi ? 'Kiểm tra hoạt động' : 'Health check', route: const FeatureHealthScreen()),
       _FeatureItem(icon: '⚙️', title: strings.settings, route: const SettingsScreen()),
     ];
 

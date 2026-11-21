@@ -279,4 +279,11 @@ class DistanceMonitorService extends ChangeNotifier with WidgetsBindingObserver 
     if (total == 0) return null;
     return (prefs.getDouble(_kSumKey) ?? 0) / total;
   }
+
+  /// Số lần đo hôm nay và số lần nằm trong khoảng 30-55 cm — cho thẻ thói quen.
+  Future<({int total, int good})> getTodayCounts() async {
+    final prefs = await SharedPreferences.getInstance();
+    await _resetIfNewDay(prefs);
+    return (total: prefs.getInt(_kTotalKey) ?? 0, good: prefs.getInt(_kGoodKey) ?? 0);
+  }
 }

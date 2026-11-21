@@ -89,6 +89,8 @@ const Map<String, IconData> _kIconMap = {
   '👑': Icons.workspace_premium_outlined,
   '🗺️': Icons.timeline_rounded,
   '📏': Icons.straighten_outlined,
+  '📅': Icons.calendar_month_outlined,
+  '🩺': Icons.health_and_safety_outlined,
 };
 
 // Dùng thay cho `Text(icon, style: TextStyle(fontSize: ...))` ở mọi nơi

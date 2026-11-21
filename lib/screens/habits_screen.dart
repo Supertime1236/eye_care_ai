@@ -9,6 +9,7 @@ import '../theme/app_colors.dart';
 import '../utils/app_icon.dart';
 import '../theme/app_theme.dart';
 import '../widgets/shared_widgets.dart';
+import '../widgets/distance_habit_card.dart';
 
 // HabitsScreen hiển thị tiến trình các thói quen tốt cho mắt trong ngày.
 // Đây là màn hình CHỈ XEM (read-only): giá trị `current` của mỗi thói quen
@@ -154,6 +155,12 @@ class _HabitsScreenState extends State<HabitsScreen> {
                 ),
                 const SizedBox(height: 16),
                 ...habit.habits.map((habitItem) {
+                  if (habitItem.id == 'distance') {
+                    return const Padding(
+                      padding: EdgeInsets.only(bottom: 12),
+                      child: DistanceHabitCard(),
+                    );
+                  }
                   Widget card = habitItem.id == 'sleep'
                       ? InkWell(
                           borderRadius: BorderRadius.circular(16),

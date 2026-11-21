@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../services/app_usage_history_service.dart';
 import '../services/cloud_backup_service.dart';
 import '../services/device_data_service.dart';
 import '../services/distance_monitor_service.dart';
@@ -308,6 +309,10 @@ class HabitProvider extends ChangeNotifier {
     ]);
 
     appUsageBreakdown = results[0] as List<AppUsageBreakdownEntry>;
+    // Lưu số liệu hôm nay theo từng ứng dụng (cho Thống kê tháng) + điền bù 7 ngày
+    // gần nhất mỗi ngày 1 lần. Chạy nền, không chặn việc làm mới.
+    unawaited(AppUsageHistoryService.instance.saveToday(appUsageBreakdown));
+    unawaited(AppUsageHistoryService.instance.backfillRecentDays());
     final totalUsageSeconds = appUsageBreakdown.fold<int>(0, (sum, e) => sum + e.usage.inSeconds);
     final phoneHours = appUsageBreakdown.isEmpty ? null : totalUsageSeconds / 3600.0;
     // Cập nhật biến hiển thị KHÔNG bị clamp — luôn = đúng tổng của
@@ -475,7 +480,12 @@ class HabitProvider extends ChangeNotifier {
       habit.isLive = false;
       return;
     }
-    habit.current = value.clamp(0, habit.target * 2);
+    // BUG ĐÃ SỬA (thời gian ngoài trời "đứng yên" ở 1 con số suốt nhiều ngày):
+    // trước đây giá trị bị kẹp trần ở 2 x mục tiêu — vd mục tiêu 22.5 phút thì
+    // dù ra ngoài 2 tiếng vẫn chỉ hiện đúng 45 phút. Việc kẹp này không cần
+    // thiết: thanh tiến độ đã tự giới hạn ở 100% (xem HabitData.progress) và
+    // các công thức điểm đều tự kẹp riêng. Giữ nguyên giá trị THẬT, chỉ chặn số âm.
+    habit.current = value < 0 ? 0 : value;
     habit.isLive = true;
   }
 
