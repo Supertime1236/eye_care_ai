@@ -10,6 +10,7 @@ import '../services/device_data_service.dart';
 import '../services/distance_monitor_service.dart';
 import '../services/eye_timeline_service.dart';
 import '../services/notification_coordinator.dart';
+import '../services/usage_break_service.dart';
 import '../services/notification_service.dart';
 
 class HabitData {
@@ -249,6 +250,10 @@ class HabitProvider extends ChangeNotifier {
     final service = DeviceDataService.instance;
     // Nhắc giữ khoảng cách (camera) — chỉ chạy nếu người dùng đã tự bật.
     unawaited(DistanceMonitorService.instance.init());
+    // Nhắc nghỉ mắt theo thời gian dùng điện thoại: lần nghỉ khi app đang mở đi
+    // qua recordEyeBreak để UI cập nhật ngay.
+    UsageBreakService.instance.onBreak = recordEyeBreak;
+    unawaited(UsageBreakService.instance.init());
     // Không còn cần theo dõi "Reading Time" bằng cảm biến nữa — thẻ này đã
     // đổi thành "Eye Test Count" (đang phát triển, xem HabitData(id: 'reading')
     // ở trên), không có nguồn dữ liệu thật để bật lên.
@@ -601,6 +606,8 @@ class HabitProvider extends ChangeNotifier {
     habit.current = total.toDouble();
     habit.isLive = true;
     unawaited(EyeTimelineService.instance.log(TimelineEventType.eyeBreak));
+    // Vừa nghỉ mắt (bằng cách nào cũng được) -> bộ đếm "thời gian dùng máy" về 0.
+    unawaited(UsageBreakService.instance.resetAccumulation());
     await _updateHabitsCompletion();
     notifyListeners();
   }

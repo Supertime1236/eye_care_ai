@@ -24,10 +24,13 @@ import 'package:flutter/widgets.dart';
 import 'package:workmanager/workmanager.dart';
 
 import 'device_data_service.dart';
+import 'usage_break_service.dart';
 
 const String _darkRoomUniqueTaskName = 'dark_room_periodic';
 const String _outdoorUniqueTaskName = 'outdoor_time_periodic';
 const String _outdoorTaskName = 'outdoor_time_sample';
+const String _usageBreakUniqueTaskName = 'usage_break_periodic';
+const String _usageBreakTaskName = 'usage_break_check';
 
 // PHẢI là hàm top-level + @pragma('vm:entry-point') để còn gọi được khi app
 // đã bị hệ điều hành tắt hẳn (chạy trong isolate nền riêng).
@@ -42,6 +45,10 @@ void backgroundCallbackDispatcher() {
 
       if (task == _outdoorTaskName) {
         await DeviceDataService.instance.sampleOutdoorOnce(fromBackground: true);
+      } else if (task == _usageBreakTaskName) {
+        // Nhắc nghỉ mắt theo thời gian dùng điện thoại khi app đã đóng. Trả về
+        // ngay nếu người dùng chưa bật chế độ này.
+        await UsageBreakService.instance.pollOnce(fromBackground: true);
       }
     } catch (_) {
       // Lỗi 1 lần lấy mẫu (GPS timeout, thiếu quyền...) không được làm hỏng
@@ -61,6 +68,11 @@ Future<void> registerDarkRoomBackgroundService() async {
     await Workmanager().registerPeriodicTask(
       _outdoorUniqueTaskName,
       _outdoorTaskName,
+      frequency: const Duration(minutes: 15),
+    );
+    await Workmanager().registerPeriodicTask(
+      _usageBreakUniqueTaskName,
+      _usageBreakTaskName,
       frequency: const Duration(minutes: 15),
     );
   } catch (_) {

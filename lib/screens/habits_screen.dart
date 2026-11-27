@@ -10,6 +10,7 @@ import '../utils/app_icon.dart';
 import '../theme/app_theme.dart';
 import '../widgets/shared_widgets.dart';
 import '../widgets/distance_habit_card.dart';
+import '../services/device_data_service.dart';
 
 // HabitsScreen hiển thị tiến trình các thói quen tốt cho mắt trong ngày.
 // Đây là màn hình CHỈ XEM (read-only): giá trị `current` của mỗi thói quen
@@ -23,6 +24,10 @@ class HabitsScreen extends StatefulWidget {
 }
 
 class _HabitsScreenState extends State<HabitsScreen> {
+  List<({int score, double screenHours, double sleepHours})?> _weekSnapshots = [];
+  List<({int score, double screenHours, double sleepHours})?> _monthSnapshots = [];
+  bool _loadingReports = true;
+
   @override
   void initState() {
     super.initState();
@@ -31,6 +36,19 @@ class _HabitsScreenState extends State<HabitsScreen> {
     // Chạy sau frame đầu để tránh gọi notifyListeners() trong lúc build.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       habit.refreshHabitsFromDevice();
+    });
+    _loadReports();
+  }
+
+  Future<void> _loadReports() async {
+    final service = DeviceDataService.instance;
+    final week = await service.loadCurrentWeekSnapshots();
+    final month = await service.loadCurrentMonthWeeklySnapshots();
+    if (!mounted) return;
+    setState(() {
+      _weekSnapshots = week;
+      _monthSnapshots = month;
+      _loadingReports = false;
     });
   }
 
@@ -55,7 +73,10 @@ class _HabitsScreenState extends State<HabitsScreen> {
       ),
       body: SafeArea(
         child: RefreshIndicator(
-          onRefresh: habit.refreshHabitsFromDevice,
+          onRefresh: () async {
+            await habit.refreshHabitsFromDevice();
+            await _loadReports();
+          },
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
@@ -272,6 +293,13 @@ class _HabitsScreenState extends State<HabitsScreen> {
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
                   ),
+                ),
+                const SizedBox(height: 16),
+                _HabitReportsCard(
+                  weekSnapshots: _weekSnapshots,
+                  monthSnapshots: _monthSnapshots,
+                  loading: _loadingReports,
+                  strings: strings,
                 ),
               ],
             ),
@@ -676,6 +704,131 @@ class _ChangeTargetSheetState extends State<_ChangeTargetSheet> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _HabitReportsCard extends StatefulWidget {
+  const _HabitReportsCard({
+    required this.weekSnapshots,
+    required this.monthSnapshots,
+    required this.loading,
+    required this.strings,
+  });
+
+  final List<({int score, double screenHours, double sleepHours})?> weekSnapshots;
+  final List<({int score, double screenHours, double sleepHours})?> monthSnapshots;
+  final bool loading;
+  final AppStrings strings;
+
+  @override
+  State<_HabitReportsCard> createState() => _HabitReportsCardState();
+}
+
+class _HabitReportsCardState extends State<_HabitReportsCard> {
+  int _tab = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    final strings = widget.strings;
+    final snapshots = _tab == 0
+        ? widget.weekSnapshots
+        : widget.monthSnapshots;
+    final recorded = snapshots.whereType<({int score, double screenHours, double sleepHours})>().toList();
+
+    final averageScore = recorded.isEmpty
+        ? null
+        : recorded.map((e) => e.score).reduce((a, b) => a + b) / recorded.length;
+    final averageScreen = recorded.isEmpty
+        ? null
+        : recorded.map((e) => e.screenHours).reduce((a, b) => a + b) / recorded.length;
+
+    return SectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: SegmentedButton<int>(
+                  segments: [
+                    ButtonSegment(value: 0, label: Text(strings.habitWeeklyReport)),
+                    ButtonSegment(value: 1, label: Text(strings.habitMonthlyReport)),
+                  ],
+                  selected: {_tab},
+                  onSelectionChanged: (values) => setState(() => _tab = values.first),
+                  style: ButtonStyle(
+                    visualDensity: VisualDensity.compact,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (widget.loading)
+            const LinearProgressIndicator()
+          else if (recorded.isEmpty)
+            Text(strings.habitReportNoData, style: Theme.of(context).textTheme.bodyMedium)
+          else
+            Column(
+              children: [
+                _ReportMetric(
+                  icon: Icons.emoji_events_outlined,
+                  label: strings.habitReportAverage,
+                  value: '${averageScore!.round()} ${strings.pointUnit}',
+                ),
+                const SizedBox(height: 8),
+                _ReportMetric(
+                  icon: Icons.phone_android_rounded,
+                  label: strings.habitReportScreenTime,
+                  value: '${averageScreen!.toStringAsFixed(1)} ${strings.hourUnit}',
+                ),
+                const SizedBox(height: 8),
+                _ReportMetric(
+                  icon: Icons.calendar_month_outlined,
+                  label: strings.habitReportDaysTracked,
+                  value: '${recorded.length}',
+                ),
+              ],
+            ),
+          const SizedBox(height: 8),
+          Text(
+            strings.habitReportOpenApp,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textMuted),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ReportMetric extends StatelessWidget {
+  const _ReportMetric({required this.icon, required this.label, required this.value});
+
+  final IconData icon;
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = Theme.of(context).colorScheme.primary;
+    return Row(
+      children: [
+        Container(
+          width: 38,
+          height: 38,
+          decoration: BoxDecoration(
+            color: accent.withValues(alpha: 0.10),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          alignment: Alignment.center,
+          child: Icon(icon, size: 20, color: accent),
+        ),
+        const SizedBox(width: 10),
+        Expanded(child: Text(label, style: Theme.of(context).textTheme.bodyMedium)),
+        Text(value, style: Theme.of(context).textTheme.titleSmall?.copyWith(color: accent, fontWeight: FontWeight.w800)),
+      ],
     );
   }
 }

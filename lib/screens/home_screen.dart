@@ -24,7 +24,6 @@ import 'eye_break_screen.dart';
 import 'eye_test_screen.dart';
 import 'eye_timeline_screen.dart';
 import 'feature_health_screen.dart';
-import 'monthly_usage_screen.dart';
 import 'habits_screen.dart';
 import 'habits_survey_screen.dart';
 import 'rank_screen.dart';
@@ -564,7 +563,6 @@ class _FeatureHubCard extends StatelessWidget {
       _FeatureItem(icon: '✅', title: strings.habits, route: const HabitsScreen()),
       _FeatureItem(icon: '☕', title: strings.eyeBreakTitle, route: const EyeBreakScreen()),
       _FeatureItem(icon: '🗺️', title: strings.vi ? 'Dòng thời gian' : 'Timeline', route: const EyeTimelineScreen()),
-      _FeatureItem(icon: '📅', title: strings.vi ? 'Thống kê tháng' : 'Monthly stats', route: const MonthlyUsageScreen()),
       _FeatureItem(icon: '💬', title: strings.chat, route: const ChatScreen()),
       _FeatureItem(icon: '🩺', title: strings.vi ? 'Kiểm tra hoạt động' : 'Health check', route: const FeatureHealthScreen()),
       _FeatureItem(icon: '⚙️', title: strings.settings, route: const SettingsScreen()),

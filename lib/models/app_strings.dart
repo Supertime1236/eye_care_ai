@@ -419,6 +419,56 @@ class AppStrings {
   String get eyeTestStableShort => vi ? 'Tốt' : 'Good';
   String get eyeTestNeedBreakShort => vi ? 'Nghỉ mắt' : 'Take a break';
   String get eyeTestRetake => vi ? 'Làm lại' : 'Retake';
+  String get eyeTestReadCharacter => vi ? 'Ký tự nào đang hiển thị?' : 'Which character is shown?';
+  String get eyeTestNearShort => vi ? 'Thị lực gần' : 'Near vision';
+  String get eyeTestNearVisionTitle => vi ? 'Thị lực gần' : 'Near vision';
+  String get eyeTestNearVisionBody => vi
+      ? 'Giữ điện thoại cách mắt khoảng 30-40cm. Chỉ chọn ký tự bạn nhìn thấy.'
+      : 'Hold the phone about 30-40cm away. Select the character you can see.';
+  String get eyeTestPickColor => vi ? 'Màu này tên là gì?' : 'What is this color?';
+  String get eyeTestColorShort => vi ? 'Phân biệt màu' : 'Color vision';
+  String get eyeTestColorVisionTitle => vi ? 'Phân biệt màu sắc' : 'Color discrimination';
+  String get eyeTestColorVisionBody => vi
+      ? 'Chọn tên màu chính xác. Đây là bài sàng lọc cơ bản.'
+      : 'Select the correct color name. This is a basic screening task.';
+  String get eyeTestColorRed => vi ? 'Đỏ' : 'Red';
+  String get eyeTestColorBlue => vi ? 'Xanh dương' : 'Blue';
+  String get eyeTestColorGreen => vi ? 'Xanh lá' : 'Green';
+  String get eyeTestColorYellow => vi ? 'Vàng' : 'Yellow';
+  String get eyeTestColorPurple => vi ? 'Tím' : 'Purple';
+  String get eyeTestColorOrange => vi ? 'Cam' : 'Orange';
+  String get eyeTestColorGray => vi ? 'Xám' : 'Gray';
+  String get eyeTestColorBrown => vi ? 'Nâu' : 'Brown';
+  String get eyeTestColorPink => vi ? 'Hồng' : 'Pink';
+  String get eyeTestColorTeal => vi ? 'Ngọc lam' : 'Teal';
+  String get eyeTestColorOlive => vi ? 'Ô liu' : 'Olive';
+  String get eyeTestColorMaroon => vi ? 'Đỏ nâu' : 'Maroon';
+  String get eyeTestColorNavy => vi ? 'Xanh nước biển' : 'Navy';
+  String get eyeTestColorMint => vi ? 'Xanh bạc hà' : 'Mint';
+  String get eyeTestColorLavender => vi ? 'Tím nhạt' : 'Lavender';
+  String get eyeTestColorCoral => vi ? 'San hô' : 'Coral';
+  String get eyeTestColorSalmon => vi ? 'Cam đào' : 'Salmon';
+  String get eyeTestColorKhaki => vi ? 'Vàng nhạt' : 'Khaki';
+  String get eyeTestColorPlum => vi ? 'Mận' : 'Plum';
+  String get eyeTestColorWheat => vi ? 'Lúa mì' : 'Wheat';
+  String get eyeTestColorAmber => vi ? 'Hổ phách' : 'Amber';
+  String get eyeTestColorSienna => vi ? 'Đỏ gạch' : 'Sienna';
+  String get eyeTestColorChestnut => vi ? 'Nâu đỏ' : 'Chestnut';
+  String get eyeTestColorBeige => vi ? 'Beige' : 'Beige';
+  String get eyeTestColorIvory => vi ? 'Ngà' : 'Ivory';
+  String get eyeTestColorSlate => vi ? 'Đá phiến' : 'Slate';
+  String get eyeTestColorAsh => vi ? 'Tro' : 'Ash';
+  String get eyeTestColorCharcoal => vi ? 'Than chì' : 'Charcoal';
+  String get eyeTestColorCopper => vi ? 'Đồng' : 'Copper';
+  String get eyeTestColorBronze => vi ? 'Đồng thau' : 'Bronze';
+  String get eyeTestColorZinc => vi ? 'Kẽm' : 'Zinc';
+  String get eyeTestColorNickel => vi ? 'Niken' : 'Nickel';
+  String get eyeTestColorLead => vi ? 'Chì' : 'Lead';
+  String get eyeTestColorTin => vi ? 'Thiếc' : 'Tin';
+  String get eyeTestColorPlatinum => vi ? 'Bạch kim' : 'Platinum';
+  String get eyeTestColorGold => vi ? 'Vàng' : 'Gold';
+  String get eyeTestColorSilver => vi ? 'Bạc' : 'Silver';
+  String get eyeTestColorDiamond => vi ? 'Kim cương' : 'Diamond';
 
   // ---------------- Eye Break reminder screen ----------------
   String get eyeBreakTitle => vi ? 'Nhắc nghỉ mắt' : 'Eye Break Reminder';
@@ -573,6 +623,14 @@ class AppStrings {
   String completedHabits(int completed, int total) =>
       vi ? '$completed/$total thói quen đã hoàn thành' : '$completed of $total habits completed';
 
+  String get habitWeeklyReport => vi ? 'Báo cáo tuần' : 'Weekly report';
+  String get habitMonthlyReport => vi ? 'Báo cáo tháng' : 'Monthly report';
+  String get habitReportOpenApp => vi ? 'Dữ liệu được cập nhật khi mở lại app' : 'Updated when you reopen the app';
+  String get habitReportNoData => vi ? 'Chưa có dữ liệu trong kỳ này' : 'No data for this period yet';
+  String get habitReportAverage => vi ? 'Điểm trung bình' : 'Average score';
+  String get habitReportScreenTime => vi ? 'Thời gian màn hình trung bình' : 'Average screen time';
+  String get habitReportDaysTracked => vi ? 'Mốc dữ liệu đã ghi nhận' : 'Tracked records';
+
   // habitTitle chuyển id của thói quen thành tiêu đề phù hợp cho màn hình.
   // Thêm case mới nếu bạn mở rộng danh sách thói quen.
   // habitTitle chuyển id nội bộ của thói quen thành tiêu đề hiển thị.
@@ -705,7 +763,7 @@ class AppStrings {
           'Khi nào nên khám mắt?':
               'Hãy đi khám mắt nếu bạn gặp: mờ mắt kéo dài, đau mắt, đau đầu thường xuyên, '
                   'nhìn đôi, thấy chớp sáng, hoặc thay đổi thị lực đột ngột. Người lớn nên khám mắt toàn diện '
-                  'mỗi 1-2 năm, hoặc hằng năm nếu đang đeo kính/kính áp tròng.',
+                  'mỗi 1-2 năm, hoặc hằng năm nếu đang đeo kính/kính áp tròng.'
         }
       : const {
           'How to reduce eye strain?':
@@ -723,7 +781,7 @@ class AppStrings {
           'When to see an eye doctor?':
               'See an eye doctor if you experience: persistent blurred vision, eye pain, frequent headaches, '
                   'double vision, flashes of light, or sudden vision changes. Adults should get a comprehensive '
-                  'eye exam every 1-2 years, or annually if you wear glasses/contacts.',
+                  'eye exam every 1-2 years, or annually if you wear glasses/contacts.'
         };
 
   String get chatFallbackResponse => vi
@@ -1029,4 +1087,47 @@ class AppStrings {
       vi ? 'Không tải được nhật ký cập nhật. Vui lòng thử lại.' : 'Failed to load the changelog. Please try again.';
   String get changelogRetry => vi ? 'Thử lại' : 'Retry';
   String get changelogNoNotes => vi ? 'Không có ghi chú cho bản này.' : 'No notes for this release.';
+
+  String get eyeExerciseTitle => vi ? 'Bài tập thư giãn mắt' : 'Eye Exercises';
+  String get eyeExerciseToday => vi ? 'Thời gian tập hôm nay' : 'Exercise time today';
+  String get eyeExerciseChoose => vi ? 'Chọn bài tập' : 'Choose an exercise';
+  String get eyeExerciseCompleted => vi ? 'Hoàn thành bài tập. Nghỉ mắt thật tốt!' : 'Exercise completed. Rest your eyes!';
+  String get eyeExerciseStop => vi ? 'Dừng bài tập' : 'Stop exercise';
+  String get eyeExerciseSafety => vi
+      ? 'Thực hiện nhẹ nhàng; dừng lại nếu đau mắt, đau đầu hoặc chóng mặt.'
+      : 'Move gently; stop if you experience eye pain, headache, or dizziness.';
+  String get minuteUnit => vi ? 'phút' : 'minutes';
+  String get secondUnit => vi ? 'giây' : 'seconds';
+
+  String get eyeExerciseBlinkTitle => vi ? 'Chớp mắt có kiểm soát' : 'Controlled blinking';
+  String get eyeExerciseBlinkBody => vi
+      ? 'Giúp mắt bớt khô và phân bổ lại lớp nước mắt.'
+      : 'Helps reduce dryness and refresh the tear film.';
+  String get eyeExerciseBlinkInstruction => vi
+      ? 'Nhắm nhẹ mắt trong 2 giây, rồi mở bình thường. Chớp chậm liên tục trong suốt thời gian đếm.'
+      : 'Close gently for 2 seconds, then open normally. Continue slow, complete blinks while the timer runs.';
+
+  String get eyeExerciseFocusTitle => vi ? 'Nhìn xa — nhìn gần' : 'Far–near focusing';
+  String get eyeExerciseFocusBody => vi
+      ? 'Luân phiên điều tiết mắt theo hai khoảng cách.'
+      : 'Alternate focus between a near object and a distant view.';
+  String get eyeExerciseFocusInstruction => vi
+      ? 'Cứ 5 giây: nhìn ngón tay cách mặt 20-30cm, sau đó nhìn xa qua cửa sổ hoặc hướng lên bầu trời.'
+      : 'Every 5 seconds: focus on a finger 20-30cm away, then shift to something far away outdoors or across the room.';
+
+  String get eyeExerciseMovementTitle => vi ? 'Di chuyển mắt theo hướng' : 'Eye movement exercise';
+  String get eyeExerciseMovementBody => vi
+      ? 'Vẽ tròn, nhìn trái — phải — lên — xuống chậm rãi.'
+      : 'Move gently left, right, up, down, and in circles.';
+  String get eyeExerciseMovementInstruction => vi
+      ? 'Giữ đầu cố định. Nhìn chậm sang trái, phải, lên, xuống rồi vẽ một vòng tròn theo chiều kim đồng hồ.'
+      : 'Keep your head still. Slowly look left, right, up, down, then trace a circle clockwise.';
+
+  String get eyeExerciseRelaxTitle => vi ? 'Nghỉ sâu bằng bàn tay' : 'Palming relaxation';
+  String get eyeExerciseRelaxBody => vi
+      ? 'Che mắt bằng lòng bàn tay để thư giãn trong bóng tối.'
+      : 'Cover the eyes with warm palms for a short relaxation.';
+  String get eyeExerciseRelaxInstruction => vi
+      ? 'Rời màn hình, đặt lòng bàn tay lên mắt đã nhắm. Thở chậm và để mắt thư giãn trong bóng tối.'
+      : 'Step away from the screen and place your palms over closed eyes. Breathe slowly and relax in darkness.';
 }

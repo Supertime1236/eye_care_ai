@@ -11,6 +11,7 @@ import '../services/device_data_service.dart';
 import '../services/distance_monitor_service.dart';
 import 'distance_check_screen.dart';
 import '../services/focus_mode_service.dart';
+import '../services/usage_break_service.dart';
 import '../services/notification_service.dart';
 import '../theme/app_colors.dart';
 import '../utils/app_icon.dart';
@@ -66,6 +67,7 @@ class _EyeBreakScreenState extends State<EyeBreakScreen>
   @override
   void dispose() {
     _countdownTimer?.cancel();
+    UsageBreakService.instance.removeListener(_onUsageBreakChanged);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -74,7 +76,15 @@ class _EyeBreakScreenState extends State<EyeBreakScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    // Chế độ "nhắc theo thời gian dùng điện thoại": cập nhật màn hình khi nó đổi
+    // và kiểm tra ngay 1 lần để thanh tiến độ không đứng ở số cũ.
+    UsageBreakService.instance.addListener(_onUsageBreakChanged);
+    UsageBreakService.instance.pollOnce();
     _loadSavedReminder();
+  }
+
+  void _onUsageBreakChanged() {
+    if (mounted) setState(() {});
   }
 
   @override
@@ -163,6 +173,10 @@ class _EyeBreakScreenState extends State<EyeBreakScreen>
       if (autoBreak.enabled) {
         await autoBreak.setEnabled(false);
       }
+    }
+    // Chế độ "theo thời gian dùng điện thoại" cũng loại trừ với 2 chế độ kia.
+    if (UsageBreakService.instance.enabled) {
+      await UsageBreakService.instance.setEnabled(false);
     }
   }
 
@@ -331,7 +345,8 @@ class _EyeBreakScreenState extends State<EyeBreakScreen>
     // Khi "Tự động nhắc nghỉ mắt" đang bật, phần đếm ngược THỦ CÔNG bên dưới
     // bị khoá + làm mờ (xem giải thích ở đầu file) — 2 cơ chế không bao giờ
     // cùng hiển thị số liệu một lúc nữa.
-    final manualLockedByAuto = autoBreak.enabled;
+    final usageBreak = UsageBreakService.instance;
+    final manualLockedByAuto = autoBreak.enabled || usageBreak.enabled;
 
     if (_breakPromptShowing) {
       return Scaffold(
@@ -444,6 +459,93 @@ class _EyeBreakScreenState extends State<EyeBreakScreen>
               ),
               const SizedBox(height: 16),
 
+              // ---------------- Nhắc theo THỜI GIAN DÙNG ĐIỆN THOẠI ----------------
+              SectionCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    SettingsToggleTile(
+                      title: strings.vi
+                          ? 'Nhắc theo thời gian dùng điện thoại'
+                          : 'Remind by phone usage time',
+                      description: strings.vi
+                          ? 'Cứ dùng điện thoại đủ số phút bạn chọn là nhắc nghỉ mắt và tự tính 1 lần nghỉ — dựa trên thời gian bạn thật sự dùng máy, không phải giờ trên đồng hồ. Bật cái này sẽ tắt 2 chế độ nhắc còn lại.'
+                          : 'Reminds you to rest your eyes after the number of minutes you choose of actual phone use, and counts it as 1 break — based on real usage, not the clock. Turning this on turns off the other two reminder modes.',
+                      value: usageBreak.enabled,
+                      onChanged: (v) async {
+                        if (v) {
+                          final reminder = context.read<ReminderProvider>();
+                          final auto = context.read<AutoBreakProvider>();
+                          if (reminder.isEyeBreakReminderActive) _stopReminder(reminder);
+                          if (auto.enabled) await auto.setEnabled(false);
+                        }
+                        await usageBreak.setEnabled(v);
+                      },
+                    ),
+                    if (usageBreak.enabled) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        strings.vi ? 'Nhắc sau mỗi' : 'Remind after every',
+                        style: Theme.of(context).textTheme.titleSmall,
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        children: UsageBreakService.minuteOptions.map((m) {
+                          final selected = usageBreak.minutes == m;
+                          return ChoiceChip(
+                            label: Text('$m ${strings.vi ? "phút" : "min"}'),
+                            selected: selected,
+                            showCheckmark: false,
+                            onSelected: (_) => usageBreak.setMinutes(m),
+                            selectedColor: AppColors.testAccent.withValues(alpha: 0.15),
+                            labelStyle: TextStyle(
+                              color: selected ? AppColors.testAccent : null,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                      const SizedBox(height: 14),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(4),
+                              child: LinearProgressIndicator(
+                                value: usageBreak.progress,
+                                minHeight: 6,
+                                backgroundColor: AppColors.border,
+                                valueColor: const AlwaysStoppedAnimation(AppColors.testAccent),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Text(
+                            '${usageBreak.accumulatedSeconds ~/ 60}/${usageBreak.minutes}',
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleSmall
+                                ?.copyWith(fontWeight: FontWeight.w700),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        strings.vi
+                            ? 'Đã dùng ${usageBreak.accumulatedSeconds ~/ 60} phút kể từ lần nghỉ gần nhất. Khi app đóng, app kiểm tra mỗi ~15 phút nên thông báo có thể trễ vài phút. Cần quyền "Truy cập dữ liệu sử dụng".'
+                            : 'Used ${usageBreak.accumulatedSeconds ~/ 60} min since your last break. When the app is closed it checks about every 15 minutes, so the reminder can be a few minutes late. Requires "Usage access".',
+                        style: Theme.of(context)
+                            .textTheme
+                            .bodySmall
+                            ?.copyWith(color: AppColors.textMuted),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+
               if (manualLockedByAuto)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 10),
@@ -462,8 +564,8 @@ class _EyeBreakScreenState extends State<EyeBreakScreen>
                         Expanded(
                           child: Text(
                             strings.vi
-                                ? 'Đang tắt "Nhắc nghỉ mắt" thủ công vì Tự động nhắc nghỉ mắt đang bật ở trên — tắt Tự động nếu bạn muốn tự đặt hẹn giờ cố định.'
-                                : 'The manual reminder below is off while Auto eye-break reminders is on above — turn Auto off if you want a fixed manual timer instead.',
+                                ? 'Đang tắt "Nhắc nghỉ mắt" thủ công vì một chế độ nhắc khác đang bật ở trên — tắt chế độ đó nếu bạn muốn tự đặt hẹn giờ cố định.'
+                                : 'The manual reminder below is off while another reminder mode is on above — turn that mode off if you want a fixed manual timer instead.',
                             style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.warning),
                           ),
                         ),

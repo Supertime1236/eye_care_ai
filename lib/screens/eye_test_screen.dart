@@ -45,7 +45,7 @@ class EyeTestScreen extends StatefulWidget {
 
 enum _Direction { up, right, down, left }
 
-enum _Phase { intro, rightEye, leftEye, contrast, result }
+enum _Phase { intro, rightEye, leftEye, contrast, nearVision, colorVision, result }
 
 // Lý do tạm dừng bài test — dùng để hiện đúng thông báo tương ứng thay vì
 // 1 câu chung chung.
@@ -61,6 +61,23 @@ const List<double> _kAcuitySizes = [130, 108, 90, 75, 62, 52, 43, 36];
 // số tương phản thay đổi.
 const List<double> _kContrastLevels = [0.9, 0.7, 0.5, 0.34, 0.2, 0.1];
 
+const List<String> _kNearCharacters = ['A', 'E', 'O', 'K', 'V', 'N', 'S', 'H'];
+
+const List<_ColorChallenge> _kColorChallenges = [
+  _ColorChallenge(Color(0xFFEF4444), 'red'),
+  _ColorChallenge(Color(0xFF2563EB), 'blue'),
+  _ColorChallenge(Color(0xFF16A34A), 'green'),
+  _ColorChallenge(Color(0xFFEAB308), 'yellow'),
+  _ColorChallenge(Color(0xFF9333EA), 'purple'),
+  _ColorChallenge(Color(0xFFEA580C), 'orange'),
+];
+
+class _ColorChallenge {
+  const _ColorChallenge(this.color, this.id);
+  final Color color;
+  final String id;
+}
+
 class _EyeTestScreenState extends State<EyeTestScreen> {
   _Phase _phase = _Phase.intro;
 
@@ -74,6 +91,15 @@ class _EyeTestScreenState extends State<EyeTestScreen> {
   // ---- Trạng thái test tương phản ----
   int _contrastIndex = 0;
   int? _contrastLevel; // số bậc vượt qua được (0-6), null = chưa đo
+
+  // ---- Trạng thái test thị lực gần ----
+  int _nearIndex = 0;
+  int? _nearLevel;
+  String _nearCharacter = _kNearCharacters.first;
+
+  // ---- Trạng thái test phân biệt màu ----
+  int _colorIndex = 0;
+  int? _colorLevel;
 
   final _random = math.Random();
   List<Map<String, dynamic>> _history = [];
@@ -229,6 +255,8 @@ class _EyeTestScreenState extends State<EyeTestScreen> {
       'rightEyeLevel': _rightEyeLevel,
       'leftEyeLevel': _leftEyeLevel,
       'contrastLevel': _contrastLevel,
+      'nearLevel': _nearLevel,
+      'colorLevel': _colorLevel,
       'overallPercent': overallPercent,
     };
     final updated = [..._history, entry];
@@ -324,12 +352,63 @@ class _EyeTestScreenState extends State<EyeTestScreen> {
   void _finishContrast(int levelReached) {
     setState(() {
       _contrastLevel = levelReached;
+      _phase = _Phase.nearVision;
+      _showDistancePause = false;
+      _pauseReason = _PauseReason.none;
+    });
+  }
+
+  void _startNearVision() {
+    setState(() {
+      _phase = _Phase.nearVision;
+      _nearIndex = 0;
+      _nearCharacter = _kNearCharacters[_random.nextInt(_kNearCharacters.length)];
+    });
+  }
+
+  void _answerNearVision(String picked) {
+    if (picked != _nearCharacter) {
+      _finishNearVision(_nearIndex);
+      return;
+    }
+    if (_nearIndex >= _kNearCharacters.length - 1) {
+      _finishNearVision(_kNearCharacters.length);
+      return;
+    }
+    setState(() {
+      _nearIndex += 1;
+      _nearCharacter = _kNearCharacters[_random.nextInt(_kNearCharacters.length)];
+    });
+  }
+
+  void _finishNearVision(int levelReached) {
+    setState(() {
+      _nearLevel = levelReached;
+      _phase = _Phase.colorVision;
+      _colorIndex = 0;
+    });
+  }
+
+  void _answerColorVision(String pickedId) {
+    final challenge = _kColorChallenges[_colorIndex];
+    if (pickedId != challenge.id) {
+      _finishColorVision(_colorIndex);
+      return;
+    }
+    if (_colorIndex >= _kColorChallenges.length - 1) {
+      _finishColorVision(_kColorChallenges.length);
+      return;
+    }
+    setState(() => _colorIndex += 1);
+  }
+
+  void _finishColorVision(int levelReached) {
+    setState(() {
+      _colorLevel = levelReached;
       _phase = _Phase.result;
       _showDistancePause = false;
       _pauseReason = _PauseReason.none;
     });
-    // Đã xong bài test -> không cần đo khoảng cách nữa, dừng camera ngay,
-    // không để chạy ngầm vô ích lúc người dùng đang xem kết quả.
     DistanceService.instance.stop();
     final percent = _overallPercent();
     _saveResult(percent);
@@ -339,7 +418,9 @@ class _EyeTestScreenState extends State<EyeTestScreen> {
     final r = (_rightEyeLevel ?? 0) / _kAcuitySizes.length;
     final l = (_leftEyeLevel ?? 0) / _kAcuitySizes.length;
     final c = (_contrastLevel ?? 0) / _kContrastLevels.length;
-    return (((r + l + c) / 3) * 100).round();
+    final near = (_nearLevel ?? 0) / _kNearCharacters.length;
+    final color = (_colorLevel ?? 0) / _kColorChallenges.length;
+    return (((r + l + c + near + color) / 5) * 100).round();
   }
 
   void _resetTest() {
@@ -352,8 +433,15 @@ class _EyeTestScreenState extends State<EyeTestScreen> {
       _leftEyeLevel = null;
       _contrastIndex = 0;
       _contrastLevel = null;
+      _nearIndex = 0;
+      _nearLevel = null;
+      _nearCharacter = _kNearCharacters.first;
+      _colorIndex = 0;
+      _colorLevel = null;
       _currentDirection = null;
       _cameraActive = false;
+      _showDistancePause = false;
+      _pauseReason = _PauseReason.none;
       _showDistancePause = false;
       _pauseReason = _PauseReason.none;
       _showAnnouncement = false;
@@ -384,6 +472,8 @@ class _EyeTestScreenState extends State<EyeTestScreen> {
           _Phase.rightEye => _buildAcuityRound(context, strings, isRight: true),
           _Phase.leftEye => _buildAcuityRound(context, strings, isRight: false),
           _Phase.contrast => _buildContrastRound(context, strings),
+          _Phase.nearVision => _buildNearVisionRound(context, strings),
+          _Phase.colorVision => _buildColorVisionRound(context, strings),
           _Phase.result => _buildResult(context, strings),
         },
       ),
@@ -583,6 +673,92 @@ class _EyeTestScreenState extends State<EyeTestScreen> {
     );
   }
 
+  // ---------------- Vòng đo thị lực gần ----------------
+  Widget _buildNearVisionRound(BuildContext context, AppStrings strings) {
+    final content = SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          const SizedBox(height: 8),
+          Text(
+            '${strings.stepLabel} ${_nearIndex + 1}/${_kNearCharacters.length}',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textMuted),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            _nearCharacter,
+            style: TextStyle(
+              fontSize: 90,
+              fontWeight: FontWeight.w900,
+              color: Colors.black.withValues(alpha: 1),
+              height: 1,
+            ),
+          ),
+          const SizedBox(height: 32),
+          Text(
+            strings.eyeTestReadCharacter,
+            style: Theme.of(context).textTheme.bodyMedium,
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 16),
+          _buildCharacterPad(onPick: _answerNearVision),
+        ],
+      ),
+    );
+    return _wrapWithDistanceGate(
+      context,
+      strings,
+      content,
+      announceTitle: strings.eyeTestNearVisionTitle,
+      announceSubtitle: strings.eyeTestNearVisionBody,
+      announceIcon: Icons.text_fields_rounded,
+    );
+  }
+
+  // ---------------- Vòng đo phân biệt màu ----------------
+  Widget _buildColorVisionRound(BuildContext context, AppStrings strings) {
+    final challenge = _kColorChallenges[_colorIndex];
+    final content = SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          const SizedBox(height: 8),
+          Text(
+            '${strings.stepLabel} ${_colorIndex + 1}/${_kColorChallenges.length}',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textMuted),
+          ),
+          const SizedBox(height: 24),
+          Container(
+            width: 120,
+            height: 120,
+            decoration: BoxDecoration(
+              color: challenge.color,
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(height: 32),
+          Text(
+            strings.eyeTestPickColor,
+            style: Theme.of(context).textTheme.bodyMedium,
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 16),
+          _buildColorPad(onPick: _answerColorVision, strings: strings),
+        ],
+      ),
+    );
+    return _wrapWithDistanceGate(
+      context,
+      strings,
+      content,
+      announceTitle: strings.eyeTestColorVisionTitle,
+      announceSubtitle: strings.eyeTestColorVisionBody,
+      announceIcon: Icons.color_lens_rounded,
+    );
+  }
+
   // Bọc nội dung 1 vòng test bằng: (1) badge góc trên-phải hiện khoảng cách
   // hiện tại nếu camera đang chạy, (2) lớp phủ toàn màn hình CHẶN thao tác +
   // tạm dừng bài test khi sai khoảng cách quá 700ms liên tục, (3) thông báo
@@ -730,7 +906,6 @@ class _EyeTestScreenState extends State<EyeTestScreen> {
     );
   }
 
-
   Widget _buildTumblingE(BuildContext context, {required double size, required double opacity}) {
     // Chữ "E" mặc định mở về bên PHẢI -> xoay theo góc tương ứng từng hướng.
     final angle = switch (_currentDirection!) {
@@ -800,6 +975,72 @@ class _EyeTestScreenState extends State<EyeTestScreen> {
           const SizedBox(height: 10),
           dirButton(_Direction.down, Icons.arrow_downward_rounded),
         ],
+      ),
+    );
+  }
+
+  Widget _buildCharacterPad({required void Function(String) onPick}) {
+    Widget charButton(String char) {
+      return SizedBox(
+        width: 64,
+        height: 64,
+        child: FilledButton(
+          style: FilledButton.styleFrom(
+            backgroundColor: AppColors.testAccent.withValues(alpha: 0.12),
+            foregroundColor: AppColors.testAccent,
+            shape: const CircleBorder(),
+          ),
+          onPressed: () => onPick(char),
+          child: Text(
+            char,
+            style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w600),
+          ),
+        ),
+      );
+    }
+
+    return Center(
+      child: Wrap(
+        spacing: 12,
+        runSpacing: 12,
+        alignment: WrapAlignment.center,
+        children: _kNearCharacters.map(charButton).toList(),
+      ),
+    );
+  }
+
+  Widget _buildColorPad({required void Function(String) onPick, required AppStrings strings}) {
+    String labelFor(String id) => switch (id) {
+          'red' => strings.eyeTestColorRed,
+          'blue' => strings.eyeTestColorBlue,
+          'green' => strings.eyeTestColorGreen,
+          'yellow' => strings.eyeTestColorYellow,
+          'purple' => strings.eyeTestColorPurple,
+          'orange' => strings.eyeTestColorOrange,
+          _ => id,
+        };
+
+    Widget colorButton(_ColorChallenge challenge) {
+      return SizedBox(
+        width: 88,
+        height: 44,
+        child: FilledButton(
+          style: FilledButton.styleFrom(
+            backgroundColor: challenge.color.withValues(alpha: 0.16),
+            foregroundColor: AppColors.testAccent,
+          ),
+          onPressed: () => onPick(challenge.id),
+          child: Text(labelFor(challenge.id)),
+        ),
+      );
+    }
+
+    return Center(
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        alignment: WrapAlignment.center,
+        children: _kColorChallenges.map(colorButton).toList(),
       ),
     );
   }
@@ -898,6 +1139,26 @@ class _EyeTestScreenState extends State<EyeTestScreen> {
                   icon: Icons.contrast_rounded,
                   label: strings.eyeTestContrastShort,
                   value: '${_contrastLevel ?? 0}/${_kContrastLevels.length}',
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _MiniResultCard(
+                  icon: Icons.text_fields_rounded,
+                  label: strings.eyeTestNearShort,
+                  value: '${_nearLevel ?? 0}/${_kNearCharacters.length}',
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _MiniResultCard(
+                  icon: Icons.palette_outlined,
+                  label: strings.eyeTestColorShort,
+                  value: '${_colorLevel ?? 0}/${_kColorChallenges.length}',
                 ),
               ),
             ],

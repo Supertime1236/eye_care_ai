@@ -234,16 +234,38 @@ class DeviceDataService {
   // 1 trong 2 tín hiệu, xem chi tiết ở _detectOutdoorSample/_hasGoodGpsFix.
   static const _kGpsGoodAccuracyMeters = 30.0; // độ chính xác GPS coi là "tốt"
 
+  static const _kOutdoorLastSampleKey = 'outdoor_last_sample_millis';
+
+  // Tính số phút đã trôi qua kể từ 00:00 hôm nay, giới hạn tối thiểu 0.
+  // Dùng để tránh dữ liệu ngoài trời lớn hơn thời gian thực tế của ngày,
+  // đặc biệt sau khi khôi phục backup hoặc mốc lưu bị lệch ngày.
+  double _elapsedMinutesToday() {
+    final now = DateTime.now();
+    final startOfDay = DateTime(now.year, now.month, now.day);
+    return now.difference(startOfDay).inMilliseconds / 60000.0;
+  }
+
+  //
+  // Lưu ý: giá trị outdoor chỉ được phép tồn tại trong NGÀY hiện tại.
+  // Với dữ liệu cũ/lệch từ backup, luôn giới hạn theo thời gian đã trôi qua
+  // từ đầu ngày thay vì hiển thị số phút cộng dồn từ nhiều ngày.
   Future<double> getOutdoorMinutesToday() async {
     final prefs = await SharedPreferences.getInstance();
     // Worker nền ghi số phút ở 1 isolate KHÁC — SharedPreferences của isolate
     // chính có cache trong RAM nên phải reload() mới thấy giá trị mới.
     await prefs.reload();
     await _resetIfNewDay(prefs, _kOutdoorMinutesKey, _kOutdoorDateKey);
-    return prefs.getDouble(_kOutdoorMinutesKey) ?? 0;
-  }
 
-  static const _kOutdoorLastSampleKey = 'outdoor_last_sample_millis';
+    var minutes = prefs.getDouble(_kOutdoorMinutesKey) ?? 0;
+    final elapsedToday = _elapsedMinutesToday();
+    minutes = minutes.clamp(0.0, elapsedToday);
+
+    // Cập nhật lại nếu dữ liệu cũ vượt trần hợp lệ của hôm nay.
+    if ((prefs.getDouble(_kOutdoorMinutesKey) ?? 0) != minutes) {
+      await prefs.setDouble(_kOutdoorMinutesKey, minutes);
+    }
+    return minutes;
+  }
 
   Future<void> startOutdoorTracking() async {
     _outdoorSampleTimer?.cancel();
@@ -259,12 +281,20 @@ class DeviceDataService {
   /// Số phút được cộng = khoảng thời gian kể từ mẫu gần nhất của BẤT KỲ nguồn
   /// nào (lưu ở `outdoor_last_sample_millis`) — nhờ vậy foreground và nền
   /// không cộng chồng lên nhau. Kẹp trần (5 phút foreground / 20 phút nền) để
-  /// 1 khoảng im lặng dài (máy tắt, Doze) không bị tính hết là ngoài trời.
+  /// 1 khoảng im lặng dài (máy tắt, Dozo) không bị tính hết là ngoài trời.
   Future<void> sampleOutdoorOnce({bool fromBackground = false}) async {
     final prefs = await SharedPreferences.getInstance();
     // Cùng 1 file prefs được 2 isolate ghi -> luôn nạp lại trước khi đọc/ghi.
     await prefs.reload();
+
+    final today = DateTime.now().toIso8601String().substring(0, 10);
+    final storedDate = prefs.getString(_kOutdoorDateKey);
+    final isNewDay = storedDate != today;
     await _resetIfNewDay(prefs, _kOutdoorMinutesKey, _kOutdoorDateKey);
+    if (isNewDay) {
+      // Không được kế thừa mốc mẫu từ ngày hôm trước.
+      await prefs.setInt(_kOutdoorLastSampleKey, DateTime.now().millisecondsSinceEpoch);
+    }
 
     if (fromBackground) {
       // Android 10+: lấy vị trí khi app ở nền cần quyền "Luôn cho phép".
@@ -286,7 +316,9 @@ class DeviceDataService {
 
     if (isOutdoor == true && elapsedMinutes > 0) {
       final current = prefs.getDouble(_kOutdoorMinutesKey) ?? 0;
-      await prefs.setDouble(_kOutdoorMinutesKey, current + elapsedMinutes);
+      final elapsedToday = _elapsedMinutesToday();
+      final next = (current + elapsedMinutes).clamp(0.0, elapsedToday);
+      await prefs.setDouble(_kOutdoorMinutesKey, next);
     }
     // isOutdoor == false: trong nhà / không bắt được GPS -> không cộng.
   }
@@ -714,7 +746,7 @@ class DeviceDataService {
   static const int _kStreakScoreThreshold = 50;
 
   // ---------------- Điểm danh đơn giản: chỉ cần mở app hôm đó ----------------
-  // THÊM MỚI: ngoài điều kiện điểm sức khỏe mắt tốt, một ngày CŨNG được tính
+  // THÊM MỚI: ngoài điều kiện điểm sức khỏe mắt tốt, một ngày CŨ cũng được tính
   // vào chuỗi nếu người dùng ĐƠN GIẢN LÀ CÓ MỞ APP hôm đó — giống kiểu
   // "điểm danh" hằng ngày của các app thói quen phổ biến, để streak không bị
   // quá khắt khe/dễ nản với người mới dùng hoặc những ngày bận không kịp
